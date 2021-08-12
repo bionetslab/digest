@@ -1,0 +1,25 @@
+G43	567	Migraine
+I64	470	Stroke, not specified as haemorrhage or infarction
+E10	438	Type1 diabetes mellitus
+E11	438	Type2 diabetes mellitus
+J45	438	Asthma
+E13	438	Other specified diabetes mellitus
+E66	438	Obesity
+G30	438	Alzheimer
+I15	438	Secondary hypertension
+I21	438	Acute myocardial infarction
+I22	438	Subsequent myocardial imfarction
+I50	438	Heart failure
+G20	438	Parkinson
+I10	438	Essential (primary) Hypertension
+E12	425	Malnutrition-related diabetes mellitus
+F02	384	Dementia in other diseases classified elsewhere
+E14	255	Unspecified diabetes mellitus
+F01	239	Vascular dementia
+F00	171	Dementia in Alzheimer disease
+F03	171	Unspecified dementia
+I13	80	Hypertensive heart and renal disease
+I63	70	Cerebral infarction
+I12	24	Hypertensive renal disease
+I11	1	Hypertensive heart disease
+I70	1	Athersosclerosis
