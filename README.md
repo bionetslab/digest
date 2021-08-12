@@ -1,2 +1,2 @@
-# digest
-DIsease and GEne STatistics
+# DIGEST
+**Di**sease and **Ge**ne **St**atistics
