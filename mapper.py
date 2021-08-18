@@ -6,6 +6,7 @@ from biothings_client import get_client
 
 ID_TYPE_KEY = {'entrez': 'entrezgene', 'ensembl': 'ensembl.gene', 'symbol': 'symbol', 'uniprot': 'uniprot.Swiss-Prot'}
 GENE_IDS = ['uniprot.Swiss-Prot', 'symbol', 'ensembl.gene', 'entrezgene']
+IN_DIR = 'Input/'
 
 
 def get_gene_mapping(gene_set, id_type):
@@ -92,7 +93,7 @@ def _get_prev_mapping(gene_set, id_type, file):
         - prev_mapping: Full dataframe of all previously mapped genes
     """
     # ===== Get mapping from local mapping file =====
-    prev_mapping = pd.read_csv(file, header=0, dtype=str)
+    prev_mapping = pd.read_csv(IN_DIR+file, header=0, dtype=str)
     df = prev_mapping[prev_mapping[ID_TYPE_KEY[id_type]].isin(gene_set)]
     # ===== Get missing values =====
     missing = list(set(gene_set)-set(prev_mapping[ID_TYPE_KEY[id_type]]))
