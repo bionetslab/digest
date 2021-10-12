@@ -21,7 +21,7 @@ def get_gene_mapping(gene_set, id_type):
     :return: Dataframe
     """
     # ===== Get mapping from previous mappings =====
-    df, missing, prev_mapping = _get_prev_mapping(gene_set=gene_set, id_type=id_type, file='gene_id_mapping.csv')
+    df, missing, prev_mapping = _get_prev_mapping(in_set=gene_set, id_type=id_type, file='mapping_files/gene_id_mapping.csv', sep=",")
     # ===== Get mapping for missing values =====
     if len(missing) > 0:
         mg = get_client("gene")
@@ -52,10 +52,10 @@ def get_gene_to_attributes(gene_set, id_type):
     :return: Dataframe
     """
     # ===== Get gene ID mappings =====
-    gene_mapping, _, _ = _get_prev_mapping(gene_set=gene_set, id_type=id_type, file='gene_id_mapping.csv')
+    gene_mapping, _, _ = _get_prev_mapping(in_set=gene_set, id_type=id_type, file='mapping_files/gene_id_mapping.csv', sep=",")
     # ===== Get mapping from previous mappings =====
-    df, missing, prev_mapping = _get_prev_mapping(gene_set=set(gene_mapping['entrezgene']),
-                                                  id_type='entrez', file='gene_att_mapping.csv')
+    df, missing, prev_mapping = _get_prev_mapping(in_set=set(gene_mapping['entrezgene']),
+                                                  id_type='entrez', file='mapping_files/gene_att_mapping.csv', sep=",")
     # ===== Get mapping for missing values =====
     if len(missing) > 0:
         mg = get_client("gene")
@@ -70,34 +70,82 @@ def get_gene_to_attributes(gene_set, id_type):
         # ===== Add results from missing values =====
         pd.concat([prev_mapping, mapping]).to_csv('gene_att_mapping.csv', index=False)
         df = pd.concat([df, mapping]).reset_index(drop=True)
-    # ===== Reverse map to input gene ids =====
-    mapping_subset = gene_mapping[['entrezgene', ID_TYPE_KEY[id_type]]].drop_duplicates()
-    df = pd.merge(mapping_subset, df, on=['entrezgene'], how='outer')
-    df = df.drop(columns=['entrezgene'])
+    # ===== Reverse map to input gene ids if not entrez id type =====
+    if ID_TYPE_KEY[id_type] != 'entrezgene':
+        mapping_subset = gene_mapping[['entrezgene', ID_TYPE_KEY[id_type]]].drop_duplicates()
+        df = pd.merge(mapping_subset, df, on=['entrezgene'], how='outer')
+        df = df.drop(columns=['entrezgene'])
     # ===== Combine values if original gene id appears multiple times due to mapping =====
-    df = df.fillna('').groupby(['uniprot.Swiss-Prot'], as_index=False).agg({'go.BP': ';'.join, 'go.CC': ';'.join,
-                                                                            'go.MF': ';'.join, 'pathway.kegg': ';'.join})
+    df = df.fillna('').groupby([ID_TYPE_KEY[id_type]], as_index=False).agg({'go.BP': _combine_rows, 'go.CC': _combine_rows,
+                                                                            'go.MF': _combine_rows, 'pathway.kegg': _combine_rows})
     return df
 
 
-def _get_prev_mapping(gene_set, id_type, file):
+def get_disease_mapping(disease_set, id_type):
+    # ==== Get Mondo IDs ====
+    disease_id_set, _, _ = _get_prev_mapping(in_set=disease_set, id_type=id_type, file="mapping_files/disorders.map", sep="\t")
+    mondo_set = list(set('MONDO:'+disease_id_set['mondo']))
+    # ===== Get mapping from previous mappings =====
+    df, missing, prev_mapping = _get_prev_mapping(in_set=mondo_set, id_type='mondo', file='mapping_files/disease_disgenet_mapping.csv', sep=",")
+    # ==== Get disgenet values ====
+    if len(missing) > 0:
+        md = get_client("disease")
+        mapping = md.getdiseases(missing,
+                                 fields='disgenet.genes_related_to_disease.gene_id,disgenet.variants_related_to_disease.rsid',
+                                 species='human', returnall=False, as_dataframe=True, df_index=False)
+        mapping.rename(columns={'query': 'mondo'}, inplace=True)
+        # transform dataframe to combine single and multiple results
+        mapping = _preprocess_results(mapping=mapping, multicol='disgenet.genes_related_to_disease',
+                                      singlecol='disgenet.genes_related_to_disease.gene_id', key='gene_id')
+        mapping = _preprocess_results(mapping=mapping, multicol='disgenet.variants_related_to_disease',
+                                      singlecol='disgenet.variants_related_to_disease.rsid', key='rsid')
+        mapping = mapping.drop(columns=['_id', '_version', 'disgenet._license'])
+        # ===== Add results from missing values =====
+        pd.concat([prev_mapping, mapping]).to_csv('disease_disgenet_mapping.csv', index=False)
+        df = pd.concat([df, mapping]).reset_index(drop=True)
+    # ==== Map back to previous ids ====
+    df["mondo"] = df["mondo"].str.replace("MONDO:", "")
+    # work with not unique values...
+    mapping_subset = disease_id_set[['mondo', id_type]].drop_duplicates()
+    df = pd.merge(mapping_subset, df, on=['mondo'], how='outer')
+    df = df.drop(columns=['mondo'])
+    df = df.fillna('').groupby(id_type, as_index=False).agg({'disgenet.genes_related_to_disease': _combine_rows, 'disgenet.variants_related_to_disease': _combine_rows})
+    return df
+
+
+def _split_and_expand_column(data, split_string, column_name):
+    s = data[column_name].str.split(split_string, expand=True).stack()
+    i = s.index.get_level_values(0)
+    df2 = data.loc[i].copy()
+    df2[column_name] = s.values
+    return df2
+
+
+def _get_prev_mapping(in_set, id_type, file, sep):
     """
-    Get previous mappings from local file and filter which genes are
-    still missing and also returned.
-    :param gene_set: Set of genes to map
+    Get previous mappings from local file and filter which elements of the set
+    are still missing and also returned.
+    :param in_set: Set of genes to map
     :param id_type: Gene ID type of the genes
     :param file: Filename of the pre-mapped values
     :returns:
-        - df: Dataframe of previously mapped genes of the list
-        - missing: List of not previously mapped genes of the set
+        - mapped_set: Dataframe of previously mapped elements of the list
+        - missing: List of not previously mapped elements of the set
         - prev_mapping: Full dataframe of all previously mapped genes
     """
     # ===== Get mapping from local mapping file =====
-    prev_mapping = pd.read_csv(IN_DIR+file, header=0, dtype=str)
-    df = prev_mapping[prev_mapping[ID_TYPE_KEY[id_type]].isin(gene_set)]
+    mapping = pd.read_csv(file, sep=sep, header=0, dtype=str)
+    if id_type == "ICD-10":
+        mapping = _split_and_expand_column(data=mapping, split_string=",", column_name="ICD-10")
+        mapping_copy = mapping.copy()
+        mapping_copy['ICD-10'] = mapping_copy['ICD-10'].str.split('.', expand=True)[0]
+        mapping = pd.concat([mapping, mapping_copy], ignore_index=True)
+    # ==== Map given disease set ====
+    set_id_type = ID_TYPE_KEY[id_type] if id_type in ID_TYPE_KEY else id_type
+    mapped_set = mapping[mapping[set_id_type].isin(in_set)]
     # ===== Get missing values =====
-    missing = list(set(gene_set)-set(prev_mapping[ID_TYPE_KEY[id_type]]))
-    return df, missing, prev_mapping
+    missing = list(set(in_set) - set(mapping[set_id_type]))
+    return mapped_set, missing, mapping
 
 
 def _preprocess_results(mapping, multicol, singlecol, key, explode=False):
@@ -127,3 +175,7 @@ def _preprocess_results(mapping, multicol, singlecol, key, explode=False):
         mapping = mapping[multicol].split(';').explode(multicol)
         mapping.rename(columns={multicol: singlecol}, inplace=True)
     return mapping
+
+
+def _combine_rows(x):
+    return set(filter(None,';'.join(x).split(';')))
