@@ -48,7 +48,7 @@ def main(argv):
                 changes.append(cur_id+" ----> "+str(ids))
             full_ids_mapping.loc[idx, 'ICD-10'] = ','.join(str(s) for s in ids)
     
-    full_ids_mapping.to_csv('new_disorder.map', sep="\t", index=False)
+    full_ids_mapping.to_csv('new_disorders.map', sep="\t", index=False)
 
     textfile = open("changes.txt", "w")
     for element in changes:
