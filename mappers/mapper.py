@@ -6,7 +6,6 @@ from biothings_client import get_client
 
 ID_TYPE_KEY = {'entrez': 'entrezgene', 'ensembl': 'ensembl.gene', 'symbol': 'symbol', 'uniprot': 'uniprot.Swiss-Prot'}
 GENE_IDS = ['uniprot.Swiss-Prot', 'symbol', 'ensembl.gene', 'entrezgene']
-IN_DIR = 'Input/'
 
 
 def get_gene_mapping(gene_set, id_type):
@@ -21,7 +20,7 @@ def get_gene_mapping(gene_set, id_type):
     :return: Dataframe
     """
     # ===== Get mapping from previous mappings =====
-    df, missing, prev_mapping = _get_prev_mapping(in_set=gene_set, id_type=id_type, file='mapping_files/gene_id_mapping.csv', sep=",")
+    df, missing, prev_mapping = get_prev_mapping(in_set=gene_set, id_type=id_type, file='gene_id_mapping.csv', sep=",")
     # ===== Get mapping for missing values =====
     if len(missing) > 0:
         mg = get_client("gene")
@@ -31,8 +30,8 @@ def get_gene_mapping(gene_set, id_type):
         mapping.rename(columns={'query': ID_TYPE_KEY[id_type]}, inplace=True)
         # ===== Split if there are multiple ensembl ids =====
         if 'ensembl' in mapping:
-            mapping = _preprocess_results(mapping=mapping, multicol='ensembl', singlecol='ensembl.gene', key='gene',
-                                          explode=True)
+            mapping = preprocess_results(mapping=mapping, multicol='ensembl', singlecol='ensembl.gene', key='gene',
+                                         explode=True)
         mapping = mapping.drop(columns=['_id', '_score'])
         # ===== Add results from missing values =====
         pd.concat([prev_mapping, mapping]).to_csv('gene_id_mapping.csv', index=False)
@@ -52,10 +51,10 @@ def get_gene_to_attributes(gene_set, id_type):
     :return: Dataframe
     """
     # ===== Get gene ID mappings =====
-    gene_mapping, _, _ = _get_prev_mapping(in_set=gene_set, id_type=id_type, file='mapping_files/gene_id_mapping.csv', sep=",")
+    gene_mapping, _, _ = _get_prev_mapping(in_set=gene_set, id_type=id_type, file='../mapping_files/gene_id_mapping.csv', sep=",")
     # ===== Get mapping from previous mappings =====
     df, missing, prev_mapping = _get_prev_mapping(in_set=set(gene_mapping['entrezgene']),
-                                                  id_type='entrez', file='mapping_files/gene_att_mapping.csv', sep=",")
+                                                  id_type='entrez', file='../mapping_files/gene_att_mapping.csv', sep=",")
     # ===== Get mapping for missing values =====
     if len(missing) > 0:
         mg = get_client("gene")
@@ -83,10 +82,10 @@ def get_gene_to_attributes(gene_set, id_type):
 
 def get_disease_mapping(disease_set, id_type):
     # ==== Get Mondo IDs ====
-    disease_id_set, _, _ = _get_prev_mapping(in_set=disease_set, id_type=id_type, file="mapping_files/disorders.map", sep="\t")
+    disease_id_set, _, _ = _get_prev_mapping(in_set=disease_set, id_type=id_type, file="../mapping_files/disorders.map", sep="\t")
     mondo_set = list(set('MONDO:'+disease_id_set['mondo']))
     # ===== Get mapping from previous mappings =====
-    df, missing, prev_mapping = _get_prev_mapping(in_set=mondo_set, id_type='mondo', file='mapping_files/disease_disgenet_mapping.csv', sep=",")
+    df, missing, prev_mapping = _get_prev_mapping(in_set=mondo_set, id_type='mondo', file='../mapping_files/disease_disgenet_mapping.csv', sep=",")
     # ==== Get disgenet values ====
     if len(missing) > 0:
         md = get_client("disease")
@@ -161,19 +160,19 @@ def _preprocess_results(mapping, multicol, singlecol, key, explode=False):
                     separated into separate rows. [Default=False]
     :return: Dataframe
     """
-    def _convert_to_string(cell):
+    def convert_to_string(cell):
         if str(cell) != 'nan':
             extracted_ids = [val.get(key) for val in cell]
-            return ';'.join(extracted_ids)
+            return ';'.join(str(e) for e in list(set(extracted_ids)))
         return cell
 
-    mapping[multicol] = mapping[multicol].apply(lambda x: _convert_to_string(x)) if multicol in mapping else np.nan
+    mapping[multicol] = mapping[multicol].apply(lambda x: convert_to_string(x)) if multicol in mapping else np.nan
     if singlecol in mapping:
         mapping[multicol].fillna(mapping[singlecol], inplace=True)
         mapping = mapping.drop(columns=[singlecol])
     if explode:
         mapping = mapping[multicol].split(';').explode(multicol)
-        mapping.rename(columns={multicol: singlecol}, inplace=True)
+        mapping.rename(columns={multicol: singlecol}, inplace = True)
     return mapping
 
 

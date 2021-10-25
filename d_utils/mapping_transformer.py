@@ -2,14 +2,7 @@
 
 import pandas as pd
 import numpy as np
-import sys
 import re
-import os
-import inspect
-
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-sys.path.insert(0, parentdir+'/utils')
 import d_utils as du
 
 
@@ -54,10 +47,4 @@ def transform_mapping(mapping_file, out_dir):
             mapping.loc[idx, 'ICD-10'] = ','.join(str(s) for s in ids)
     
     mapping.to_csv(out_dir+'new_disorders.map', sep="\t", index=False)
-
-
-if __name__ == "__main__":
-    desc = "[Setup] Transform disease mapping file."
-    args = du.save_parameters(script_desc=desc, arguments=('m', 'o'))
-    transform_mapping(mapping_file=args.disease_mapping, out_dir=args.out_dir)
 
