@@ -4,27 +4,33 @@ import pandas as pd
 import numpy as np
 import sys
 import re
+import os
+import inspect
+
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir+'/utils')
+import d_utils as du
 
 
-def main(argv):
-    full_ids_mapping = pd.read_csv(argv[0], sep="\t", dtype=str)
-    changes = list()
-    for idx, row in full_ids_mapping.iterrows():
-        if  not (isinstance(full_ids_mapping.loc[idx, 'ICD-10'], float) and np.isnan(full_ids_mapping.loc[idx, 'ICD-10'])):
-            cur_ids = full_ids_mapping.loc[idx, 'ICD-10'].split(",")
+def transform_mapping(mapping_file, out_dir):
+    mapping = pd.read_csv(mapping_file, sep="\t", dtype=str)
+    for idx, row in mapping.iterrows():
+        if not (isinstance(mapping.loc[idx, 'ICD-10'], float) and np.isnan(mapping.loc[idx, 'ICD-10'])):
+            cur_ids = mapping.loc[idx, 'ICD-10'].split(",")
             for cur_id in cur_ids:
                 ids = set()
                 if "-" in cur_id:
                     ids_split = cur_id.split("-")
-                    if len(ids_split[0]) == len(ids_split[1]): 
-                        if len(ids_split[0]) == 3: # A00-A09
+                    if len(ids_split[0]) == len(ids_split[1]):
+                        if len(ids_split[0]) == 3:  # A00-A09
                             letter = ids_split[0][0:1]
                             start = int(ids_split[0][1:3])
                             end = int(ids_split[1][1:3])
                             for i in range(start, end+1):
                                 index = str(i).zfill(2)
                                 ids.add(letter+index)
-                        else: # H01.021-H01.029
+                        else:  # H01.021-H01.029
                             letter = ids_split[0][0:1]
                             start = int(ids_split[0].replace('.', '')[1:6])
                             end = int(ids_split[1].replace('.', '')[1:6])
@@ -32,7 +38,7 @@ def main(argv):
                                 index = str(i).zfill(5)
                                 ids.add(letter+index[0:2]+"."+index[2:5])
                                 ids.add(letter+index[0:2])
-                    else: # H02.121-129
+                    else:  # H02.121-129
                         letter_start = ids_split[0][0:3]
                         start = int(ids_split[0][4:7])
                         end = int(ids_split[1])
@@ -43,18 +49,15 @@ def main(argv):
                 elif re.search(r'[A-Z][0-9]{2}[.][A-Z][0-9]{2}', cur_id):
                     ids = set(cur_id.split("."))
                 else:
-                    ids = set(re.findall(r"([A-Z][0-9]{1,})[.,-]?", cur_id))
+                    ids = set(re.findall(r"([A-Z][0-9]+)[.,-]?", cur_id))
                     ids.add(cur_id)
-                changes.append(cur_id+" ----> "+str(ids))
-            full_ids_mapping.loc[idx, 'ICD-10'] = ','.join(str(s) for s in ids)
+            mapping.loc[idx, 'ICD-10'] = ','.join(str(s) for s in ids)
     
-    full_ids_mapping.to_csv('new_disorders.map', sep="\t", index=False)
+    mapping.to_csv(out_dir+'new_disorders.map', sep="\t", index=False)
 
-    textfile = open("changes.txt", "w")
-    for element in changes:
-        textfile.write(element + "\n")
-    textfile.close()
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    desc = "[Setup] Transform disease mapping file."
+    args = du.save_parameters(script_desc=desc, arguments=('m', 'o'))
+    transform_mapping(mapping_file=args.disease_mapping, out_dir=args.out_dir)
 
