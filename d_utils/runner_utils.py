@@ -20,15 +20,18 @@ def save_parameters(script_desc, arguments):
     descr += "\nusage: python3 %(prog)s [required arguments] [optional arguments]\n"
     epilo = "\n############################################################################\n"
     parser = argparse.ArgumentParser(description=descr, formatter_class=argparse.RawTextHelpFormatter, epilog=epilo,
-                                     usage=argparse.SUPPRESS)
+                                     usage=argparse.SUPPRESS, add_help=False)
     required_args = parser.add_argument_group("required arguments")
     if 'm' in arguments:
         required_args.add_argument('-m', '--disease_mapping', type=str, required=True,
                                    help='Disease mapping file.')
-
+    if 'r' in arguments:
+        required_args.add_argument('-r', '--reference', type=str, required=True,
+                                   help='Disease mapping file.')
     optional_args = parser.add_argument_group("optional arguments")
     if 'o' in arguments:
         optional_args.add_argument('-o', '--out_dir', type=str, default='./', help='Output directory. [Default=./]')
+    optional_args.add_argument("-h", "--help", action="help", help="show this help message and exit")
     args = parser.parse_args()
     return args
 

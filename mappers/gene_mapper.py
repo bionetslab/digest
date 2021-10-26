@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import pandas as pd
-from digest.d_utils import config, mapping_utils as mu
+from d_utils import config, mapping_utils as mu
 from biothings_client import get_client
 
 
