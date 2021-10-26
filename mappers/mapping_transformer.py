@@ -3,7 +3,6 @@
 import pandas as pd
 import numpy as np
 import re
-import d_utils as du
 
 
 def transform_mapping(mapping_file, out_dir):

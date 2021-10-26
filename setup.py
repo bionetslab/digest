@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
-import d_utils.d_utils as du
-import d_utils.mapping_transformer as mt
+import d_utils.runner_utils as du
+import digest.mappers.mapping_transformer as mt
 
 
 if __name__ == "__main__":
