@@ -5,14 +5,14 @@ from d_utils import config, mapping_utils as mu
 from biothings_client import get_client
 
 
-def get_disease_mapping(disease_set, id_type):
+def get_disease_to_attributes(disease_set, id_type):
     # ==== Get Mondo IDs ====
     disease_id_set, _, _ = mu.get_prev_mapping(in_set=disease_set, id_type=id_type,
-                                               file="../new_disorders.map", sep="\t")
+                                               file=config.FILES_DIR + "new_disorders.map", sep="\t")
     mondo_set = list(set('MONDO:' + disease_id_set['mondo']))
     # ===== Get mapping from previous mappings =====
     df, missing, prev_mapping = mu.get_prev_mapping(in_set=mondo_set, id_type='mondo',
-                                                    file='disease_disgenet_mapping.csv', sep=",")
+                                                    file=config.FILES_DIR + 'disease_disgenet_mapping.csv', sep=",")
     # ==== Get disgenet values ====
     if len(missing) > 0:
         md = get_client("disease")

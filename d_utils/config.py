@@ -16,7 +16,7 @@ sys.path.insert(0, BASE_DIR + '/mappers')
 # =============================================================================
 # Set directories
 # ============================================================================
-FILES_DIR = BASE_DIR + 'mapping_files/'
+FILES_DIR = BASE_DIR + '/mapping_files/'
 
 # =============================================================================
 # Set ID names mapping
@@ -41,3 +41,5 @@ DISEASE_ATTRIBUTES_KEY = {'disgenet.genes_related_to_disease': 'gene_id',
 # DO NOT CHANGE
 # ============================================================================
 MAIN_GENE_ID = 'entrezgene'
+SUPPORTED_GENE_IDS = ['entrez', 'ensembl', 'symbol', 'uniprot']
+SUPPORTED_DISEASE_IDS = ['mondo', 'omim', 'snomedct', 'umls', 'orpha', 'mesh', 'doid', 'ICD-10']
