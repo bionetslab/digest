@@ -7,6 +7,7 @@ import time
 import psutil
 import d_utils.config as c
 
+start_time = time.time()
 
 def save_parameters(script_desc, arguments):
     """
@@ -14,8 +15,6 @@ def save_parameters(script_desc, arguments):
 
     :return: values assigned to input arguments
     """
-    global start_time
-    start_time = time.time()
     descr = "\n############################################################################\n"
     descr += "###################### DiGeSt - %(prog)s ########################\n"
     descr += script_desc

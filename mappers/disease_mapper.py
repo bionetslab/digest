@@ -6,6 +6,16 @@ from biothings_client import get_client
 
 
 def get_disease_to_attributes(disease_set, id_type):
+    """
+    Simple attribute mapper using a local mapping file
+    and the myDisease.info database.
+    Mapped attributes:
+    DisGeNET related genes, DisGeNET related variants, ctd + kegg pathways
+
+    :param disease_set: set of disease ids
+    :param id_type: id type of set
+    :return:
+    """
     # ==== Get Mondo IDs ====
     disease_id_set, _, _ = mu.get_prev_mapping(in_set=disease_set, id_type=id_type,
                                                file=config.FILES_DIR + "new_disorders.map", sep="\t")

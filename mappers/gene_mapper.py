@@ -45,8 +45,8 @@ def get_gene_to_attributes(gene_set, id_type):
     Mapped attributes:
     KEGG pathway, GO biological process, GO molecular function, GO cellular component
 
-    :param gene_set: Set of gene ids
-    :param id_type: Gene ID type of input gene set
+    :param gene_set: set of gene ids
+    :param id_type: id type of set
     :return: Dataframe
     """
     # ===== Get gene ID mappings =====
