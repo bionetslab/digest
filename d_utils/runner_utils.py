@@ -19,6 +19,7 @@ def save_parameters(script_desc, arguments):
     descr = "\n############################################################################\n"
     descr += "###################### DiGeSt - %(prog)s ########################\n"
     descr += script_desc
+    descr += "\n############################################################################\n"
     descr += "\nusage: python3 %(prog)s [required arguments] [optional arguments]\n"
     epilo = _get_epilog(script_name=os.path.basename(sys.argv[0]))
     parser = argparse.ArgumentParser(description=descr, formatter_class=argparse.RawTextHelpFormatter, epilog=epilo,
@@ -56,16 +57,16 @@ def save_parameters(script_desc, arguments):
 def _get_epilog(script_name):
     epilog = ""
     if script_name == 'single_validation.py':
-        epilog += "\npossible id types\n"
+        epilog += "\n----------------------------------------------------------------------------\n"
+        epilog += "\nsupported id types\n"
         epilog += "  for genes\t\t" + ', '.join(c.SUPPORTED_GENE_IDS) + "\n"
         epilog += "  for diseases\t\t" + ', '.join(c.SUPPORTED_DISEASE_IDS) + "\n"
-        epilog += "\npossible modes\n"
+        epilog += "\nsupported modes\n"
         epilog += "  set\t\t\tCompare similarity inside the set. Either genes or diseases.\n"
         epilog += "  set-set\t\tCompare target set to reference set. Both either genes or diseases.\n"
         epilog += "  id-set\t\tCompare target set to reference id. Set either genes or diseases, id of disease.\n"
         epilog += "  cluster\t\tCompare cluster quality inside clustering. Either genes or diseases.\n"
-    else:
-        epilog += "\n############################################################################\n"
+    epilog += "\n############################################################################\n"
     return epilog
 
 

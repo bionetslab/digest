@@ -90,6 +90,6 @@ def compare_clusters(clusters, id_type):
 
 
 if __name__ == "__main__":
-    desc = "Evaluation of gene sets against seed gene sets or disease id; disease id sets and disease clusters."
+    desc = "            Evaluation of disease and gene sets and clusters."
     arguments = ru.save_parameters(script_desc=desc, arguments=('r', 'ri', 't', 'ti', 'm', 'o'))
     single_validation(args=arguments)
