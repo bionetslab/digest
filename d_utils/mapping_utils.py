@@ -28,7 +28,7 @@ def get_prev_mapping(in_set, id_type, file, sep):
         mapping = split_and_expand_column(data=mapping, split_string=",", column_name="ICD-10")
     # ==== Map given disease set ====
     id_type = config.ID_TYPE_KEY[id_type] if id_type in config.ID_TYPE_KEY else id_type
-    mapped_set = mapping[mapping[id_type].isin(in_set)]
+    mapped_set = mapping[mapping[id_type].isin(in_set)].copy()
     # ===== Get missing values =====
     missing = list(set(in_set) - set(mapping[id_type]))
     return mapped_set, missing, mapping

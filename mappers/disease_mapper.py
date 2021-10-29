@@ -51,7 +51,7 @@ def get_disease_to_attributes(disease_set, id_type):
         pd.concat([prev_mapping, mapping]).to_csv(config.FILES_DIR + 'disease_disgenet_mapping.csv', index=False)
         df = pd.concat([df, mapping]).reset_index(drop=True)
     # ==== Map back to previous ids ====
-    df.loc[:, "mondo"] = df.loc[:, "mondo"].str.split(':').str[1]
+    df.loc[:, "mondo"] = df.loc[:, "mondo"].str.replace('MONDO:', '')
     columns = ['mondo', id_type] if id_type != 'mondo' else ['mondo']
     mapping_subset = disease_id_set[columns].drop_duplicates()
     df = pd.merge(mapping_subset, df, on=['mondo'], how='outer')

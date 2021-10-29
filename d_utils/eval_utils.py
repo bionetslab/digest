@@ -63,6 +63,6 @@ def evaluate_values(mapping, ref_dict, threshold, keys):
     """
     evaluation = list()
     for attribute in keys:
-        evaluated_series = mapping[attribute].apply(get_intersection, ref_set=ref_dict[attribute])
+        evaluated_series = mapping[attribute].apply(get_intersection, ref_att_set=ref_dict[attribute])
         evaluation.append([attribute, str(len(evaluated_series[evaluated_series > threshold]) / len(evaluated_series))])
     return evaluation
