@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import sys
 
 import pandas as pd
 import numpy as np
@@ -11,12 +12,14 @@ def transform_id_mapping(data):
     transformed_list = list()
     for idx, row in data.iterrows():
         current_dict = {entry.split('.')[0]: entry.split('.')[1]for entry in ast.literal_eval(row[1])}
-        print(current_dict)
         current_list = list()
-        for id in config.SUPPORTED_DISEASE_IDS:
-            if id == "ICD-10":
+        for supported_id in config.SUPPORTED_DISEASE_IDS:
+            if supported_id == "ICD-10":
                 current_list.append(transform_icd10_mapping(ast.literal_eval(row[2])))
-    return
+            else:
+                current_list.append(current_dict[supported_id]) if supported_id in current_dict else current_list.append("")
+        transformed_list.append(current_list)
+    return pd.DataFrame(transformed_list, columns=config.SUPPORTED_DISEASE_IDS)
 
 
 def transform_icd10_mapping(ids_set):
@@ -49,9 +52,9 @@ def transform_icd10_mapping(ids_set):
                     trans_ids.add(letter_start+"."+index)
                 trans_ids.add(letter_start)
         elif re.search(r"[A-Z][0-9]{2}[.][A-Z][0-9]{2}", cur_id):
-            trans_ids = set(cur_id.split("."))
+            trans_ids.update(set(cur_id.split(".")))
         else:
-            trans_ids = set(re.findall(r"([A-Z][0-9]+)[.,-]?", cur_id))
+            trans_ids.update(set(re.findall(r"([A-Z][0-9]+)[.,-]?", cur_id)))
             trans_ids.add(cur_id)
     return ','.join(str(s) for s in trans_ids)
 
