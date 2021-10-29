@@ -5,6 +5,14 @@ import os
 import inspect
 
 # =============================================================================
+# SETUP
+# ============================================================================
+MAIN_GENE_ID = 'entrezgene'
+SUPPORTED_GENE_IDS = ['entrez', 'ensembl', 'symbol', 'uniprot']
+SUPPORTED_DISEASE_IDS = ['mondo', 'omim', 'snomedct', 'umls', 'orpha', 'mesh', 'doid', 'ICD-10']
+NUMBER_OF_RANDOM_RUNS = 100
+
+# =============================================================================
 # Load all paths of required folders with scripts
 # =============================================================================
 UTILS_DIR = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -38,8 +46,10 @@ DISEASE_ATTRIBUTES_KEY = {'disgenet.genes_related_to_disease': 'gene_id',
                           'ctd.pathway_related_to_disease': 'kegg_pathway_id'}
 
 # =============================================================================
-# DO NOT CHANGE
+# Set API paths to nedrex data
 # ============================================================================
-MAIN_GENE_ID = 'entrezgene'
-SUPPORTED_GENE_IDS = ['entrez', 'ensembl', 'symbol', 'uniprot']
-SUPPORTED_DISEASE_IDS = ['mondo', 'omim', 'snomedct', 'umls', 'orpha', 'mesh', 'doid', 'ICD-10']
+NEDREX_DISORDER_IDS = "https://api.nedrex.net/disorder/attributes/domainIds/tsv"
+NEDREX_ICD10_IDS = "https://api.nedrex.net/disorder/attributes/icd10/tsv"
+NEDREX_GENE_IDS = "https://api.nedrex.net/gene/attributes/primaryDomainId/tsv"
+
+

@@ -24,9 +24,6 @@ def save_parameters(script_desc, arguments):
     parser = argparse.ArgumentParser(description=descr, formatter_class=argparse.RawTextHelpFormatter, epilog=epilo,
                                      usage=argparse.SUPPRESS, add_help=False)
     required_args = parser.add_argument_group("required arguments")
-    if 'f' in arguments:
-        required_args.add_argument('-f', '--disease_mapping_file', type=str, required=True,
-                                   help='Disease mapping file.')
     if 'r' in arguments:
         required_args.add_argument('-r', '--reference', type=str,
                                    help='[Only for mode id-set and set-set] Reference file or id. ')
