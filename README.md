@@ -1,2 +1,2 @@
 # DIGEST
-**Di**sease Clustering and **Ge**ne Sets Validation **St**atistics
+**Di**sease and **Ge**ne **S**et and Clustering Validation **T**ool
