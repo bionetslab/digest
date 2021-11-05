@@ -50,8 +50,7 @@ def get_gene_to_attributes(gene_set, id_type):
     :return: Dataframe
     """
     # ===== Get gene ID mappings =====
-    gene_mapping, _, _ = mu.get_prev_mapping(in_set=gene_set, id_type=id_type,
-                                             file=config.FILES_DIR + 'gene_id_mapping.csv', sep=",")
+    gene_mapping = get_gene_mapping(gene_set=gene_set, id_type=id_type)
     df, missing, prev_mapping = mu.get_prev_mapping(in_set=set(gene_mapping['entrezgene']), id_type='entrez',
                                                     file=config.FILES_DIR + 'gene_att_mapping.csv', sep=",")
     if len(missing) > 0:
@@ -69,9 +68,10 @@ def get_gene_to_attributes(gene_set, id_type):
         pd.concat([prev_mapping, mapping]).to_csv(config.FILES_DIR + 'gene_att_mapping.csv', index=False)
         df = pd.concat([df, mapping]).reset_index(drop=True)
     # work with not unique values...
-    mapping_subset = gene_mapping[['entrezgene', config.ID_TYPE_KEY[id_type]]].drop_duplicates()
+    columns = ['entrezgene', config.ID_TYPE_KEY[id_type]] if id_type != 'entrez' else ['entrezgene']
+    mapping_subset = gene_mapping[columns].drop_duplicates()
     df = pd.merge(mapping_subset, df, on=['entrezgene'], how='outer')
-    df = df.drop(columns=['entrezgene'])
+    df = df.drop(columns=['entrezgene']) if id_type != 'entrez' else df
     df = df.fillna('').groupby([config.ID_TYPE_KEY[id_type]], as_index=False).agg(
         {x: mu.combine_rows for x in config.GENE_ATTRIBUTES_KEY})
     return df

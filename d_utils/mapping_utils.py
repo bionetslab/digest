@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import pandas as pd
+import numpy as np
 import config
 
 
@@ -28,7 +29,7 @@ def preprocess_results(mapping, multicol, singlecol, key, explode=False):
         mapping[multicol].fillna(mapping[singlecol], inplace=True)
         mapping = mapping.drop(columns=[singlecol])
     if explode:
-        mapping = mapping[multicol].split(';').explode(multicol)
+        mapping[multicol] = mapping[multicol].str.split(';').explode(multicol)
         mapping.rename(columns={multicol: singlecol}, inplace=True)
     return mapping
 
