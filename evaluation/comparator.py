@@ -19,7 +19,7 @@ def compare_set(id_set, id_type):
         mapping = dm.get_disease_to_attributes(disease_set=id_set, id_type=id_type)
     else:  # if id_type in c.SUPPORTED_GENE_IDS:
         mapping = gm.get_gene_to_attributes(gene_set=id_set, id_type=id_type)
-    result = list()
+    result = dict()
     for attribute in mapping.columns[1:]:
         subset_df = mapping[mapping[attribute].str.len() > 0].reset_index()
         missing_values = len(mapping) - len(subset_df)
@@ -27,7 +27,7 @@ def compare_set(id_set, id_type):
         comp_mat = eu.get_distance_matrix(eval_df=subset_df[attribute])
         comp_mean = (comp_mat.sum() - np.diag(comp_mat).sum()) / (
                 len(subset_df[attribute]) * (len(subset_df[attribute]) - 1))
-        result.append([attribute, comp_mean])
+        result[attribute] = comp_mean
     return result
 
 

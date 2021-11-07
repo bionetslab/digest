@@ -61,8 +61,18 @@ def evaluate_values(mapping, ref_dict, threshold, keys):
     :param keys: attribute names
     :return:
     """
-    evaluation = list()
+    evaluation = dict()
     for attribute in keys:
         evaluated_series = mapping[attribute].apply(get_intersection, ref_att_set=ref_dict[attribute])
-        evaluation.append([attribute, str(len(evaluated_series[evaluated_series > threshold]) / len(evaluated_series))])
+        evaluation[attribute] = str(len(evaluated_series[evaluated_series > threshold]) / len(evaluated_series))
     return evaluation
+
+
+def calc_pvalue(test_value, value_df):
+    pvalue = dict()
+    for keys in test_value:
+        #print(test_value[keys])
+        #print(value_df[keys])
+        #print((value_df[keys] < test_value[keys]).value_counts())
+        pvalue[keys] = 1 - (sum(value_df[keys] < test_value[keys]) / len(value_df.index))
+    return pvalue

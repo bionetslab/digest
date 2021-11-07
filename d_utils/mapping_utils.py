@@ -3,6 +3,7 @@
 import pandas as pd
 import numpy as np
 import config
+from pathlib import Path
 
 
 def preprocess_results(mapping, multicol, singlecol, key, explode=False):
@@ -49,6 +50,8 @@ def get_prev_mapping(in_set, id_type, file, sep):
              mapping: complete mapping of file
     """
     # ===== Get mapping from local mapping file =====
+    if not Path(file).is_file():
+        return None, in_set, None
     mapping = pd.read_csv(file, sep=sep, header=0, dtype=str)
     if id_type == "ICD-10":
         mapping = split_and_expand_column(data=mapping, split_string=",", column_name="ICD-10")
@@ -79,5 +82,14 @@ def split_and_expand_column(data, split_string, column_name):
 
 def combine_rows(x):
     return set(filter(None, ';'.join(x).split(';')))
+
+
+def save_mapping_in_file(full_map, prev_map, new_map, file):
+    if full_map is None:
+        new_map.to_csv(config.FILES_DIR + 'gene_id_mapping.csv', index=False)
+        return new_map
+    else:
+        pd.concat([full_map, new_map]).to_csv(file, index=False)
+        return pd.concat([prev_map, new_map]).reset_index(drop=True)
 
 

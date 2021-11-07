@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import pandas as pd
-from d_utils import runner_utils as ru, config, mapping_utils as mu
+from d_utils import runner_utils as ru, config, mapping_utils as mu, eval_utils as eu
 from evaluation import comparator as comp
 import random
 
@@ -26,6 +26,7 @@ def single_validation(args):
                                   tar=target, tar_id=args.target_id_type, mode=args.mode)
         comp_values = get_random_runs_values(ref=reference, ref_id=args.reference_id_type,
                                              tar=target, tar_id=args.target_id_type, mode=args.mode)
+        print(eu.calc_pvalue(test_value=my_value, value_df=pd.DataFrame(comp_values)))
 
     # ===== Special case cluster =====
     elif args.mode == "cluster":
@@ -75,4 +76,4 @@ def get_random_runs_values(ref, ref_id, tar, tar_id, mode):
 if __name__ == "__main__":
     desc = "            Evaluation of disease and gene sets and clusters."
     arguments = ru.save_parameters(script_desc=desc, arguments=('r', 'ri', 't', 'ti', 'm', 'o'))
-    print(single_validation(args=arguments))
+    single_validation(args=arguments)

@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 import pandas as pd
-
 from d_utils import config as c
-from mappers import mapping_transformer as mt
+from mappers import mapping_transformer as mt, gene_mapper as gm
 
 
 def load_files():
@@ -12,7 +11,7 @@ def load_files():
     # ---- Tranform mappings ----
     disease_mapping = mt.transform_id_mapping(disorder_ids.merge(icd10_ids, on='primaryDomainId', how='outer'))
     # ---- Save mapping ----
-    disease_mapping.to_csv(c.FILES_DIR+"disorders.map", sep="\t", index=False)
+    disease_mapping.to_csv(c.FILES_DIR + "disorders.map", sep="\t", index=False)
 
     # ---- Load gene ids ----
     gene_ids = pd.read_csv(c.NEDREX_GENE_IDS, sep="\t")
@@ -21,6 +20,10 @@ def load_files():
     gene_ids.entrez = gene_ids.entrez.str.replace(r'entrez.', '', regex=True)
     # ---- Save mapping ----
     gene_ids.to_csv(c.FILES_DIR + "gene.list", sep="\t", index=False)
+
+    # ---- Get attributes ----
+    gm.get_gene_to_attributes(gene_set=gene_ids.entrez, id_type="entrez")
+
     return
 
 
