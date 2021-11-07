@@ -4,10 +4,11 @@ import pandas as pd
 import numpy as np
 from d_utils import runner_utils as ru, eval_utils as eu, config as c
 from mappers import gene_mapper as gm, disease_mapper as dm
+from mappers.mapper import Mapper
 from evaluation import score_calculator as sc
 
 
-def compare_set(id_set, id_type):
+def compare_set(id_set, id_type, mapper:Mapper):
     """
     Compare the set on itself based on connected attributes. See config for more info.
 
@@ -31,7 +32,7 @@ def compare_set(id_set, id_type):
     return result
 
 
-def compare_set_to_set(ref, ref_id_type, tar, tar_id_type, threshold=0.0):
+def compare_set_to_set(ref, ref_id_type, tar, tar_id_type, mapper:Mapper, threshold=0.0):
     """
     Compare two sets of the same type (either genes or diseases) with each other.
     The tar set is evaluated how good it matches to the ref set.
@@ -47,15 +48,15 @@ def compare_set_to_set(ref, ref_id_type, tar, tar_id_type, threshold=0.0):
         reference_mapping = dm.get_disease_to_attributes(disease_set=ref, id_type=ref_id_type)
         target_mapping = dm.get_disease_to_attributes(disease_set=tar, id_type=tar_id_type)
     else:  # if ref_id_type in c.SUPPORTED_GENE_IDS and targets_id_type in c.SUPPORTED_GENE_IDS:
-        reference_mapping = gm.get_gene_to_attributes(gene_set=ref, id_type=ref_id_type)
-        target_mapping = gm.get_gene_to_attributes(gene_set=tar, id_type=tar_id_type)
+        reference_mapping = gm.get_gene_to_attributes(gene_set=ref, id_type=ref_id_type, mapper=mapper)
+        target_mapping = gm.get_gene_to_attributes(gene_set=tar, id_type=tar_id_type, mapper=mapper)
     ref_dict = eu.create_ref_dict(mapping=reference_mapping, keys=reference_mapping.columns[1:])
     result = eu.evaluate_values(mapping=target_mapping, ref_dict=ref_dict, threshold=threshold,
                                 keys=target_mapping.columns[1:])
     return result
 
 
-def compare_id_to_set(ref_id, ref_id_type, tar, tar_id_type, threshold=0.0):
+def compare_id_to_set(ref_id, ref_id_type, tar, tar_id_type, mapper:Mapper, threshold=0.0):
     """
     Compare disease id to either gene or disease set.
     The tar set is evaluated how good it matches to the ref id.
@@ -80,7 +81,7 @@ def compare_id_to_set(ref_id, ref_id_type, tar, tar_id_type, threshold=0.0):
     return result
 
 
-def compare_clusters(clusters, id_type):
+def compare_clusters(clusters, id_type, mapper:Mapper):
     """
     Evaluate the quality of clustering of given set with diseases or genes and
     assigned clusters. Additionally calculate statistical values with

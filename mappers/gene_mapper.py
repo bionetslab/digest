@@ -2,10 +2,11 @@
 
 import pandas as pd
 from d_utils import config, mapping_utils as mu
+from mapper import Mapper
 from biothings_client import get_client
 
 
-def get_gene_mapping(gene_set, id_type):
+def get_gene_mapping(gene_set, id_type, mapper: Mapper):
     """
     Simple gene ID mapper using a local mapping file
     and the myGene.info database.
@@ -17,9 +18,7 @@ def get_gene_mapping(gene_set, id_type):
     :return: Dataframe
     """
     # ===== Get mapping from previous mappings =====
-    hit_mapping, missing_hits, full_mapping = mu.get_prev_mapping(in_set=gene_set, id_type=id_type,
-                                                                  file=config.FILES_DIR + 'gene_id_mapping.csv',
-                                                                  sep=",")
+    hit_mapping, missing_hits = mapper.get_loaded_mapping(in_set=gene_set, id_type=config.ID_TYPE_KEY[id_type], key='gene_ids')
     # ===== Get mapping for missing values =====
     if len(missing_hits) > 0:
         mg = get_client("gene")
@@ -33,12 +32,12 @@ def get_gene_mapping(gene_set, id_type):
                                             explode=True)
         mapping = mapping.drop(columns=['_id', '_score'])
         # ===== Add results from missing values =====
-        hit_mapping = mu.save_mapping_in_file(full_map=full_mapping, prev_map=hit_mapping, new_map=mapping,
-                                       file=config.FILES_DIR + 'gene_id_mapping.csv')
+        mapper.update_mappings(in_df=mapping, key='gene_ids')
+        hit_mapping = pd.concat([hit_mapping, mapping])
     return hit_mapping
 
 
-def get_gene_to_attributes(gene_set, id_type):
+def get_gene_to_attributes(gene_set, id_type, mapper: Mapper):
     """
     Simple attribute mapper using a local mapping file
     and the myGene.info database.
@@ -50,11 +49,9 @@ def get_gene_to_attributes(gene_set, id_type):
     :return: Dataframe
     """
     # ===== Get gene ID mappings =====
-    gene_mapping = get_gene_mapping(gene_set=gene_set, id_type=id_type)
-    hit_mapping, missing_hits, full_mapping = mu.get_prev_mapping(in_set=set(gene_mapping['entrezgene']),
-                                                                  id_type='entrez',
-                                                                  file=config.FILES_DIR + 'gene_att_mapping.csv',
-                                                                  sep=",")
+    gene_mapping = get_gene_mapping(gene_set=gene_set, id_type=id_type, mapper=mapper)
+    hit_mapping, missing_hits = mapper.get_loaded_mapping(in_set=set(gene_mapping['entrezgene']), id_type='entrezgene',
+                                                          key='gene_atts')
     if len(missing_hits) > 0:
         mg = get_client("gene")
         mapping = mg.querymany(missing_hits, scopes=','.join(config.GENE_IDS),
@@ -67,9 +64,8 @@ def get_gene_to_attributes(gene_set, id_type):
                                             key=config.GENE_ATTRIBUTES_KEY[attribute])
         mapping = mapping.drop(columns=['_id', '_score'])
         # ===== Add results from missing values =====
-        print(mapping)
-        hit_mapping = mu.save_mapping_in_file(full_map=full_mapping, prev_map=hit_mapping, new_map=mapping,
-                                              file=config.FILES_DIR + 'gene_att_mapping.csv')
+        mapper.update_mappings(in_df=mapping, key='gene_atts')
+        hit_mapping = pd.concat([hit_mapping, mapping])
     # work with not unique values...
     columns = ['entrezgene', config.ID_TYPE_KEY[id_type]] if id_type != 'entrez' else ['entrezgene']
     mapping_subset = gene_mapping[columns].drop_duplicates()

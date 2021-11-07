@@ -69,4 +69,4 @@ def _get_epilog(script_name):
 def print_current_usage(text):
     memory_usage = '{0:.2f}'.format(psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2)
     time_usage = time.strftime("%H:%M:%S", time.gmtime(time.time() - start_time))
-    print('[{}|{}MB]'.format(time_usage, memory_usage) + text)
+    print('[{}|{}MB] '.format(time_usage, memory_usage) + text)

@@ -35,34 +35,6 @@ def preprocess_results(mapping, multicol, singlecol, key, explode=False):
     return mapping
 
 
-def get_prev_mapping(in_set, id_type, file, sep):
-    """
-    Get previous mapping from file sub setting it to the
-    element in in_set. Also returning the list of elements
-    from the set that are not present in the previous mapping.
-
-    :param in_set: set of genes or diseases
-    :param id_type: id type of set
-    :param file: file with previous mapping
-    :param sep: separator of values in file
-    :return: mapped_set: dataframe with previous mapping of input set or subset;
-             missing: list of missing values of the set in the previous mapping;
-             mapping: complete mapping of file
-    """
-    # ===== Get mapping from local mapping file =====
-    if not Path(file).is_file():
-        return None, in_set, None
-    mapping = pd.read_csv(file, sep=sep, header=0, dtype=str)
-    if id_type == "ICD-10":
-        mapping = split_and_expand_column(data=mapping, split_string=",", column_name="ICD-10")
-    # ==== Map given disease set ====
-    id_type = config.ID_TYPE_KEY[id_type] if id_type in config.ID_TYPE_KEY else id_type
-    mapped_set = mapping[mapping[id_type].isin(in_set)].copy()
-    # ===== Get missing values =====
-    missing = list(set(in_set) - set(mapping[id_type]))
-    return mapped_set, missing, mapping
-
-
 def split_and_expand_column(data, split_string, column_name):
     """
     Split column value in data by split_string and expand the dataframe
@@ -82,14 +54,5 @@ def split_and_expand_column(data, split_string, column_name):
 
 def combine_rows(x):
     return set(filter(None, ';'.join(x).split(';')))
-
-
-def save_mapping_in_file(full_map, prev_map, new_map, file):
-    if full_map is None:
-        new_map.to_csv(config.FILES_DIR + 'gene_id_mapping.csv', index=False)
-        return new_map
-    else:
-        pd.concat([full_map, new_map]).to_csv(file, index=False)
-        return pd.concat([prev_map, new_map]).reset_index(drop=True)
 
 
