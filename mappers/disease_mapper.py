@@ -3,9 +3,10 @@
 import pandas as pd
 from d_utils import config, mapping_utils as mu
 from biothings_client import get_client
+from mapper import Mapper
 
 
-def get_disease_to_attributes(disease_set, id_type):
+def get_disease_to_attributes(disease_set, id_type, mapper:Mapper):
     """
     Simple attribute mapper using a local mapping file
     and the myDisease.info database.
@@ -17,16 +18,14 @@ def get_disease_to_attributes(disease_set, id_type):
     :return:
     """
     # ==== Get Mondo IDs ====
-    disease_id_set, _, _ = mu.get_prev_mapping(in_set=disease_set, id_type=id_type,
-                                               file=config.FILES_DIR + "disorders.map", sep="\t")
-    mondo_set = list(set('MONDO:' + disease_id_set['mondo']))
+    disorder_mapping, _ = mapper.get_loaded_mapping(in_set=disease_set, id_type=id_type,key='disorder_ids')
+    mondo_set = list(set('MONDO:' + disorder_mapping['mondo']))
     # ===== Get mapping from previous mappings =====
-    df, missing, prev_mapping = mu.get_prev_mapping(in_set=mondo_set, id_type='mondo',
-                                                    file=config.FILES_DIR + 'disease_disgenet_mapping.csv', sep=",")
+    hit_mapping, missing_hits = mapper.get_loaded_mapping(in_set=mondo_set, id_type='monndo', key='disorder_atts')
     # ==== Get disgenet values ====
-    if len(missing) > 0:
+    if len(missing_hits) > 0:
         md = get_client("disease")
-        mapping = md.getdiseases(missing,
+        mapping = md.getdiseases(missing_hits,
                                  fields=','.join(config.DISEASE_ATTRIBUTES),
                                  species='human', returnall=False, as_dataframe=True, df_index=False)
         mapping.rename(columns={'query': 'mondo'}, inplace=True)
@@ -48,13 +47,13 @@ def get_disease_to_attributes(disease_set, id_type):
         mapping = mapping.drop(columns=['pathways'])
         mapping = mapping.drop_duplicates()
         # ===== Add results from missing values =====
-        pd.concat([prev_mapping, mapping]).to_csv(config.FILES_DIR + 'disease_disgenet_mapping.csv', index=False)
-        df = pd.concat([df, mapping]).reset_index(drop=True)
+        mapper.update_mappings(in_df=mapping, key='disorder_atts')
+        hit_mapping = pd.concat([hit_mapping, mapping])
     # ==== Map back to previous ids ====
-    df["mondo"] = df["mondo"].str.replace('MONDO:', '')
+    hit_mapping["mondo"] = hit_mapping["mondo"].str.replace('MONDO:', '')
     columns = ['mondo', id_type] if id_type != 'mondo' else ['mondo']
-    mapping_subset = disease_id_set[columns].drop_duplicates()
-    df = pd.merge(mapping_subset, df, on=['mondo'], how='outer')
+    mapping_subset = disorder_mapping[columns].drop_duplicates()
+    df = pd.merge(mapping_subset, hit_mapping, on=['mondo'], how='outer')
     df = df.drop(columns=['mondo']) if id_type != 'mondo' else df
     df = df.fillna('').groupby(id_type, as_index=False).agg(
         {x: mu.combine_rows for x in config.DISEASE_ATTRIBUTES_KEY})

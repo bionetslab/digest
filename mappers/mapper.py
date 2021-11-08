@@ -76,6 +76,7 @@ class FileMapper(Mapper):
             mapping = mu.split_and_expand_column(data=mapping, split_string=",", column_name="ICD-10")
         id_type = config.ID_TYPE_KEY[id_type] if id_type in config.ID_TYPE_KEY else id_type
         # ===== Get mapping subset matching input set =====
+        print(mapping)
         hit_mapping = mapping[mapping[id_type].isin(in_set)].copy()
         # ===== Save mapping to local dictionary =====
         if len(hit_mapping.index) > 0:

@@ -17,9 +17,9 @@ def compare_set(id_set, id_type, mapper:Mapper):
     :return: evaluation value for each connected attribute
     """
     if id_type in c.SUPPORTED_DISEASE_IDS:
-        mapping = dm.get_disease_to_attributes(disease_set=id_set, id_type=id_type)
+        mapping = dm.get_disease_to_attributes(disease_set=id_set, id_type=id_type, mapper=mapper)
     else:  # if id_type in c.SUPPORTED_GENE_IDS:
-        mapping = gm.get_gene_to_attributes(gene_set=id_set, id_type=id_type)
+        mapping = gm.get_gene_to_attributes(gene_set=id_set, id_type=id_type, mapper=mapper)
     result = dict()
     for attribute in mapping.columns[1:]:
         subset_df = mapping[mapping[attribute].str.len() > 0].reset_index()
@@ -45,8 +45,8 @@ def compare_set_to_set(ref, ref_id_type, tar, tar_id_type, mapper:Mapper, thresh
     :return: evaluation value for each connected attribute
     """
     if ref_id_type in c.SUPPORTED_DISEASE_IDS and tar_id_type in c.SUPPORTED_DISEASE_IDS:
-        reference_mapping = dm.get_disease_to_attributes(disease_set=ref, id_type=ref_id_type)
-        target_mapping = dm.get_disease_to_attributes(disease_set=tar, id_type=tar_id_type)
+        reference_mapping = dm.get_disease_to_attributes(disease_set=ref, id_type=ref_id_type, mapper=mapper)
+        target_mapping = dm.get_disease_to_attributes(disease_set=tar, id_type=tar_id_type, mapper=mapper)
     else:  # if ref_id_type in c.SUPPORTED_GENE_IDS and targets_id_type in c.SUPPORTED_GENE_IDS:
         reference_mapping = gm.get_gene_to_attributes(gene_set=ref, id_type=ref_id_type, mapper=mapper)
         target_mapping = gm.get_gene_to_attributes(gene_set=tar, id_type=tar_id_type, mapper=mapper)
@@ -68,13 +68,13 @@ def compare_id_to_set(ref_id, ref_id_type, tar, tar_id_type, mapper:Mapper, thre
     :param threshold: minimum similarity of each element in tar to reference set [0,1]
     :return: evaluation value for each connected attribute
     """
-    id_mapping = dm.get_disease_to_attributes({ref_id}, ref_id_type)
+    id_mapping = dm.get_disease_to_attributes(disease_set={ref_id}, id_type=ref_id_type, mapper=mapper)
     if tar_id_type in c.SUPPORTED_DISEASE_IDS:
-        target_mapping = dm.get_disease_to_attributes(disease_set=tar, id_type=tar_id_type)
+        target_mapping = dm.get_disease_to_attributes(disease_set=tar, id_type=tar_id_type, mapper=mapper)
         keys = id_mapping.columns[1:]
     else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
         id_mapping = id_mapping.rename(columns={'ctd.pathway_related_to_disease': 'pathway.kegg'})
-        target_mapping = gm.get_gene_to_attributes(gene_set=tar, id_type=tar_id_type)
+        target_mapping = gm.get_gene_to_attributes(gene_set=tar, id_type=tar_id_type, mapper=mapper)
         keys = ['pathway.kegg']
     ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=keys)
     result = eu.evaluate_values(mapping=target_mapping, ref_dict=ref_dict, threshold=threshold, keys=keys)
