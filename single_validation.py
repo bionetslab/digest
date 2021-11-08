@@ -25,8 +25,8 @@ def single_validation(args, mapper: Mapper):
             reference = args.reference
         # ===== Get validation values of input =====
         ru.print_current_usage('Load mappings for input into cache ...')
-        mapper.load_mappings(in_set=reference, set_type=args.reference_id_type)
-        mapper.load_mappings(in_set=target, set_type=args.target_id_type)
+        mapper.load_mappings(set_type=args.reference_id_type)
+        mapper.load_mappings(set_type=args.target_id_type)
         ru.print_current_usage('Validation of input ...')
         my_value = get_validation(ref=reference, ref_id=args.reference_id_type,
                                   tar=target, tar_id=args.target_id_type, mode=args.mode, mapper=mapper)
@@ -44,7 +44,7 @@ def single_validation(args, mapper: Mapper):
                                   tar=target, tar_id=args.target_id_type, mode=args.mode)
     else:
         return None
-    ru.print_current_usage('Finished validation ...')
+    ru.print_current_usage('Finished validation')
     return comp_values
 
 
@@ -75,17 +75,9 @@ def get_random_runs_values(ref, ref_id, tar, tar_id, mode, mapper: Mapper):
     # ===== Remove empty values =====
     full_id_list = list(filter(None, full_id_list))
     # ===== Calculate values =====
-    all_random = set()
-    random_sets = list()
-    for run in range(0, config.NUMBER_OF_RANDOM_RUNS):
-        random_set = random.sample(full_id_list, len(tar))
-        random_sets.append(random_set)
-        all_random.update(set(random_set))
-    mapper.load_mappings(in_set=all_random, set_type=tar_id)
     results = list()
-    for in_set in random_sets:
-        results.append(get_validation(ref=ref, ref_id=ref_id, tar=in_set, tar_id=tar_id, mode=mode, mapper=mapper))
-
+    for run in range(0, config.NUMBER_OF_RANDOM_RUNS):
+        results.append(get_validation(ref=ref, ref_id=ref_id, tar=random.sample(full_id_list, len(tar)), tar_id=tar_id, mode=mode, mapper=mapper))
     return results
 
 

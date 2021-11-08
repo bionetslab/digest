@@ -11,7 +11,7 @@ class Mapper:
                        'disorder_atts': pd.DataFrame()}
 
     @abstractmethod
-    def load_mappings(self, in_set: set, set_type: str):
+    def load_mappings(self, set_type: str):
         pass
 
     def update_mappings(self, in_df: pd.DataFrame(), key: str):
@@ -43,21 +43,15 @@ class FileMapper(Mapper):
                   'disorder_ids': config.FILES_DIR + 'disorders.map',
                   'disorder_atts': config.FILES_DIR + 'disease_disgenet_mapping.csv'}
 
-    def load_mappings(self, in_set, set_type):
+    def load_mappings(self, set_type):
         if set_type in config.SUPPORTED_GENE_IDS:
-            hit_mapping = self._load_file_mapping(in_set=in_set, id_type=set_type, file=self.file_names['gene_ids'],
-                                                  sep=",", mapping_name='gene_ids')
-            if hit_mapping is not None:
-                self._load_file_mapping(in_set=set(hit_mapping['entrezgene']), id_type='entrez',
-                                        file=self.file_names['gene_atts'], sep=",", mapping_name='gene_atts')
-
+            self._load_file_mapping(file=self.file_names['gene_ids'], sep=",", mapping_name='gene_ids')
+            self._load_file_mapping(file=self.file_names['gene_atts'], sep=",", mapping_name='gene_atts')
         else:  # if set_type in config.SUPPORTED_DISEASE_IDS
-            hit_mapping = self._load_file_mapping(in_set=in_set, id_type=set_type, file=self.file_names['disorder_ids'],
-                                                  sep="\t", mapping_name='disorder_ids')
-            self._load_file_mapping(in_set=list(set('MONDO:' + hit_mapping['mondo'])), id_type='mondo',
-                                    file=self.file_names['disorder_atts'], sep=",", mapping_name='disorder_atts')
+            self._load_file_mapping(file=self.file_names['disorder_ids'], sep="\t", mapping_name='disorder_ids')
+            self._load_file_mapping(file=self.file_names['disorder_atts'], sep=",", mapping_name='disorder_atts')
 
-    def _load_file_mapping(self, in_set, id_type, file, sep, mapping_name):
+    def _load_file_mapping(self, file, sep, mapping_name):
         """
         Get previous mapping from file sub setting it to the
         element in in_set. Also returning the list of elements
@@ -72,22 +66,15 @@ class FileMapper(Mapper):
         """
         # ===== Get mapping from local mapping file =====
         mapping = pd.read_csv(file, sep=sep, header=0, dtype=str)
-        if id_type == "ICD-10":
+        if mapping_name == "disorder_ids":
             mapping = mu.split_and_expand_column(data=mapping, split_string=",", column_name="ICD-10")
-        id_type = config.ID_TYPE_KEY[id_type] if id_type in config.ID_TYPE_KEY else id_type
-        # ===== Get mapping subset matching input set =====
-        print(mapping)
-        hit_mapping = mapping[mapping[id_type].isin(in_set)].copy()
         # ===== Save mapping to local dictionary =====
-        if len(hit_mapping.index) > 0:
-            if self.loaded_mappings[mapping_name] is not None:
-                self.loaded_mappings[mapping_name] = pd.concat(
-                    [self.loaded_mappings[mapping_name], hit_mapping]).drop_duplicates()
-            else:
-                self.loaded_mappings[mapping_name] = hit_mapping
-            return hit_mapping
+        if self.loaded_mappings[mapping_name] is not None:
+            self.loaded_mappings[mapping_name] = pd.concat(
+                [self.loaded_mappings[mapping_name], mapping]).drop_duplicates()
         else:
-            return None
+            self.loaded_mappings[mapping_name] = mapping
+        return mapping
 
     def save_mappings(self):
         self._save_file_mapping(mapping_name='gene_ids')
