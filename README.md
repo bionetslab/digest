@@ -11,8 +11,8 @@ conda env create -f environment.yml
 
 2.2.1 Setup enviroment
 ```
-conda create -n dmd_advanced python=3.7
-conda activate dmd_advanced
+conda create -n digest python=3.8
+conda activate digest
 ```
 2.2.2. Install dependancies
 ```
