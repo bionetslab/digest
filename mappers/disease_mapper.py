@@ -18,10 +18,10 @@ def get_disease_to_attributes(disease_set, id_type, mapper:Mapper):
     :return:
     """
     # ==== Get Mondo IDs ====
-    disorder_mapping, _ = mapper.get_loaded_mapping(in_set=disease_set, id_type=id_type,key='disorder_ids')
+    disorder_mapping, _ = mapper.get_loaded_mapping(in_set=disease_set, id_type=id_type, key='disorder_ids')
     mondo_set = list(set('MONDO:' + disorder_mapping['mondo']))
     # ===== Get mapping from previous mappings =====
-    hit_mapping, missing_hits = mapper.get_loaded_mapping(in_set=mondo_set, id_type='monndo', key='disorder_atts')
+    hit_mapping, missing_hits = mapper.get_loaded_mapping(in_set=mondo_set, id_type='mondo', key='disorder_atts')
     # ==== Get disgenet values ====
     if len(missing_hits) > 0:
         md = get_client("disease")
@@ -48,7 +48,7 @@ def get_disease_to_attributes(disease_set, id_type, mapper:Mapper):
         mapping = mapping.drop_duplicates()
         # ===== Add results from missing values =====
         mapper.update_mappings(in_df=mapping, key='disorder_atts')
-        hit_mapping = pd.concat([hit_mapping, mapping])
+        hit_mapping = pd.concat([hit_mapping, mapping]) if not hit_mapping.empty else mapping
     # ==== Map back to previous ids ====
     hit_mapping["mondo"] = hit_mapping["mondo"].str.replace('MONDO:', '')
     columns = ['mondo', id_type] if id_type != 'mondo' else ['mondo']

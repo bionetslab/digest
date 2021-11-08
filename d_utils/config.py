@@ -10,7 +10,7 @@ import inspect
 MAIN_GENE_ID = 'entrezgene'
 SUPPORTED_GENE_IDS = ['entrez', 'ensembl', 'symbol', 'uniprot']
 SUPPORTED_DISEASE_IDS = ['mondo', 'omim', 'snomedct', 'umls', 'orpha', 'mesh', 'doid', 'ICD-10']
-NUMBER_OF_RANDOM_RUNS = 1000
+NUMBER_OF_RANDOM_RUNS = 1
 
 # =============================================================================
 # Load all paths of required folders with scripts
@@ -34,7 +34,7 @@ ID_TYPE_KEY = {'entrez': 'entrezgene', 'ensembl': 'ensembl.gene', 'symbol': 'sym
 # =============================================================================
 # Set mapping attributes
 # ============================================================================
-GENE_IDS = ['uniprot.Swiss-Prot', 'symbol', 'ensembl.gene', 'entrezgene']
+GENE_IDS = ['entrezgene', 'symbol', 'ensembl.gene', 'uniprot.Swiss-Prot']
 
 GENE_ATTRIBUTES = ['go.BP.id', 'go.CC.id', 'go.MF.id', 'pathway.kegg.id']
 GENE_ATTRIBUTES_KEY = {'go.BP': 'id', 'go.CC': 'id', 'go.MF': 'id', 'pathway.kegg': 'id'}

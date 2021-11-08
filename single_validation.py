@@ -34,18 +34,18 @@ def single_validation(args, mapper: Mapper):
         comp_values = get_random_runs_values(ref=reference, ref_id=args.reference_id_type,
                                              tar=target, tar_id=args.target_id_type, mode=args.mode, mapper=mapper)
         mapper.save_mappings()
-        print(eu.calc_pvalue(test_value=my_value, value_df=pd.DataFrame(comp_values)))
+        p_values = eu.calc_pvalue(test_value=my_value, value_df=pd.DataFrame(comp_values))
 
     # ===== Special case cluster =====
     elif args.mode == "cluster":
         target = pd.read_csv(args.target, header=None, sep="\t")
         # ===== Get validation values of input =====
         my_value = get_validation(ref=reference, ref_id=args.reference_id_type,
-                                  tar=target, tar_id=args.target_id_type, mode=args.mode)
+                                  tar=target, tar_id=args.target_id_type, mode=args.mode, mapper=mapper)
     else:
         return None
     ru.print_current_usage('Finished validation')
-    return comp_values
+    return p_values
 
 
 def get_validation(ref, ref_id, tar, tar_id, mode, mapper: Mapper):
@@ -85,4 +85,4 @@ if __name__ == "__main__":
     desc = "            Evaluation of disease and gene sets and clusters."
     arguments = ru.save_parameters(script_desc=desc, arguments=('r', 'ri', 't', 'ti', 'm', 'o'))
     mapper = FileMapper()
-    single_validation(args=arguments, mapper=mapper)
+    print(single_validation(args=arguments, mapper=mapper))

@@ -23,7 +23,7 @@ class Mapper:
 
     def get_loaded_mapping(self, in_set, id_type, key: str):
         if not self.loaded_mappings[key].empty:
-            hit_mapping = self.loaded_mappings[key][self.loaded_mappings[key][id_type].isin(in_set)]
+            hit_mapping = self.loaded_mappings[key].loc[self.loaded_mappings[key][id_type].isin(in_set)]
             if not hit_mapping.empty:
                 return hit_mapping, set(in_set) - set(hit_mapping[id_type])
         return pd.DataFrame(), in_set
@@ -67,14 +67,14 @@ class FileMapper(Mapper):
         # ===== Get mapping from local mapping file =====
         mapping = pd.read_csv(file, sep=sep, header=0, dtype=str)
         if mapping_name == "disorder_ids":
-            mapping = mu.split_and_expand_column(data=mapping, split_string=",", column_name="ICD-10")
+            icd_unstack = mu.split_and_expand_column(data=mapping, split_string=",", column_name="ICD-10")
+            mapping = pd.concat([icd_unstack, mapping[mapping['ICD-10'] != '']])
         # ===== Save mapping to local dictionary =====
         if self.loaded_mappings[mapping_name] is not None:
             self.loaded_mappings[mapping_name] = pd.concat(
                 [self.loaded_mappings[mapping_name], mapping]).drop_duplicates()
         else:
             self.loaded_mappings[mapping_name] = mapping
-        return mapping
 
     def save_mappings(self):
         self._save_file_mapping(mapping_name='gene_ids')

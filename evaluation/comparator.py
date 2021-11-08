@@ -24,7 +24,8 @@ def compare_set(id_set, id_type, mapper:Mapper):
     for attribute in mapping.columns[1:]:
         subset_df = mapping[mapping[attribute].str.len() > 0].reset_index()
         missing_values = len(mapping) - len(subset_df)
-        print("Missing values for " + attribute + " :" + str(missing_values) + "/" + str(len(id_set)))
+        if missing_values > 0:
+            print("Missing values for " + attribute + " :" + str(missing_values) + "/" + str(len(id_set)))
         comp_mat = eu.get_distance_matrix(eval_df=subset_df[attribute])
         comp_mean = (comp_mat.sum() - np.diag(comp_mat).sum()) / (
                 len(subset_df[attribute]) * (len(subset_df[attribute]) - 1))
