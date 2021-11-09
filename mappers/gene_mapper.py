@@ -30,8 +30,9 @@ def get_gene_mapping(gene_set, id_type, mapper: Mapper):
         if 'ensembl' in mapping:
             mapping = mu.preprocess_results(mapping=mapping, multicol='ensembl', singlecol='ensembl.gene', key='gene',
                                             explode=True)
-        mapping = mapping.drop(columns=['_id', '_score'])
-        #mapping = mapping.dropna(subset=config.GENE_IDS[2:], how='all')
+        drop_cols = ['_id', '_score', 'notfound'] if 'notfound' in mapping.columns else ['_id', '_score']
+        mapping = mapping.drop(columns=drop_cols)
+        mapping.dropna(subset=config.GENE_IDS[2:], inplace=True)
         # ===== Add results from missing values =====
         mapper.update_mappings(in_df=mapping, key='gene_ids')
         hit_mapping = pd.concat([hit_mapping, mapping])

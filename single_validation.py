@@ -7,10 +7,11 @@ import random
 from mappers.mapper import Mapper, FileMapper
 
 
-def single_validation(args, mapper: Mapper):
+def single_validation(args, mapper: Mapper = FileMapper()):
     """
     Single validation of a set, cluster a id versus set and set versus set.
 
+    :param mapper:
     :param args: user given parameters
     :return:
     """
@@ -84,5 +85,4 @@ def get_random_runs_values(ref, ref_id, tar, tar_id, mode, mapper: Mapper):
 if __name__ == "__main__":
     desc = "            Evaluation of disease and gene sets and clusters."
     arguments = ru.save_parameters(script_desc=desc, arguments=('r', 'ri', 't', 'ti', 'm', 'o'))
-    mapper = FileMapper()
-    print(single_validation(args=arguments, mapper=mapper))
+    print(single_validation(args=arguments))
