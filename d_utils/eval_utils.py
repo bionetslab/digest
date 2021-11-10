@@ -71,8 +71,5 @@ def evaluate_values(mapping, ref_dict, threshold, keys):
 def calc_pvalue(test_value, value_df):
     pvalue = dict()
     for keys in test_value:
-        #print(test_value[keys])
-        #print(value_df[keys])
-        #print((value_df[keys] < test_value[keys]).value_counts())
         pvalue[keys] = 1 - (sum(value_df[keys] < test_value[keys]) / len(value_df.index))
     return pvalue

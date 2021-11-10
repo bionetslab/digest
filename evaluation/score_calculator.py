@@ -60,9 +60,12 @@ def silhouette_score(distance_matrix, ids_cluster):
     intra_s_scores = dict()
     for entity in distances:
         current_cluster = ids_cluster[ids_cluster[0] == entity]['cluster_index'].iloc[0]
-        score = ((distances[entity]['inter_dist'] - distances[entity]['intra_dist']) /
-                 max(distances[entity]['inter_dist'], distances[entity]['intra_dist'])) if cluster_sizes[
-                                                                                               current_cluster] > 1 else 0
+        if cluster_sizes[current_cluster] > 1 and max(distances[entity]['inter_dist'],
+                                                      distances[entity]['intra_dist']) > 0.0:
+            score = ((distances[entity]['inter_dist'] - distances[entity]['intra_dist']) /
+                     max(distances[entity]['inter_dist'], distances[entity]['intra_dist']))
+        else:
+            score = 0.0
         # ==== save score for every cluster separately
         if current_cluster not in intra_s_scores:
             intra_s_scores[current_cluster] = 0
@@ -71,7 +74,7 @@ def silhouette_score(distance_matrix, ids_cluster):
         s_score += score
     for cluster in cluster_sizes:
         intra_s_scores[ids_cluster[ids_cluster['cluster_index'] == cluster][1].iloc[0]] = \
-        intra_s_scores[cluster] / cluster_sizes[cluster]
+            intra_s_scores[cluster] / cluster_sizes[cluster]
         del intra_s_scores[cluster]
     return s_score / len(distances), intra_s_scores
 

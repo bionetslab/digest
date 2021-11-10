@@ -8,12 +8,13 @@ from mappers.mapper import Mapper
 from evaluation import score_calculator as sc
 
 
-def compare_set(id_set, id_type, mapper:Mapper):
+def compare_set(id_set, id_type, mapper: Mapper):
     """
     Compare the set on itself based on connected attributes. See config for more info.
 
     :param id_set: set of genes or diseases
     :param id_type: id type of the set
+    :param mapper:
     :return: evaluation value for each connected attribute
     """
     if id_type in c.SUPPORTED_DISEASE_IDS:
@@ -33,7 +34,7 @@ def compare_set(id_set, id_type, mapper:Mapper):
     return result
 
 
-def compare_set_to_set(ref, ref_id_type, tar, tar_id_type, mapper:Mapper, threshold=0.0):
+def compare_set_to_set(ref, ref_id_type, tar, tar_id_type, mapper: Mapper, threshold=0.0):
     """
     Compare two sets of the same type (either genes or diseases) with each other.
     The tar set is evaluated how good it matches to the ref set.
@@ -42,6 +43,7 @@ def compare_set_to_set(ref, ref_id_type, tar, tar_id_type, mapper:Mapper, thresh
     :param ref_id_type: id type of reference set
     :param tar: target set of genes or diseases
     :param tar_id_type: id type of target set
+    :param mapper:
     :param threshold: minimum similarity of each element in tar to reference set [0,1]
     :return: evaluation value for each connected attribute
     """
@@ -57,7 +59,7 @@ def compare_set_to_set(ref, ref_id_type, tar, tar_id_type, mapper:Mapper, thresh
     return result
 
 
-def compare_id_to_set(ref_id, ref_id_type, tar, tar_id_type, mapper:Mapper, threshold=0.0):
+def compare_id_to_set(ref_id, ref_id_type, tar, tar_id_type, mapper: Mapper, threshold=0.0):
     """
     Compare disease id to either gene or disease set.
     The tar set is evaluated how good it matches to the ref id.
@@ -66,6 +68,7 @@ def compare_id_to_set(ref_id, ref_id_type, tar, tar_id_type, mapper:Mapper, thre
     :param ref_id_type: id type of reference set
     :param tar: target set of genes or diseases
     :param tar_id_type: id type of target set
+    :param mapper:
     :param threshold: minimum similarity of each element in tar to reference set [0,1]
     :return: evaluation value for each connected attribute
     """
@@ -82,7 +85,7 @@ def compare_id_to_set(ref_id, ref_id_type, tar, tar_id_type, mapper:Mapper, thre
     return result
 
 
-def compare_clusters(clusters, id_type, mapper:Mapper):
+def compare_clusters(clusters, id_type, mapper: Mapper, verbose=True):
     """
     Evaluate the quality of clustering of given set with diseases or genes and
     assigned clusters. Additionally calculate statistical values with
@@ -90,22 +93,26 @@ def compare_clusters(clusters, id_type, mapper:Mapper):
 
     :param clusters: set of genes or diseases and assigned clusters
     :param id_type: id type of the set
+    :param mapper:
+    :param verbose:
     :return: evaluation value for each connected attribute; silhouette score and dunn index
     """
     clusters['cluster_index'] = clusters.groupby(1).ngroup()
     if id_type in c.SUPPORTED_DISEASE_IDS:
-        clusters_mapping = dm.get_disease_to_attributes(disease_set=clusters[0], id_type=id_type)
+        clusters_mapping = dm.get_disease_to_attributes(disease_set=clusters[0], id_type=id_type, mapper=mapper)
     else:  # if id_type in c.SUPPORTED_GENE_IDS:
-        clusters_mapping = gm.get_gene_to_attributes(gene_set=clusters[0], id_type=id_type)
-    result = list()
+        clusters_mapping = gm.get_gene_to_attributes(gene_set=clusters[0], id_type=id_type, mapper=mapper)
+    result_di, result_ss = dict(), dict()
     for attribute in clusters_mapping.columns[1:]:
         subset_df = clusters_mapping[clusters_mapping[attribute].str.len() > 0].reset_index(drop=True)
         subset_clusters = clusters[clusters[0].isin(subset_df[id_type])]
         missing_values = len(clusters) - len(subset_df)
-        print("Missing values for " + attribute + " :" + str(missing_values) + "/" + str(len(clusters_mapping)))
+        print("Missing values for " + attribute + " :" + str(missing_values) + "/" + str(
+            len(clusters_mapping))) if verbose else None
         dist_mat = eu.get_distance_matrix(eval_df=subset_df[attribute])
         dist_df = pd.DataFrame(dist_mat, columns=subset_df[id_type], index=subset_df[id_type])
         ss_score = sc.silhouette_score(distance_matrix=dist_df, ids_cluster=subset_clusters)
         di_score = sc.dunn_index(distance_matrix=dist_df, ids_cluster=subset_clusters)
-        result.append([attribute, di_score, ss_score[0], ss_score[1]])
-    return result
+        result_di[attribute] = di_score
+        result_ss[attribute] = ss_score[0]  # ss_score[1] all intermediate results
+    return result_di, result_ss
