@@ -40,7 +40,7 @@ class Mapper:
 class FileMapper(Mapper):
     file_names = {'gene_ids': config.FILES_DIR + 'gene_id_mapping.csv',
                   'gene_atts': config.FILES_DIR + 'gene_att_mapping.csv',
-                  'disorder_ids': config.FILES_DIR + 'disorders.map',
+                  'disorder_ids': config.FILES_DIR + 'disorders.csv',
                   'disorder_atts': config.FILES_DIR + 'disease_disgenet_mapping.csv'}
 
     def load_mappings(self, set_type):
@@ -48,7 +48,7 @@ class FileMapper(Mapper):
             self._load_file_mapping(file=self.file_names['gene_ids'], sep=",", mapping_name='gene_ids')
             self._load_file_mapping(file=self.file_names['gene_atts'], sep=",", mapping_name='gene_atts')
         else:  # if set_type in config.SUPPORTED_DISEASE_IDS
-            self._load_file_mapping(file=self.file_names['disorder_ids'], sep="\t", mapping_name='disorder_ids')
+            self._load_file_mapping(file=self.file_names['disorder_ids'], sep=",", mapping_name='disorder_ids')
             self._load_file_mapping(file=self.file_names['disorder_atts'], sep=",", mapping_name='disorder_atts')
 
     def _load_file_mapping(self, file, sep, mapping_name):
@@ -57,8 +57,6 @@ class FileMapper(Mapper):
         element in in_set. Also returning the list of elements
         from the set that are not present in the previous mapping.
 
-        :param in_set: set of genes or diseases
-        :param id_type: id type of set
         :param file: file with previous mapping
         :param sep: separator of values in file
         :param mapping_name: key name of local dictionary for saving data
@@ -79,6 +77,7 @@ class FileMapper(Mapper):
     def save_mappings(self):
         self._save_file_mapping(mapping_name='gene_ids')
         self._save_file_mapping(mapping_name='gene_atts')
+        self._save_file_mapping(mapping_name='disorder_ids')
         self._save_file_mapping(mapping_name='disorder_atts')
 
     def _save_file_mapping(self, mapping_name):
