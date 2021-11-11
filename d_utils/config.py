@@ -10,7 +10,7 @@ import inspect
 MAIN_GENE_ID = 'entrezgene'
 SUPPORTED_GENE_IDS = ['entrez', 'ensembl', 'symbol', 'uniprot']
 SUPPORTED_DISEASE_IDS = ['mondo', 'omim', 'snomedct', 'umls', 'orpha', 'mesh', 'doid', 'ICD-10']
-NUMBER_OF_RANDOM_RUNS = 10
+NUMBER_OF_RANDOM_RUNS = 2
 
 # =============================================================================
 # Load all paths of required folders with scripts

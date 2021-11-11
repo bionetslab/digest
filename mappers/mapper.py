@@ -28,6 +28,9 @@ class Mapper:
                 return hit_mapping, set(in_set) - set(hit_mapping[id_type])
         return pd.DataFrame(), in_set
 
+    def get_full_set(self, id_type: str, mapping_name: str) -> set:
+        return set(self.loaded_mappings[mapping_name][id_type])
+
     @abstractmethod
     def save_mappings(self):
         pass

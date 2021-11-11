@@ -8,7 +8,7 @@ from mappers.mapper import Mapper
 from evaluation import score_calculator as sc
 
 
-def compare_set(id_set, id_type, mapper: Mapper):
+def compare_set(id_set, id_type, mapper: Mapper, verbose=True):
     """
     Compare the set on itself based on connected attributes. See config for more info.
 
@@ -26,7 +26,8 @@ def compare_set(id_set, id_type, mapper: Mapper):
         subset_df = mapping[mapping[attribute].str.len() > 0].reset_index()
         missing_values = len(mapping) - len(subset_df)
         if missing_values > 0:
-            print("Missing values for " + attribute + " :" + str(missing_values) + "/" + str(len(id_set)))
+            print("Missing values for " + attribute + " :" + str(missing_values) + "/" + str(
+                len(id_set))) if verbose else None
         comp_mat = eu.get_distance_matrix(eval_df=subset_df[attribute])
         comp_mean = (comp_mat.sum() - np.diag(comp_mat).sum()) / (
                 len(subset_df[attribute]) * (len(subset_df[attribute]) - 1))
