@@ -11,7 +11,7 @@ conda env create -f environment.yml
 
 2.2.1 Setup enviroment
 ```
-conda create -n digest python=3.8
+conda create --name digest -c conda-forge graph-tool
 conda activate digest
 ```
 2.2.2. Install dependancies
