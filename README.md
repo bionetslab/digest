@@ -16,7 +16,7 @@ conda activate digest
 ```
 2.2.2. Install dependancies
 ```
-pip install pandas os-sys psutils
+pip install pandas os-sys psutils biothings_client
 ```
 ## Update Files
 To make sure, that all mappings in the [mappings file folder](https://github.com/digest-env/digest/tree/main/mapping_files) are up to date, run the setup script.
