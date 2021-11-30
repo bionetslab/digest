@@ -38,10 +38,10 @@ def single_validation(tar, tar_id, mode, ref=None, ref_id=None, mapper: Mapper =
         my_value = get_validation(ref=reference, ref_id=ref_id,
                                   tar=target, tar_id=tar_id, mode=mode, mapper=mapper)
         ru.print_current_usage('Validation of random runs ...')
-        print(my_value)
+        #print(my_value)
         comp_values = get_random_runs_values(ref=reference, ref_id=ref_id,
                                              tar=target, tar_id=tar_id, mode=mode, mapper=mapper)
-        print(comp_values)
+        #print(comp_values)
         ru.print_current_usage('Calculating p-values ...')
         p_values = eu.calc_pvalue(test_value=my_value, value_df=pd.DataFrame(comp_values))
 
@@ -90,7 +90,7 @@ def get_random_runs_values(ref, ref_id, tar, tar_id, mode, mapper: Mapper) -> li
         # ===== Calculate values =====
         for run in range(0, config.NUMBER_OF_RANDOM_RUNS):
             results.append(get_validation(ref=ref, ref_id=ref_id, tar=random.sample(full_id_list, len(tar)),
-                                          tar_id=tar_id, mode=mode, mapper=mapper, verbose=True))
+                                          tar_id=tar_id, mode=mode, mapper=mapper, verbose=False))
     else:
         # ===== Calculate values =====
         results.extend((list(), list()))
