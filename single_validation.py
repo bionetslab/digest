@@ -38,12 +38,13 @@ def single_validation(tar, tar_id, mode, ref=None, ref_id=None, mapper: Mapper =
         my_value = get_validation(ref=reference, ref_id=ref_id,
                                   tar=target, tar_id=tar_id, mode=mode, mapper=mapper)
         ru.print_current_usage('Validation of random runs ...')
-        #print(my_value)
         comp_values = get_random_runs_values(ref=reference, ref_id=ref_id,
                                              tar=target, tar_id=tar_id, mode=mode, mapper=mapper)
-        #print(comp_values)
         ru.print_current_usage('Calculating p-values ...')
-        p_values = eu.calc_pvalue(test_value=my_value, value_df=pd.DataFrame(comp_values))
+        if mode == "set":
+            p_values = eu.calc_pvalue(test_value=my_value, value_df=pd.DataFrame(comp_values), maximize=False)
+        else:
+            p_values = eu.calc_pvalue(test_value=my_value, value_df=pd.DataFrame(comp_values))
 
     # ===== Special case cluster =====
     elif args.mode == "cluster":

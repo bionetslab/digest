@@ -14,7 +14,7 @@ def get_distance_matrix(eval_df):
     dis_mat = np.zeros((len(eval_df), len(eval_df)))
     for index1 in range(0, len(eval_df)):
         for index2 in range(index1, len(eval_df)):
-            calc_dis = 1-(len(eval_df[index1] & eval_df[index2]) / min(len(eval_df[index1]), len(eval_df[index2])))
+            calc_dis = 1 - (len(eval_df[index1] & eval_df[index2]) / min(len(eval_df[index1]), len(eval_df[index2])))
             # assign to matrix
             dis_mat[index1][index2] = calc_dis
             dis_mat[index2][index1] = calc_dis
@@ -68,8 +68,9 @@ def evaluate_values(mapping, ref_dict, threshold, keys):
     return evaluation
 
 
-def calc_pvalue(test_value, value_df):
+def calc_pvalue(test_value, value_df, maximize=True):
     pvalue = dict()
     for keys in test_value:
-        pvalue[keys] = 1 - (sum(value_df[keys] < test_value[keys]) / len(value_df.index))
+        pvalue[keys] = 1 - (sum(value_df[keys] < test_value[keys]) / len(value_df.index)) if maximize else 1 - (
+                    sum(value_df[keys] > test_value[keys]) / len(value_df.index))
     return pvalue
