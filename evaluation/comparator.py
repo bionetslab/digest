@@ -2,7 +2,7 @@
 
 import pandas as pd
 import numpy as np
-from d_utils import runner_utils as ru, eval_utils as eu, config as c
+from d_utils import eval_utils as eu, config as c
 from mappers import gene_mapper as gm, disease_mapper as dm
 from mappers.mapper import Mapper
 from evaluation import score_calculator as sc

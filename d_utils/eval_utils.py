@@ -36,21 +36,35 @@ def create_ref_dict(mapping, keys):
     return reference_dict
 
 
-def get_intersection(tar_att_set, ref_att_set):
+def overlap_coefficient(tar_att_set, ref_att_set):
     """
-    Calculate special intersection value by dividing the
-    length of overlapping elements of two sets by the length of the target set.
+    Calculate overlap coefficient by dividing the length of overlapping elements
+    of two sets by the minimum length of the two sets.
 
     :param tar_att_set: target set of attribute values
     :param ref_att_set: reference set of attribute values
-    :return: intersection value
+    :return: overlap coefficient
     """
-    if len(tar_att_set) == 0:
+    if len(tar_att_set) == 0 & len(ref_att_set) == 0:
         return 0.0
-    return len(tar_att_set & ref_att_set) / len(tar_att_set)
+    return len(tar_att_set.intersection(ref_att_set)) / min(len(tar_att_set),len(ref_att_set))
 
 
-def evaluate_values(mapping, ref_dict, threshold, keys):
+def jaccard_coefficient(tar_att_set, ref_att_set):
+    """
+    Calculate jaccard coefficient by dividing the length of overlapping elements
+    of two sets by the combined length of the two sets.
+
+    :param tar_att_set: target set of attribute values
+    :param ref_att_set: reference set of attribute values
+    :return: jaccard coefficient
+    """
+    if len(tar_att_set) == 0 & len(ref_att_set) == 0:
+        return 0.0
+    return len(tar_att_set.intersection(ref_att_set)) / len(tar_att_set.union(ref_att_set))
+
+
+def evaluate_values(mapping, ref_dict, threshold, keys, coefficient="jaccard"):
     """
     Evaluate mapped attribute values of target set with the unified
     attribute values of the reference based on a threshold.
@@ -59,11 +73,15 @@ def evaluate_values(mapping, ref_dict, threshold, keys):
     :param ref_dict: reference dictionary with unified values
     :param threshold: minimum similarity of each element in tar to reference set [0,1]
     :param keys: attribute names
+    :param coefficient: type of coefficient to validate two sets [Default="jaccard"]
     :return:
     """
     evaluation = dict()
     for attribute in keys:
-        evaluated_series = mapping[attribute].apply(get_intersection, ref_att_set=ref_dict[attribute])
+        if coefficient == "jaccard":
+            evaluated_series = mapping[attribute].apply(jaccard_coefficient, ref_att_set=ref_dict[attribute])
+        else:  # == "overlap_coefficient"
+            evaluated_series = mapping[attribute].apply(overlap_coefficient, ref_att_set=ref_dict[attribute])
         evaluation[attribute] = str(len(evaluated_series[evaluated_series > threshold]) / len(evaluated_series))
     return evaluation
 
