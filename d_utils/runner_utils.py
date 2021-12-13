@@ -9,6 +9,7 @@ import d_utils.config as c
 
 start_time = time.time()
 
+
 def save_parameters(script_desc, arguments):
     """
     Save command line options into local variables.
@@ -45,6 +46,9 @@ def save_parameters(script_desc, arguments):
     optional_args = parser.add_argument_group("optional arguments")
     if 'o' in arguments:
         optional_args.add_argument('-o', '--out_dir', type=str, default='./', help='Output directory. [Default=./]')
+    if 'e' in arguments:
+        optional_args.add_argument("-e", "--enriched", action='store_true', default=False,
+                                   help="Set flag, if only enriched attributes of the reference should be used.")
     optional_args.add_argument("-h", "--help", action="help", help="show this help message and exit")
     args = parser.parse_args()
     return args

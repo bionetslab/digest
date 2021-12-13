@@ -73,7 +73,7 @@ def silhouette_score(distance_matrix, ids_cluster):
         # ==== save for total score
         s_score += score
     for cluster in cluster_sizes:
-        intra_s_scores[ids_cluster[ids_cluster['cluster_index'] == cluster][1].iloc[0]] = \
+        intra_s_scores[ids_cluster[ids_cluster['cluster_index'] == cluster][0].iloc[0]] = \
             intra_s_scores[cluster] / cluster_sizes[cluster]
         del intra_s_scores[cluster]
     return s_score / len(distances), intra_s_scores

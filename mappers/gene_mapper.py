@@ -4,6 +4,7 @@ import pandas as pd
 from d_utils import config, mapping_utils as mu
 from mapper import Mapper
 from biothings_client import get_client
+import gseapy
 
 
 def get_gene_mapping(gene_set, id_type, mapper: Mapper):
@@ -76,3 +77,17 @@ def get_gene_to_attributes(gene_set, id_type, mapper: Mapper):
     hit_mapping = hit_mapping.fillna('').groupby([config.ID_TYPE_KEY[id_type]], as_index=False).agg(
         {x: mu.combine_rows for x in config.GENE_ATTRIBUTES_KEY})
     return hit_mapping
+
+
+def get_enriched_attributes(gene_set, id_type, mapper: Mapper):
+    gene_mapping = get_gene_mapping(gene_set=gene_set, id_type=id_type, mapper=mapper)
+    enrich_df = gseapy.enrichr(
+        gene_list=list(gene_mapping['symbol']),
+        description='atts',
+        gene_sets=list(config.ENRICH_KEY.keys()),
+        cutoff=0.05).results
+    enrich_df = enrich_df[enrich_df['Adjusted P-value'] < 0.05]
+    if len(enrich_df) > 0:
+        enrich_df.insert(2, 'Term_ID', enrich_df['Term'].str.extract(r'(GO:[0-9]*|hsa[0-9]*)')[0])
+    enrich_df = enrich_df[['Gene_set', 'Term_ID']].pivot(columns='Gene_set')['Term_ID']
+    return enrich_df

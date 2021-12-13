@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import numpy as np
+import config
 
 
 def get_distance_matrix(eval_df):
@@ -21,7 +22,7 @@ def get_distance_matrix(eval_df):
     return dis_mat
 
 
-def create_ref_dict(mapping, keys):
+def create_ref_dict(mapping, keys: set, enriched=False):
     """
     Create reference dictionary with each attribute type as key
     and the union of all attribute values in the set.
@@ -31,8 +32,15 @@ def create_ref_dict(mapping, keys):
     :return: reference dictionary with unified values
     """
     reference_dict = dict()
-    for att_type in keys:
-        reference_dict[att_type] = set.union(*mapping[att_type])
+    if enriched:
+        for key in keys:
+            if key in mapping:
+                reference_dict[config.ENRICH_KEY[key]] = set(mapping[key].dropna())
+            else:
+                reference_dict[config.ENRICH_KEY[key]] = set()
+    else:
+        for att_type in keys:
+            reference_dict[att_type] = set.union(*mapping[att_type])
     return reference_dict
 
 

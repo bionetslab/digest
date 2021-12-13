@@ -30,6 +30,8 @@ FILES_DIR = BASE_DIR + '/mapping_files/'
 # Set ID names mapping
 # ============================================================================
 ID_TYPE_KEY = {'entrez': 'entrezgene', 'ensembl': 'ensembl.gene', 'symbol': 'symbol', 'uniprot': 'uniprot.Swiss-Prot'}
+ENRICH_KEY = {'GO_Molecular_Function_2015': 'go.MF', 'GO_Biological_Process_2015': 'go.BP',
+              'GO_Cellular_Component_2015': 'go.CC', 'KEGG_2016': 'pathway.kegg'}
 
 # =============================================================================
 # Set mapping attributes
