@@ -43,6 +43,17 @@ def save_parameters(script_desc, arguments):
         required_args.add_argument('-m', '--mode', type=str, required=True,
                                    choices=['set', 'set-set', 'id-set', 'cluster'],
                                    help='Desired mode. See possible options below.')
+    # =============================================================================
+    # for network creation
+    # ============================================================================
+    if 'n' in arguments:
+        required_args.add_argument('-n', '--node_type', type=str, required=True,
+                                   choices=c.SUPPORTED_GENE_IDS + c.SUPPORTED_DISEASE_IDS, metavar='NODE_TYPE',
+                                   help='ID type of nodes for network.')
+    if 'd' in arguments:
+        required_args.add_argument('-d', '--distance_type', type=str, required=True,
+                                   choices=list(c.GENE_DISTANCES.values()) + list(c.DISEASE_DISTANCES.values()), metavar='EDGE_TYPE',
+                                   help='Distance type for edges.')
     optional_args = parser.add_argument_group("optional arguments")
     if 'o' in arguments:
         optional_args.add_argument('-o', '--out_dir', type=str, default='./', help='Output directory. [Default=./]')

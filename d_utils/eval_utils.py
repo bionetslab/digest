@@ -2,20 +2,25 @@
 
 import numpy as np
 import config
+import pandas as pd
 
 
-def get_distance_matrix(eval_df):
+def get_distance_matrix(eval_df, coefficient='jaccard'):
     """
     Calculating the distance of each element in id column to each other based on
     the number of shared attribute values divided by the smaller set of values.
 
     :param eval_df: dataframe with 2 columns (id, attribute values)
+    :param coefficient: coefficient type for the distance. Possible: jaccard or overlap [Default="jaccard"]
     :return: distance matrix
     """
     dis_mat = np.zeros((len(eval_df), len(eval_df)))
     for index1 in range(0, len(eval_df)):
         for index2 in range(index1, len(eval_df)):
-            calc_dis = 1 - (len(eval_df[index1] & eval_df[index2]) / min(len(eval_df[index1]), len(eval_df[index2])))
+            if coefficient == "jaccard":
+                calc_dis = jaccard_coefficient(tar_att_set=eval_df[index1],ref_att_set=eval_df[index2])
+            else: # coefficient == "overlap"
+                calc_dis = overlap_coefficient(tar_att_set=eval_df[index1], ref_att_set=eval_df[index2])
             # assign to matrix
             dis_mat[index1][index2] = calc_dis
             dis_mat[index2][index1] = calc_dis
@@ -97,6 +102,6 @@ def evaluate_values(mapping, ref_dict, threshold, keys, coefficient="jaccard"):
 def calc_pvalue(test_value, value_df, maximize=True):
     pvalue = dict()
     for keys in test_value:
-        pvalue[keys] = 1 - (sum(value_df[keys] < test_value[keys]) / len(value_df.index)) if maximize else 1 - (
-                    sum(value_df[keys] > test_value[keys]) / len(value_df.index))
+        pvalue[keys] = (1 + sum(value_df[keys] <= test_value[keys])) / (len(value_df.index)+1) if maximize else \
+            (1 + sum(value_df[keys] >= test_value[keys])) / (len(value_df.index)+1)
     return pvalue

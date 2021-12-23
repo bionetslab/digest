@@ -4,7 +4,6 @@ import pandas as pd
 from d_utils import runner_utils as ru, config, eval_utils as eu
 from evaluation import comparator as comp
 import random
-import numpy as np
 from mappers.mapper import Mapper, FileMapper
 
 

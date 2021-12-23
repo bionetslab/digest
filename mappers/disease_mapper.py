@@ -34,7 +34,8 @@ def get_disease_to_attributes(disease_set, id_type, mapper:Mapper):
             mapping = mu.preprocess_results(mapping=mapping, multicol=attribute,
                                             singlecol=attribute + '.' + config.DISEASE_ATTRIBUTES_KEY[attribute],
                                             key=config.DISEASE_ATTRIBUTES_KEY[attribute])
-        mapping = mapping.drop(columns=['_id', '_version', 'disgenet._license'])
+        mapping.drop(columns=['_id', '_version', 'disgenet._license'], inplace=True)
+        mapping.drop(columns=['notfound'], inplace=True) if 'notfound' in mapping.columns else None
         # ==== Get additional pathways from file ====
         mondo_to_pathway = pd.read_csv(config.FILES_DIR + 'mondo_to_pathways.csv')
         mapping = mapping.merge(mondo_to_pathway, on='mondo', how='left')

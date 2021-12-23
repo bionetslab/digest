@@ -48,10 +48,20 @@ DISEASE_ATTRIBUTES_KEY = {'disgenet.genes_related_to_disease': 'gene_id',
                           'ctd.pathway_related_to_disease': 'kegg_pathway_id'}
 
 # =============================================================================
+# Set distance attributes
+# ============================================================================
+GENE_DISTANCES = {'go.BP': 'go_BP',
+                  'go.CC': 'go_CC',
+                  'go.MF': 'go_MF',
+                  'pathway.kegg': 'pathway_kegg'}
+
+DISEASE_DISTANCES = {'disgenet.genes_related_to_disease': 'related_genes',
+                     'disgenet.variants_related_to_disease': 'related_variants',
+                     'ctd.pathway_related_to_disease': 'related_pathways'}
+
+# =============================================================================
 # Set API paths to nedrex data
 # ============================================================================
 NEDREX_DISORDER_IDS = "https://api.nedrex.net/disorder/attributes/domainIds/tsv"
 NEDREX_ICD10_IDS = "https://api.nedrex.net/disorder/attributes/icd10/tsv"
 NEDREX_GENE_IDS = "https://api.nedrex.net/gene/attributes/primaryDomainId/tsv"
-
-
