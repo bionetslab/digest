@@ -65,3 +65,16 @@ DISEASE_DISTANCES = {'disgenet.genes_related_to_disease': 'related_genes',
 NEDREX_DISORDER_IDS = "https://api.nedrex.net/disorder/attributes/domainIds/tsv"
 NEDREX_ICD10_IDS = "https://api.nedrex.net/disorder/attributes/icd10/tsv"
 NEDREX_GENE_IDS = "https://api.nedrex.net/gene/attributes/primaryDomainId/tsv"
+
+# =============================================================================
+# Set API paths to DisGeNET data
+# ============================================================================
+DISGENET_REL_GENES = "https://www.disgenet.org/static/disgenet_ap1/files/downloads/all_gene_disease_associations.tsv.gz"
+DISGENET_REL_VARS = "https://www.disgenet.org/static/disgenet_ap1/files/downloads/all_variant_disease_associations.tsv.gz"
+DISGENET_DIS_MAP = "https://www.disgenet.org/static/disgenet_ap1/files/downloads/disease_mappings.tsv.gz"
+
+# =============================================================================
+# Set API paths to KEGG data
+# ============================================================================
+KEGG_OMIM_TO_HSA = "http://rest.genome.jp/link/omim/hsa"
+KEGG_HSA_TO_PATH = "http://rest.kegg.jp/link/pathway/hsa"

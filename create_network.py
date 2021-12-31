@@ -30,8 +30,8 @@ def create_network(node_type, edge_type, out_dir, mapper:Mapper=FileMapper()):
     node_names = g.add_edge_list(edge_list, hashed=True, eprops=[edge_weights])
     g.edge_properties["weight"] = edge_weights
     g.vertex_properties["ID"] = node_names
-    ru.print_current_usage('Save data with '+g.num_vertices()+' vertices ...')
-    g.save(out_dir+node_type+"_"+edge_type+"_network.graphml", fmt="graphml")
+    ru.print_current_usage('Save graph with '+str(g.num_vertices())+' vertices ...')
+    g.save(out_dir+node_type+"-"+edge_type+"-network.graphml", fmt="graphml")
     ru.print_current_usage('Finished ...')
 
 if __name__ == "__main__":

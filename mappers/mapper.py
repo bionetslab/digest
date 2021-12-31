@@ -27,8 +27,7 @@ class Mapper:
 
     def update_mappings(self, in_df: pd.DataFrame(), key: str):
         if not self.loaded_mappings[key].empty:
-            self.loaded_mappings[key] = pd.concat(
-                [self.loaded_mappings[key], in_df]).drop_duplicates()
+            self.loaded_mappings[key] = pd.concat([self.loaded_mappings[key], in_df], ignore_index=True)
         else:
             self.loaded_mappings[key] = in_df
 
@@ -137,8 +136,9 @@ class FileMapper(Mapper):
         :return: dataframe with previous mapping
         """
         # ===== Get distances from local distance file =====
-        distances = pd.read_csv(file, sep=sep, header=0, index_col=0)
-
+        cols = pd.read_csv(file, sep=sep, nrows=1).columns.tolist()
+        distances = pd.read_csv(file, sep=sep, header=0, dtype={cols[0]:str})
+        distances.set_index(cols[0], inplace=True)
         # ===== Save mapping to local dictionary =====
         if not self.loaded_distances[mapping_name].empty:
             print("todo")
