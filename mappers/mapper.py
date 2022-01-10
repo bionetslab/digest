@@ -31,7 +31,7 @@ class Mapper:
         else:
             self.loaded_mappings[key] = in_df
 
-    def get_loaded_mapping(self, in_set, id_type, key: str):
+    def get_loaded_mapping(self, in_set, id_type: str, key: str):
         if not self.loaded_mappings[key].empty:
             hit_mapping = self.loaded_mappings[key].loc[self.loaded_mappings[key][id_type].isin(in_set)]
             if not hit_mapping.empty:
@@ -46,9 +46,13 @@ class Mapper:
         else:
             self.loaded_distances[key] = in_df
 
-    def get_loaded_distances(self, in_df: pd.DataFrame(), key: str):
-        # todo
-        return
+    def get_loaded_distances(self, in_set, key: str):
+        if not self.loaded_mappings[key].empty:
+            hit_mapping = self.loaded_mappings[key].loc[self.loaded_mappings[key].index.isin(in_set),
+                                                        self.loaded_mappings[key].columns.isin(in_set)]
+            if not hit_mapping.empty:
+                return hit_mapping, set(in_set) - set(hit_mapping.columns)
+        return pd.DataFrame(), in_set
 
     def get_full_set(self, id_type: str, mapping_name: str) -> set:
         return set(self.loaded_mappings[mapping_name][id_type])
@@ -91,7 +95,7 @@ class FileMapper(Mapper):
             self._load_file_mapping(file=self.file_names['disorder_ids'], sep=",", mapping_name='disorder_ids')
             self._load_file_mapping(file=self.file_names['disorder_atts'], sep=",", mapping_name='disorder_atts')
 
-    def load_distance(self, key:str):
+    def load_distance(self, key: str):
         self._load_file_distances(file=self.file_names[key], sep=",", mapping_name=key)
 
     def load_distances(self, set_type):
@@ -102,8 +106,10 @@ class FileMapper(Mapper):
             self._load_file_distances(file=self.file_names['pathway_kegg'], sep=",", mapping_name='pathway_kegg')
         else:  # if set_type in config.SUPPORTED_DISEASE_IDS
             self._load_file_distances(file=self.file_names['related_genes'], sep=",", mapping_name='related_genes')
-            self._load_file_distances(file=self.file_names['related_variants'], sep=",", mapping_name='related_variants')
-            self._load_file_distances(file=self.file_names['related_pathways'], sep=",", mapping_name='related_pathways')
+            self._load_file_distances(file=self.file_names['related_variants'], sep=",",
+                                      mapping_name='related_variants')
+            self._load_file_distances(file=self.file_names['related_pathways'], sep=",",
+                                      mapping_name='related_pathways')
 
     def _load_file_mapping(self, file, sep, mapping_name):
         """
@@ -137,7 +143,7 @@ class FileMapper(Mapper):
         """
         # ===== Get distances from local distance file =====
         cols = pd.read_csv(file, sep=sep, nrows=1).columns.tolist()
-        distances = pd.read_csv(file, sep=sep, header=0, dtype={cols[0]:str})
+        distances = pd.read_csv(file, sep=sep, header=0, dtype={cols[0]: str})
         distances.set_index(cols[0], inplace=True)
         # ===== Save mapping to local dictionary =====
         if not self.loaded_distances[mapping_name].empty:

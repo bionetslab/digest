@@ -68,25 +68,24 @@ def load_files(mapper: Mapper):
     mapper.update_mappings(in_df=disease_att_mapping, key='disorder_atts')
     disease_att_mapping = dm.get_disease_to_attributes(disease_set=disease_mapping.mondo, id_type="mondo",
                                                        mapper=mapper)
-
     mapper.save_mappings()
     mapper.drop_mappings()
-    # ---- Calculate pairwise comparisons ----
-    # ru.print_current_usage('Precalculate pairwise distances ...')
-    # ru.print_current_usage('Precalculate pairwise distances for genes ...')
-    # for attribute in gene_att_mapping.columns[1:]:
-    #     comp_mat = eu.get_distance_matrix(eval_df=gene_att_mapping[attribute])
-    #     dist_df = pd.DataFrame(comp_mat, columns=gene_att_mapping[c.ID_TYPE_KEY['entrez']], index=gene_att_mapping[c.ID_TYPE_KEY['entrez']])
-    #     mapper.save_directly(in_df=dist_df, key=c.GENE_DISTANCES[attribute])
 
-    # ru.print_current_usage('Precalculate pairwise distances for diseases ...')
-    # for attribute in ['disgenet.variants_related_to_disease']:  # disease_att_mapping.columns[1:]:
-    #     subset_mapping = disease_att_mapping[disease_att_mapping[attribute].str.len() > 0].reset_index()
-    #     comp_mat = eu.get_distance_matrix(eval_df=subset_mapping[attribute])
-    #     print(subset_mapping.columns)
-    #     print(subset_mapping.mondo)
-    #     dist_df = pd.DataFrame(comp_mat, columns=subset_mapping.mondo, index=subset_mapping.mondo)
-    #     mapper.save_directly(in_df=dist_df, key=c.DISEASE_DISTANCES[attribute])
+    # ---- Calculate pairwise comparisons ----
+    ru.print_current_usage('Precalculate pairwise distances ...')
+    ru.print_current_usage('Precalculate pairwise distances for genes ...')
+    for attribute in gene_att_mapping.columns[1:]:
+        subset_mapping = gene_att_mapping[gene_att_mapping[attribute].str.len() > 0].reset_index()
+        comp_mat = eu.get_distance_matrix(eval_df=subset_mapping[attribute])
+        dist_df = pd.DataFrame(comp_mat, columns=subset_mapping[c.ID_TYPE_KEY['entrez']], index=subset_mapping[c.ID_TYPE_KEY['entrez']])
+        mapper.save_directly(in_df=dist_df, key=c.GENE_DISTANCES[attribute])
+
+    ru.print_current_usage('Precalculate pairwise distances for diseases ...')
+    for attribute in disease_att_mapping.columns[1:]:
+        subset_mapping = disease_att_mapping[disease_att_mapping[attribute].str.len() > 0].reset_index()
+        comp_mat = eu.get_distance_matrix(eval_df=subset_mapping[attribute])
+        dist_df = pd.DataFrame(comp_mat, columns=subset_mapping.mondo, index=subset_mapping.mondo)
+        mapper.save_directly(in_df=dist_df, key=c.DISEASE_DISTANCES[attribute])
 
     # ---- Get PPI network ----
     # ru.print_current_usage('Get PPI network ...')

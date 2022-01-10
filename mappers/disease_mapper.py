@@ -41,10 +41,16 @@ def get_disease_to_attributes(disease_set, id_type, mapper: Mapper):
     return hit_mapping
 
 
-def get_attributes_from_database(missing, attributes: list = config.DISEASE_ATTRIBUTES_KEY.keys()):
+def get_attributes_from_database(missing: list, attributes: list = config.DISEASE_ATTRIBUTES_KEY.keys()):
+    """
+    Get mapping from myDisease.info.
+
+    :param missing: list of missing values that should be mapped
+    :param attributes: attributes that should be mapped to the missing values
+    :return:
+    """
     md = get_client("disease")
-    mapping = md.getdiseases(missing,
-                             fields=','.join(attributes),
+    mapping = md.getdiseases(missing, fields=','.join(attributes),
                              species='human', returnall=False, as_dataframe=True, df_index=False)
     mapping.rename(columns={'query': 'mondo'}, inplace=True)
     # transform dataframe to combine single and multiple results
