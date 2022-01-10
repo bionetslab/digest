@@ -2,8 +2,6 @@
 
 import pandas as pd
 import numpy as np
-import config
-from pathlib import Path
 
 
 def preprocess_results(mapping, multicol, singlecol, key, explode=False):
@@ -19,13 +17,14 @@ def preprocess_results(mapping, multicol, singlecol, key, explode=False):
     :param explode: (optional) can expand dataframe by giving each value a separate row
     :return: transformed dataframe
     """
-    def convert_to_string(cell, key):
+
+    def convert_to_string(cell):
         if str(cell) != 'nan':
             extracted_ids = [val.get(key) for val in cell]
             return ';'.join(str(e) for e in list(set(extracted_ids)))
         return cell
 
-    mapping[multicol] = mapping[multicol].apply(lambda x: convert_to_string(x, key)) if multicol in mapping else np.nan
+    mapping[multicol] = mapping[multicol].apply(lambda x: convert_to_string(x)) if multicol in mapping else np.nan
     if singlecol in mapping:
         mapping[multicol].fillna(mapping[singlecol], inplace=True)
         mapping = mapping.drop(columns=[singlecol])
@@ -55,14 +54,15 @@ def split_and_expand_column(data, split_string, column_name):
 def combine_rows(x):
     return set(filter(None, ';'.join(x).split(';')))
 
+
 def combine_rowsets(x):
     return set().union(*x)
 
 
-def transform_disgenet_mapping(mapping:pd.DataFrame, file, col_old, col_new):
+def transform_disgenet_mapping(mapping: pd.DataFrame, file, col_old, col_new):
     disease_mapping = pd.read_csv(file, compression='gzip', sep='\t', dtype=str)
     df = pd.merge(mapping[['diseaseId', 'mondo']], disease_mapping[['diseaseId', col_old]],
-                           on="diseaseId", how="left")
-    df = df.rename(columns={col_old:col_new})
+                  on="diseaseId", how="left")
+    df = df.rename(columns={col_old: col_new})
     df = df[['mondo', col_new]].fillna('').groupby(['mondo'], as_index=False).agg(combine_rows)
     return df

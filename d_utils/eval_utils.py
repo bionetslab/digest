@@ -2,29 +2,31 @@
 
 import numpy as np
 import config
-import pandas as pd
+import scipy.sparse as sp
 
 
-def get_distance_matrix(eval_df, coefficient='jaccard'):
+def get_distance_matrix(eval_df, coefficient='jaccard') -> sp.coo_matrix:
     """
-    Calculating the distance of each element in id column to each other based on
-    the number of shared attribute values divided by the smaller set of values.
+    Calculating the distance of each element in id column to each other based on coefficient.
 
     :param eval_df: dataframe with 2 columns (id, attribute values)
     :param coefficient: coefficient type for the distance. Possible: jaccard or overlap [Default="jaccard"]
-    :return: distance matrix
+    :return: distance sparse matrix
     """
-    dis_mat = np.zeros((len(eval_df), len(eval_df)))
-    for index1 in range(0, len(eval_df)):
-        for index2 in range(index1, len(eval_df)):
+
+    row, col, data = list(), list(), list()
+    for index1 in range(0, len(eval_df)-1):
+        for index2 in range(index1+1, len(eval_df)):
             if coefficient == "jaccard":
-                calc_dis = jaccard_coefficient(tar_att_set=eval_df[index1],ref_att_set=eval_df[index2])
-            else: # coefficient == "overlap"
+                calc_dis = jaccard_coefficient(tar_att_set=eval_df[index1], ref_att_set=eval_df[index2])
+            else:  # coefficient == "overlap"
                 calc_dis = overlap_coefficient(tar_att_set=eval_df[index1], ref_att_set=eval_df[index2])
             # assign to matrix
-            dis_mat[index1][index2] = calc_dis
-            dis_mat[index2][index1] = calc_dis
-    return dis_mat
+            if calc_dis > 0.0:
+                row.append(index1)
+                col.append(index2)
+                data.append(calc_dis)
+    return sp.coo_matrix((np.array(data), (np.array(row), np.array(col))), shape=(len(eval_df), len(eval_df)))
 
 
 def create_ref_dict(mapping, keys: set, enriched=False):
@@ -60,7 +62,7 @@ def overlap_coefficient(tar_att_set, ref_att_set):
     """
     if len(tar_att_set) == 0 & len(ref_att_set) == 0:
         return 0.0
-    return len(tar_att_set.intersection(ref_att_set)) / min(len(tar_att_set),len(ref_att_set))
+    return len(tar_att_set.intersection(ref_att_set)) / min(len(tar_att_set), len(ref_att_set))
 
 
 def jaccard_coefficient(tar_att_set, ref_att_set):

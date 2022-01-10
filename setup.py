@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import pandas as pd
+import graph_tool as gt
 from d_utils import config as c, runner_utils as ru, eval_utils as eu, mapping_utils as mu
 from mappers import mapping_transformer as mt, gene_mapper as gm, disease_mapper as dm
 from mappers.mapper import Mapper, FileMapper
@@ -73,19 +74,20 @@ def load_files(mapper: Mapper):
 
     # ---- Calculate pairwise comparisons ----
     ru.print_current_usage('Precalculate pairwise distances ...')
+
     ru.print_current_usage('Precalculate pairwise distances for genes ...')
+    mapper.update_distance_ids(in_list=gene_att_mapping[c.ID_TYPE_KEY['entrez']].tolist(), key='gene_mat_ids')
     for attribute in gene_att_mapping.columns[1:]:
-        subset_mapping = gene_att_mapping[gene_att_mapping[attribute].str.len() > 0].reset_index()
-        comp_mat = eu.get_distance_matrix(eval_df=subset_mapping[attribute])
-        dist_df = pd.DataFrame(comp_mat, columns=subset_mapping[c.ID_TYPE_KEY['entrez']], index=subset_mapping[c.ID_TYPE_KEY['entrez']])
-        mapper.save_directly(in_df=dist_df, key=c.GENE_DISTANCES[attribute])
+        ru.print_current_usage('Precalculate pairwise distances for '+attribute)
+        comp_mat = eu.get_distance_matrix(eval_df=gene_att_mapping[attribute])
+        mapper.update_distances(in_mat=comp_mat, key=c.GENE_DISTANCES[attribute])
 
     ru.print_current_usage('Precalculate pairwise distances for diseases ...')
+    mapper.update_distance_ids(in_list=disease_att_mapping['mondo'].tolist(), key='disease_mat_ids')
     for attribute in disease_att_mapping.columns[1:]:
-        subset_mapping = disease_att_mapping[disease_att_mapping[attribute].str.len() > 0].reset_index()
-        comp_mat = eu.get_distance_matrix(eval_df=subset_mapping[attribute])
-        dist_df = pd.DataFrame(comp_mat, columns=subset_mapping.mondo, index=subset_mapping.mondo)
-        mapper.save_directly(in_df=dist_df, key=c.DISEASE_DISTANCES[attribute])
+        ru.print_current_usage('Precalculate pairwise distances for ' + attribute)
+        comp_mat = eu.get_distance_matrix(eval_df=disease_att_mapping[attribute])
+        mapper.update_distances(in_mat=comp_mat, key=c.DISEASE_DISTANCES[attribute])
 
     # ---- Get PPI network ----
     # ru.print_current_usage('Get PPI network ...')
