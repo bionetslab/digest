@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import pandas as pd
+import numpy as np
 from abc import abstractmethod
 from d_utils import config, mapping_utils as mu
 import scipy.sparse as sp
@@ -12,9 +13,9 @@ class Mapper:
                        'disorder_atts': pd.DataFrame()}
 
     loaded_distance_ids = {'gene_mat_ids': dict(), 'disease_mat_ids': dict()}
-    loaded_distances = {'go_BP': sp.coo_matrix(None), 'go_CC': sp.coo_matrix(None), 'go_MF': sp.coo_matrix(None),
-                        'pathway_kegg': sp.coo_matrix(None), 'related_genes': sp.coo_matrix(None),
-                        'related_variants': sp.coo_matrix(None), 'related_pathways': sp.coo_matrix(None)}
+    loaded_distances = {'go_BP': sp.csr_matrix(None), 'go_CC': sp.csr_matrix(None), 'go_MF': sp.csr_matrix(None),
+                        'pathway_kegg': sp.csr_matrix(None), 'related_genes': sp.csr_matrix(None),
+                        'related_variants': sp.csr_matrix(None), 'related_pathways': sp.csr_matrix(None)}
 
     @abstractmethod
     def load_mappings(self, set_type: str):
@@ -41,26 +42,47 @@ class Mapper:
                 return hit_mapping, set(in_set) - set(hit_mapping[id_type])
         return pd.DataFrame(), in_set
 
-    def update_distance_ids(self, in_list: list, key: str):
+    def update_distance_ids(self, in_series: pd.Series, key: str) -> pd.Series:
         if self.loaded_distance_ids[key]:  # is not empty
-            print("todo")
+            for index, value in enumerate(iterable=in_series[len(self.loaded_distance_ids[key].keys()):],
+                                          start=len(self.loaded_distance_ids[key].keys())):
+                self.loaded_distance_ids[key][value] = index
+            return in_series[len(self.loaded_distance_ids[key].keys()):]
         else:
-            for index, value in enumerate(in_list):
-                self.loaded_distance_ids[key][index] = value
+            for index, value in enumerate(iterable=in_series, start=0):
+                self.loaded_distance_ids[key][value] = index
+            return in_series
 
     def update_distances(self, in_mat: sp.coo_matrix, key: str):
         if self.loaded_distances[key].nnz > 0:
-            print("todo")
+            old_mat = self.loaded_distances[key].tocoo()
+            row = np.concatenate((old_mat.row, in_mat.row), axis=None)
+            col = np.concatenate((old_mat.col, in_mat.col), axis=None)
+            data = np.concatenate((old_mat.data, in_mat.data), axis=None)
+            self.loaded_distances[key] = sp.csr_matrix((data, (row, col)), shape=(
+                len(self.loaded_distance_ids[key].keys()), len(self.loaded_distance_ids[key].keys())))
         else:
-            self.loaded_distances[key] = in_mat
+            self.loaded_distances[key] = in_mat.tocsr()
 
-    def get_loaded_distances(self, in_set, key: str):
-        if not self.loaded_mappings[key].empty:
-            hit_mapping = self.loaded_mappings[key]['mat'][self.loaded_mappings[key].index.isin(in_set),
-                                                           self.loaded_mappings[key].columns.isin(in_set)]
-            if not hit_mapping.empty:
-                return hit_mapping, set(in_set) - set(hit_mapping.columns)
-        return pd.DataFrame(), in_set
+    def get_loaded_distance(self, id1, id2, id_type: str, key: str):
+        if id1 in self.loaded_distance_ids[id_type] and id2 in self.loaded_distance_ids[id_type]:
+            return self.loaded_distances[key][self.loaded_distance_ids[id_type][id1],
+                                              self.loaded_distance_ids[id_type][id2]]
+        return None
+
+    def get_loaded_distances(self, in_set, id_type: str, key: str):
+        if self.loaded_distance_ids[id_type]:  # is not empty
+            index_to_id, hit_values = dict(), list()
+            for value in in_set:
+                if value in self.loaded_distance_ids[id_type]:
+                    index_to_id[self.loaded_distance_ids[id_type][value]] = value
+            cur_mat = self.loaded_distances[key].tocoo()
+            for index, value in enumerate(cur_mat.row):
+                if value in index_to_id:
+                    if cur_mat.col[index] in index_to_id:
+                        hit_values.append(cur_mat.data[index])
+            return hit_values, set(in_set) - set(self.loaded_distance_ids[id_type].keys())
+        return list(), in_set
 
     def get_full_set(self, id_type: str, mapping_name: str) -> set:
         return set(self.loaded_mappings[mapping_name][id_type])
@@ -136,7 +158,7 @@ class FileMapper(Mapper):
         if in_type == "mapping":
             self._load_file_mapping(file=self.file_names[key], sep=",", mapping_name=key)
         elif in_type == "distance":
-            self.loaded_distances[key] = sp.load_npz(self.file_names[key])
+            self.loaded_distances[key] = sp.load_npz(self.file_names[key]).tocrs()
         else:  # in_type == "distance_id"
             with open(self.file_names[key], 'rb') as f:
                 self.loaded_distance_ids[key] = pickle.load(f)
@@ -157,7 +179,7 @@ class FileMapper(Mapper):
         if in_type == "mapping":
             in_object.to_csv(self.file_names[key], index=True)
         elif in_type == "distance":
-            sp.save_npz(self.file_names[key], in_object)
+            sp.save_npz(self.file_names[key].tocoo(), in_object)
         else:  # in_type == "distance_id"
             with open(self.file_names[key], 'wb+') as f:
                 pickle.dump(in_object, f)

@@ -20,12 +20,14 @@ def create_network(node_type, edge_type, out_dir, mapper: Mapper = FileMapper())
         id_dict = mapper.loaded_distance_ids['gene_mat_ids']
         if node_type != 'entrez':
             ru.print_current_usage('Map entrez ID to ' + node_type + ' ...')
-
+    index_to_id = {}
+    for k, v in id_dict.items():
+        index_to_id[v] = k
     ru.print_current_usage('Create edge list ...')
     edge_list = list()
     for i, j, v in zip(mapper.loaded_distances[edge_type].row, mapper.loaded_distances[edge_type].col,
                        mapper.loaded_distances[edge_type].data):
-        edge_list.append((id_dict[i], id_dict[j], v))
+        edge_list.append((index_to_id[i], index_to_id[j], v))
 
     ru.print_current_usage('Create graph ...')
     g = gt.Graph(directed=False)

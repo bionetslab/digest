@@ -1,14 +1,15 @@
 #!/usr/bin/python3
+import os
 import pandas as pd
-import graph_tool as gt
 from d_utils import config as c, runner_utils as ru, eval_utils as eu, mapping_utils as mu
 from mappers import mapping_transformer as mt, gene_mapper as gm, disease_mapper as dm
 from mappers.mapper import Mapper, FileMapper
 
 
 def load_files(mapper: Mapper):
-    # ---- Load disorder ids ----
     ru.print_current_usage('Starting Setup ...')
+
+    # ---- Load disorder ids ----
     ru.print_current_usage('Load NeDrEx disorder ids ...')
     disorder_ids = pd.read_csv(c.NEDREX_DISORDER_IDS, sep="\t")
     icd10_ids = pd.read_csv(c.NEDREX_ICD10_IDS, sep="\t")
@@ -76,18 +77,20 @@ def load_files(mapper: Mapper):
     ru.print_current_usage('Precalculate pairwise distances ...')
 
     ru.print_current_usage('Precalculate pairwise distances for genes ...')
-    mapper.update_distance_ids(in_list=gene_att_mapping[c.ID_TYPE_KEY['entrez']].tolist(), key='gene_mat_ids')
+    mapper.update_distance_ids(in_series=gene_att_mapping[c.ID_TYPE_KEY['entrez']].tolist(), key='gene_mat_ids')
     for attribute in gene_att_mapping.columns[1:]:
         ru.print_current_usage('Precalculate pairwise distances for '+attribute)
-        comp_mat = eu.get_distance_matrix(eval_df=gene_att_mapping[attribute])
+        comp_mat = eu.get_distance_matrix(,
         mapper.update_distances(in_mat=comp_mat, key=c.GENE_DISTANCES[attribute])
 
     ru.print_current_usage('Precalculate pairwise distances for diseases ...')
-    mapper.update_distance_ids(in_list=disease_att_mapping['mondo'].tolist(), key='disease_mat_ids')
+    mapper.update_distance_ids(in_series=disease_att_mapping['mondo'].tolist(), key='disease_mat_ids')
     for attribute in disease_att_mapping.columns[1:]:
         ru.print_current_usage('Precalculate pairwise distances for ' + attribute)
-        comp_mat = eu.get_distance_matrix(eval_df=disease_att_mapping[attribute])
+        comp_mat = eu.get_distance_matrix(,
         mapper.update_distances(in_mat=comp_mat, key=c.DISEASE_DISTANCES[attribute])
+
+    mapper.save_distances()
 
     # ---- Get PPI network ----
     # ru.print_current_usage('Get PPI network ...')

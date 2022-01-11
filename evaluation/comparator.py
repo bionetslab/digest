@@ -34,6 +34,7 @@ class SetComparator(Comparator):
     """
     Compare the set on itself based on connected attributes. See config for more info.
     """
+
     def compare(self, threshold: float = 0.0):
         result = dict()
         for attribute in self.mapping.columns[1:]:
@@ -42,10 +43,16 @@ class SetComparator(Comparator):
             if missing_values > 0:
                 print("Missing values for " + attribute + " :" + str(missing_values) + "/" + str(
                     len(self.id_type))) if self.verbose else None
-            comp_mat = eu.get_distance_matrix(eval_df=subset_df[attribute])
-            comp_mean = (comp_mat.sum() - np.diag(comp_mat).sum()) / (
-                    len(subset_df[attribute]) * (len(subset_df[attribute]) - 1))
-            result[attribute] = comp_mean
+
+            comp_mat = eu.get_distance_matrix() #todo
+            self.mapper.update_distances(in_mat=comp_mat, key=attribute)
+            if self.id_type in c.SUPPORTED_DISEASE_IDS:
+                distances = self.mapper.get_loaded_distances(in_set=set(subset_df['mondo']), id_type='disease_mat_ids',
+                                                             key=attribute)
+            else:  # if id_type in c.SUPPORTED_GENE_IDS:
+                distances = self.mapper.get_loaded_distances(in_set=set(subset_df['entrezgene']),
+                                                             id_type='gene_mat_ids', key=attribute)
+            result[attribute] = sum(distances) / len(distances)
         return result
 
 
@@ -54,6 +61,7 @@ class SetSetComparator(Comparator):
     Compare two sets of the same type (either genes or diseases) with each other.
     The tar set is evaluated how good it matches to the ref set.
     """
+
     def __init__(self, mapper: Mapper, enriched: bool = False, verbose: bool = False):
         super().__init__(mapper=mapper, verbose=verbose)
         self.enriched = enriched
@@ -70,7 +78,8 @@ class SetSetComparator(Comparator):
         if self.enriched:
             self.ref_dict = eu.create_ref_dict(mapping=reference_mapping, keys=c.ENRICH_KEY.keys(), enriched=True)
         else:
-            self.ref_dict = eu.create_ref_dict(mapping=reference_mapping, keys=reference_mapping.columns[1:], enriched=False)
+            self.ref_dict = eu.create_ref_dict(mapping=reference_mapping, keys=reference_mapping.columns[1:],
+                                               enriched=False)
 
     def compare(self, threshold: float = 0.0):
         return eu.evaluate_values(mapping=self.mapping, ref_dict=self.ref_dict, threshold=threshold,
@@ -82,6 +91,7 @@ class IDSetComparator(Comparator):
     Compare disease id to either gene or disease set.
     The tar set is evaluated how good it matches to the ref id.
     """
+
     def __init__(self, mapper: Mapper, verbose: bool = False):
         super().__init__(mapper=mapper, verbose=verbose)
         self.ref_dict = None
@@ -123,8 +133,8 @@ class ClusterComparator(Comparator):
             missing_values = len(self.mapping) - len(subset_df)
             print("Missing values for " + attribute + " :" + str(missing_values) + "/" + str(
                 len(self.mapping))) if self.verbose else None
-            dist_mat = eu.get_distance_matrix(eval_df=subset_df[attribute])
-            dist_df = pd.DataFrame(dist_mat, columns=subset_df[self.id_type], index=subset_df[self.id_type])
+            dist_mat = eu.get_distance_matrix(,
+                       dist_df = pd.DataFrame(dist_mat, columns=subset_df[self.id_type], index=subset_df[self.id_type])
             ss_score = sc.silhouette_score(distance_matrix=dist_df, ids_cluster=subset_clusters)
             di_score = sc.dunn_index(distance_matrix=dist_df, ids_cluster=subset_clusters)
             result_di[attribute] = di_score

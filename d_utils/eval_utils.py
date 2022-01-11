@@ -1,22 +1,27 @@
 #!/usr/bin/python3
 
 import numpy as np
+import pandas as pd
+
 import config
 import scipy.sparse as sp
 
 
-def get_distance_matrix(eval_df, coefficient='jaccard') -> sp.coo_matrix:
+def get_distance_matrix(attribute_df: pd.DataFrame, from_ids: pd.Series, to_ids: pd.Series,
+                        coefficient='jaccard') -> sp.coo_matrix:
     """
-    Calculating the distance of each element in id column to each other based on coefficient.
+    Calculating the distance of each element in from_ids to to_ids based on coefficient.
 
-    :param eval_df: dataframe with 2 columns (id, attribute values)
+    :param attribute_df: dataframe with 2 columns (id, attribute values)
+    :param from_ids: dataframe with 2 columns (id, attribute values)
+    :param to_ids: dataframe with 2 columns (id, attribute values)
     :param coefficient: coefficient type for the distance. Possible: jaccard or overlap [Default="jaccard"]
     :return: distance sparse matrix
     """
 
     row, col, data = list(), list(), list()
-    for index1 in range(0, len(eval_df)-1):
-        for index2 in range(index1+1, len(eval_df)):
+    for id1 in from_ids:
+        for id2 in to_ids:
             if coefficient == "jaccard":
                 calc_dis = jaccard_coefficient(tar_att_set=eval_df[index1], ref_att_set=eval_df[index2])
             else:  # coefficient == "overlap"
@@ -104,6 +109,6 @@ def evaluate_values(mapping, ref_dict, threshold, keys, coefficient="jaccard"):
 def calc_pvalue(test_value, value_df, maximize=True):
     pvalue = dict()
     for keys in test_value:
-        pvalue[keys] = (1 + sum(value_df[keys] <= test_value[keys])) / (len(value_df.index)+1) if maximize else \
-            (1 + sum(value_df[keys] >= test_value[keys])) / (len(value_df.index)+1)
+        pvalue[keys] = (1 + sum(value_df[keys] <= test_value[keys])) / (len(value_df.index) + 1) if maximize else \
+            (1 + sum(value_df[keys] >= test_value[keys])) / (len(value_df.index) + 1)
     return pvalue
