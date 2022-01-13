@@ -18,11 +18,11 @@ class Mapper:
                         'related_variants': sp.csr_matrix(None), 'related_pathways': sp.csr_matrix(None)}
 
     @abstractmethod
-    def load_mappings(self, set_type: str):
+    def load_mappings(self):
         pass
 
     @abstractmethod
-    def load_distances(self, set_type: str):
+    def load_distances(self, set_type):
         pass
 
     @abstractmethod
@@ -38,11 +38,12 @@ class Mapper:
     def get_loaded_mapping_ids(self, in_ids, id_type: str, to_type: str):
         if id_type in config.SUPPORTED_GENE_IDS:
             return \
-            self.loaded_mappings['gene_ids'][self.loaded_mappings['gene_ids'][config.ID_TYPE_KEY[id_type]] in in_ids][
-                config.ID_TYPE_KEY[to_type]]
+                self.loaded_mappings['gene_ids'][
+                    self.loaded_mappings['gene_ids'][config.ID_TYPE_KEY[id_type]].isin(in_ids)][to_type]
         else:  # if set_type in config.SUPPORTED_DISEASE_IDS
             return \
-            self.loaded_mappings['disorder_ids'][self.loaded_mappings['disorder_ids'][id_type] in in_ids][to_type]
+                self.loaded_mappings['disorder_ids'][self.loaded_mappings['disorder_ids'][id_type].isin(in_ids)][
+                    to_type]
 
     def get_loaded_mapping(self, in_set, id_type: str, key: str):
         if not self.loaded_mappings[key].empty:
@@ -65,14 +66,14 @@ class Mapper:
                 self.loaded_distance_ids[key][value] = index
             return in_series
 
-    def update_distances(self, in_mat: sp.coo_matrix, key: str):
+    def update_distances(self, in_mat: sp.coo_matrix, id_type: str, key: str):
         if self.loaded_distances[key].nnz > 0:
             old_mat = self.loaded_distances[key].tocoo()
             row = np.concatenate((old_mat.row, in_mat.row), axis=None)
             col = np.concatenate((old_mat.col, in_mat.col), axis=None)
             data = np.concatenate((old_mat.data, in_mat.data), axis=None)
             self.loaded_distances[key] = sp.csr_matrix((data, (row, col)), shape=(
-                len(self.loaded_distance_ids[key].keys()), len(self.loaded_distance_ids[key].keys())))
+                len(self.loaded_distance_ids[id_type].keys()), len(self.loaded_distance_ids[id_type].keys())))
         else:
             self.loaded_distances[key] = in_mat.tocsr()
 
@@ -86,18 +87,18 @@ class Mapper:
                                                   self.loaded_distance_ids[id_type][id1]]
         return None
 
-    def get_loaded_distances(self, in_set, id_type: str, key: str):
+    def get_loaded_distances(self, in_series: pd.Series, id_type: str, key: str):
         if self.loaded_distance_ids[id_type]:  # is not empty
             hit_values = list()
-            for id1_index in range(0, len(in_set) - 1):
-                for id2_index in range(id1_index + 1, len(in_set)):
-                    distance = self.get_loaded_distance(id1=in_set[id1_index], id2=in_set[id2_index],
+            for id1_index in range(0, len(in_series) - 1):
+                for id2_index in range(id1_index + 1, len(in_series)):
+                    distance = self.get_loaded_distance(id1=in_series.iloc[id1_index], id2=in_series.iloc[id2_index],
                                                         id_type=id_type, key=key)
                     if distance is not None:
                         hit_values.append(distance)
-            return hit_values, set(in_set) - set(self.loaded_distance_ids[id_type].keys())
+            return hit_values, set(in_series) - set(self.loaded_distance_ids[id_type].keys())
         else:
-            return list(), in_set
+            return list(), set(in_series)
 
     def get_full_set(self, id_type: str, mapping_name: str) -> set:
         return set(self.loaded_mappings[mapping_name][id_type])
@@ -134,13 +135,14 @@ class FileMapper(Mapper):
                   'related_variants': config.FILES_DIR + 'disease_dist_rel_variants.npz',
                   'related_pathways': config.FILES_DIR + 'disease_dist_rel_pathways.npz'}
 
-    def load_mappings(self, set_type):
-        if set_type in config.SUPPORTED_GENE_IDS:
-            for mapping_key in ['gene_ids', 'gene_atts']:
-                self.load_file(key=mapping_key, in_type='mapping')
-        else:  # if set_type in config.SUPPORTED_DISEASE_IDS
-            for mapping_key in ['disorder_ids', 'disorder_atts']:
-                self.load_file(key=mapping_key, in_type='mapping')
+    def load_mappings(self):
+        for mapping_key in ['gene_ids', 'disorder_ids']:
+            self.load_file(key=mapping_key, in_type='mapping')
+        for mapping_key in ['gene_atts', 'disorder_atts']:
+            self.load_file(key=mapping_key, in_type='mapping')
+            self.loaded_mappings[mapping_key][self.loaded_mappings[mapping_key].columns[1:]] = \
+                self.loaded_mappings[mapping_key][self.loaded_mappings[mapping_key].columns[1:]].fillna(
+                    '').applymap(mu.string_to_set)
 
     def _load_file_mapping(self, file, sep, mapping_name):
         """
@@ -161,7 +163,7 @@ class FileMapper(Mapper):
 
     def load_distances(self, set_type):
         if set_type in config.SUPPORTED_GENE_IDS:
-            self.load_file(key='gene_mat_ids', in_type='distance_id')
+            self.load_file(key='gene_mat_ids', in_type='gene_id')
             for distance_key in ['go_BP', 'go_CC', 'go_MF', 'pathway_kegg']:
                 self.load_file(key=distance_key, in_type='distance')
         else:  # if set_type in config.SUPPORTED_DISEASE_IDS
@@ -173,14 +175,19 @@ class FileMapper(Mapper):
         if in_type == "mapping":
             self._load_file_mapping(file=self.file_names[key], sep=",", mapping_name=key)
         elif in_type == "distance":
-            self.loaded_distances[key] = sp.load_npz(self.file_names[key]).tocrs()
+            self.loaded_distances[key] = sp.load_npz(self.file_names[key])
+            self.loaded_distances[key] = self.loaded_distances[key].tocsr()
         else:  # in_type == "distance_id"
             with open(self.file_names[key], 'rb') as f:
                 self.loaded_distance_ids[key] = pickle.load(f)
 
     def save_mappings(self):
-        for mapping_key in ['gene_ids', 'gene_atts', 'disorder_ids', 'disorder_atts']:
+        for mapping_key in ['gene_ids', 'disorder_ids']:
             self.save_file(in_object=self.loaded_mappings[mapping_key], key=mapping_key, in_type='mapping')
+        for mapping_key in ['gene_atts', 'disorder_atts']:
+            df = self.loaded_mappings[mapping_key]
+            df[df.columns[1:]] = df[df.columns[1:]].fillna('').applymap(mu.set_to_string)
+            self.save_file(in_object=df, key=mapping_key, in_type='mapping')
 
     def save_distances(self):
         for distance_id_key in ['gene_mat_ids', 'disease_mat_ids']:

@@ -55,6 +55,7 @@ def get_gene_to_attributes(gene_set, id_type, mapper: Mapper):
     gene_mapping = get_gene_mapping(gene_set=gene_set, id_type=id_type, mapper=mapper)
     hit_mapping, missing_hits = mapper.get_loaded_mapping(in_set=set(gene_mapping['entrezgene']), id_type='entrezgene',
                                                           key='gene_atts')
+    #print(missing_hits)
     if len(missing_hits) > 0:
         mg = get_client("gene")
         mapping = mg.querymany(missing_hits, scopes=','.join(config.GENE_IDS),
@@ -66,6 +67,7 @@ def get_gene_to_attributes(gene_set, id_type, mapper: Mapper):
                                             singlecol=attribute + '.' + config.GENE_ATTRIBUTES_KEY[attribute],
                                             key=config.GENE_ATTRIBUTES_KEY[attribute])
         mapping = mapping.drop(columns=['_id', '_score'])
+        mapping[mapping.columns[1:]] = mapping[mapping.columns[1:]].fillna('').applymap(mu.string_to_set)
         # ===== Add results from missing values =====
         mapper.update_mappings(in_df=mapping, key='gene_atts')
         hit_mapping = pd.concat([hit_mapping, mapping])
@@ -75,7 +77,7 @@ def get_gene_to_attributes(gene_set, id_type, mapper: Mapper):
     hit_mapping = pd.merge(mapping_subset, hit_mapping, on=['entrezgene'], how='outer')
     hit_mapping = hit_mapping.drop(columns=['entrezgene']) if id_type != 'entrez' else hit_mapping
     hit_mapping = hit_mapping.fillna('').groupby([config.ID_TYPE_KEY[id_type]], as_index=False).agg(
-        {x: mu.combine_rows for x in config.GENE_ATTRIBUTES_KEY})
+        {x: mu.combine_rowsets for x in config.GENE_ATTRIBUTES_KEY})
     return hit_mapping
 
 

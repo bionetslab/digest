@@ -25,8 +25,7 @@ def single_validation(tar, tar_id, mode, ref=None, ref_id=None, enriched: bool =
     # ===== Comparison with a set =====
     ru.print_current_usage('Starting validation ...')
     ru.print_current_usage('Load mappings for input into cache ...')
-    mapper.load_mappings(set_type=ref_id)
-    mapper.load_mappings(set_type=tar_id)
+    mapper.load_mappings()
 
     if mode in ["set", "set-set", "id-set"]:
         if mode == "set-set":
@@ -37,13 +36,15 @@ def single_validation(tar, tar_id, mode, ref=None, ref_id=None, enriched: bool =
             comparator.load_reference(ref=ref, ref_id_type=ref_id)
         else:  # mode == "set"
             comparator = comp.SetComparator(mapper=mapper)
+            ru.print_current_usage('Load distances for input into cache ...')
+            mapper.load_distances(set_type=tar_id)
         comparator.load_target(id_set=pd.read_csv(tar, header=None, sep="\t")[0], id_type=tar_id)
 
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...')
         my_value = comparator.compare()
         ru.print_current_usage('Validation of random runs ...')
-        comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper)
+        comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id)
         ru.print_current_usage('Calculating p-values ...')
         if mode == "set":
             p_values = eu.calc_pvalue(test_value=my_value, value_df=pd.DataFrame(comp_values), maximize=False)
@@ -57,7 +58,7 @@ def single_validation(tar, tar_id, mode, ref=None, ref_id=None, enriched: bool =
         # ===== Get validation values of input =====
         my_value_di, my_value_ss = comparator.compare()
         ru.print_current_usage('Validation of random runs ...')
-        comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper)
+        comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id)
         p_values_di = eu.calc_pvalue(test_value=my_value_di, value_df=pd.DataFrame(comp_values[0]))
         p_values_ss = eu.calc_pvalue(test_value=my_value_ss, value_df=pd.DataFrame(comp_values[1]))
         p_values = {'di': p_values_di, 'ss': p_values_ss}
@@ -68,19 +69,19 @@ def single_validation(tar, tar_id, mode, ref=None, ref_id=None, enriched: bool =
     print(p_values)
 
 
-def get_random_runs_values(comparator: comp.Comparator, mode, mapper: Mapper) -> list:
+def get_random_runs_values(comparator: comp.Comparator, mode, mapper: Mapper, tar_id: str) -> list:
     # ===== On the fly =====
     results = list()
     if not mode == "cluster":
-        if comparator.id_type in config.SUPPORTED_DISEASE_IDS:
-            full_id_list = mapper.get_full_set(id_type=config.ID_TYPE_KEY[comparator.id_type], mapping_name='disorder_ids')
+        if tar_id in config.SUPPORTED_DISEASE_IDS:
+            full_id_list = mapper.get_full_set(id_type=tar_id, mapping_name='disorder_ids')
         else:  # if tar_id in config.SUPPORTED_GENE_IDS:
-            full_id_list = mapper.get_full_set(id_type=config.ID_TYPE_KEY[comparator.id_type], mapping_name='gene_ids')
+            full_id_list = mapper.get_full_set(id_type=config.ID_TYPE_KEY[tar_id], mapping_name='gene_ids')
         # ===== Remove empty values =====
         full_id_list = list(filter(None, full_id_list))
         # ===== Calculate values =====
         for run in range(0, config.NUMBER_OF_RANDOM_RUNS):
-            comparator.load_target(id_set=random.sample(full_id_list, len(comparator.id_set)), id_type=comparator.id_type)
+            comparator.load_target(id_set=random.sample(full_id_list, len(comparator.id_set)), id_type=tar_id)
             results.append(comparator.compare())
 
     # ===== Special case cluster =====

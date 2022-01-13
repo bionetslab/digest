@@ -39,25 +39,24 @@ class SetComparator(Comparator):
 
     def compare(self, threshold: float = 0.0):
         result = dict()
-        print(self.mapping)
+        new_ids = self.mapper.update_distance_ids(in_series=self.mapper.loaded_mappings[self.att_key][self.att_id],
+                                                  key=self.sparse_key)
         for attribute in self.mapping.columns[1:]:
-            subset_df = self.mapping[self.mapping[attribute].str.len() > 0].reset_index()
+            subset_df = self.mapping[self.mapping[attribute].str.len() > 0]
             missing_values = len(self.mapping) - len(subset_df)
             if missing_values > 0:
                 print("Missing values for " + attribute + " :" + str(missing_values) + "/" + str(
                     len(self.id_type))) if self.verbose else None
-            new_ids = self.mapper.update_distance_ids(in_series=self.mapper.loaded_mappings[self.att_key][self.att_id],
-                                                      key=self.sparse_key)
             if len(new_ids) > 0:
                 comp_mat = eu.get_distance_matrix(full_att_series=self.mapper.loaded_mappings[self.att_key][attribute],
                                                   from_ids=self.mapper.loaded_mappings[self.att_key][self.att_id],
                                                   id_to_index=self.mapper.loaded_distance_ids[self.sparse_key],
                                                   to_ids=new_ids)
-                self.mapper.update_distances(in_mat=comp_mat, key=attribute)
-            id_to_entrez = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
-                                                              id_type=self.id_type, to_type=self.att_id)
-            distances = self.mapper.get_loaded_distances(in_set=set(id_to_entrez), id_type=self.sparse_key,
-                                                         key=attribute)
+                self.mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type=self.sparse_key)
+            ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
+                                                     id_type=self.id_type, to_type=self.att_id)
+            distances, _ = self.mapper.get_loaded_distances(in_series=ids, id_type=self.sparse_key,
+                                                            key=c.DISTANCES[attribute])
             result[attribute] = sum(distances) / len(distances)
         return result
 

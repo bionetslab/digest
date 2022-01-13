@@ -10,7 +10,7 @@ import inspect
 MAIN_GENE_ID = 'entrezgene'
 SUPPORTED_GENE_IDS = ['entrez', 'ensembl', 'symbol', 'uniprot']
 SUPPORTED_DISEASE_IDS = ['mondo', 'omim', 'snomedct', 'umls', 'orpha', 'mesh', 'doid', 'ICD-10']
-NUMBER_OF_RANDOM_RUNS = 1
+NUMBER_OF_RANDOM_RUNS = 9
 
 # =============================================================================
 # Load all paths of required folders with scripts
@@ -50,14 +50,15 @@ DISEASE_ATTRIBUTES_KEY = {'disgenet.genes_related_to_disease': 'gene_id',
 # =============================================================================
 # Set distance attributes
 # ============================================================================
-GENE_DISTANCES = {'go.BP': 'go_BP',
-                  'go.CC': 'go_CC',
-                  'go.MF': 'go_MF',
-                  'pathway.kegg': 'pathway_kegg'}
-
-DISEASE_DISTANCES = {'disgenet.genes_related_to_disease': 'related_genes',
-                     'disgenet.variants_related_to_disease': 'related_variants',
-                     'ctd.pathway_related_to_disease': 'related_pathways'}
+DISTANCES = {  # GENES
+             'go.BP': 'go_BP',
+             'go.CC': 'go_CC',
+             'go.MF': 'go_MF',
+             'pathway.kegg': 'pathway_kegg',
+             # DISEASES
+             'disgenet.genes_related_to_disease': 'related_genes',
+             'disgenet.variants_related_to_disease': 'related_variants',
+             'ctd.pathway_related_to_disease': 'related_pathways'}
 
 # =============================================================================
 # Set API paths to nedrex data

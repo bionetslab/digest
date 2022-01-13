@@ -59,6 +59,14 @@ def combine_rowsets(x):
     return set().union(*x)
 
 
+def string_to_set(x, sep: str = ';'):
+    return set(filter(None, x.split(sep)))
+
+
+def set_to_string(x, sep: str = ';'):
+    return sep.join(x)
+
+
 def transform_disgenet_mapping(mapping: pd.DataFrame, file, col_old, col_new):
     disease_mapping = pd.read_csv(file, compression='gzip', sep='\t', dtype=str)
     df = pd.merge(mapping[['diseaseId', 'mondo']], disease_mapping[['diseaseId', col_old]],
