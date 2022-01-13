@@ -64,7 +64,8 @@ def single_validation(tar, tar_id, mode, ref=None, ref_id=None, enriched: bool =
         p_values = {'di': p_values_di, 'ss': p_values_ss}
     else:
         return None
-    #mapper.save_mappings()
+    # mapper.save_mappings()
+    # mapper.save_distances()
     ru.print_current_usage('Finished validation')
     print(p_values)
 
