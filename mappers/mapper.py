@@ -35,6 +35,15 @@ class Mapper:
         else:
             self.loaded_mappings[key] = in_df
 
+    def get_loaded_mapping_ids(self, in_ids, id_type: str, to_type: str):
+        if id_type in config.SUPPORTED_GENE_IDS:
+            return \
+            self.loaded_mappings['gene_ids'][self.loaded_mappings['gene_ids'][config.ID_TYPE_KEY[id_type]] in in_ids][
+                config.ID_TYPE_KEY[to_type]]
+        else:  # if set_type in config.SUPPORTED_DISEASE_IDS
+            return \
+            self.loaded_mappings['disorder_ids'][self.loaded_mappings['disorder_ids'][id_type] in in_ids][to_type]
+
     def get_loaded_mapping(self, in_set, id_type: str, key: str):
         if not self.loaded_mappings[key].empty:
             hit_mapping = self.loaded_mappings[key].loc[self.loaded_mappings[key][id_type].isin(in_set)]
@@ -44,10 +53,13 @@ class Mapper:
 
     def update_distance_ids(self, in_series: pd.Series, key: str) -> pd.Series:
         if self.loaded_distance_ids[key]:  # is not empty
-            for index, value in enumerate(iterable=in_series[len(self.loaded_distance_ids[key].keys()):],
-                                          start=len(self.loaded_distance_ids[key].keys())):
-                self.loaded_distance_ids[key][value] = index
-            return in_series[len(self.loaded_distance_ids[key].keys()):]
+            if len(self.loaded_distance_ids[key].keys()) < len(in_series):
+                new_ids = in_series[len(self.loaded_distance_ids[key].keys()):]
+                for index, value in enumerate(iterable=new_ids, start=len(self.loaded_distance_ids[key].keys())):
+                    self.loaded_distance_ids[key][value] = index
+                return new_ids
+            else:
+                return pd.Series()
         else:
             for index, value in enumerate(iterable=in_series, start=0):
                 self.loaded_distance_ids[key][value] = index
@@ -66,23 +78,26 @@ class Mapper:
 
     def get_loaded_distance(self, id1, id2, id_type: str, key: str):
         if id1 in self.loaded_distance_ids[id_type] and id2 in self.loaded_distance_ids[id_type]:
-            return self.loaded_distances[key][self.loaded_distance_ids[id_type][id1],
-                                              self.loaded_distance_ids[id_type][id2]]
+            if self.loaded_distance_ids[id_type][id1] < self.loaded_distance_ids[id_type][id2]:
+                return self.loaded_distances[key][self.loaded_distance_ids[id_type][id1],
+                                                  self.loaded_distance_ids[id_type][id2]]
+            else:
+                return self.loaded_distances[key][self.loaded_distance_ids[id_type][id2],
+                                                  self.loaded_distance_ids[id_type][id1]]
         return None
 
     def get_loaded_distances(self, in_set, id_type: str, key: str):
         if self.loaded_distance_ids[id_type]:  # is not empty
-            index_to_id, hit_values = dict(), list()
-            for value in in_set:
-                if value in self.loaded_distance_ids[id_type]:
-                    index_to_id[self.loaded_distance_ids[id_type][value]] = value
-            cur_mat = self.loaded_distances[key].tocoo()
-            for index, value in enumerate(cur_mat.row):
-                if value in index_to_id:
-                    if cur_mat.col[index] in index_to_id:
-                        hit_values.append(cur_mat.data[index])
+            hit_values = list()
+            for id1_index in range(0, len(in_set) - 1):
+                for id2_index in range(id1_index + 1, len(in_set)):
+                    distance = self.get_loaded_distance(id1=in_set[id1_index], id2=in_set[id2_index],
+                                                        id_type=id_type, key=key)
+                    if distance is not None:
+                        hit_values.append(distance)
             return hit_values, set(in_set) - set(self.loaded_distance_ids[id_type].keys())
-        return list(), in_set
+        else:
+            return list(), in_set
 
     def get_full_set(self, id_type: str, mapping_name: str) -> set:
         return set(self.loaded_mappings[mapping_name][id_type])
@@ -177,7 +192,7 @@ class FileMapper(Mapper):
 
     def save_file(self, in_object, key: str, in_type: str):
         if in_type == "mapping":
-            in_object.to_csv(self.file_names[key], index=True)
+            in_object.to_csv(self.file_names[key], index=False)
         elif in_type == "distance":
             sp.save_npz(self.file_names[key].tocoo(), in_object)
         else:  # in_type == "distance_id"

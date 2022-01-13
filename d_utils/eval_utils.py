@@ -2,36 +2,50 @@
 
 import numpy as np
 import pandas as pd
-
 import config
 import scipy.sparse as sp
 
 
-def get_distance_matrix(attribute_df: pd.DataFrame, from_ids: pd.Series, to_ids: pd.Series,
+def get_distance_matrix(full_att_series: pd.Series, from_ids: pd.Series, id_to_index: dict, to_ids: pd.Series = None,
                         coefficient='jaccard') -> sp.coo_matrix:
     """
     Calculating the distance of each element in from_ids to to_ids based on coefficient.
 
-    :param attribute_df: dataframe with 2 columns (id, attribute values)
+    :param full_att_series: dataframe with 2 columns (id, attribute values)
     :param from_ids: dataframe with 2 columns (id, attribute values)
     :param to_ids: dataframe with 2 columns (id, attribute values)
     :param coefficient: coefficient type for the distance. Possible: jaccard or overlap [Default="jaccard"]
     :return: distance sparse matrix
     """
+    def get_distance(index1: int, index2: int):
+        if coefficient == "jaccard":
+            return jaccard_coefficient(tar_att_set=full_att_series[index1], ref_att_set=full_att_series[index2])
+        else:  # coefficient == "overlap"
+            return overlap_coefficient(tar_att_set=full_att_series[index1], ref_att_set=full_att_series[index2])
 
     row, col, data = list(), list(), list()
-    for id1 in from_ids:
-        for id2 in to_ids:
-            if coefficient == "jaccard":
-                calc_dis = jaccard_coefficient(tar_att_set=eval_df[index1], ref_att_set=eval_df[index2])
-            else:  # coefficient == "overlap"
-                calc_dis = overlap_coefficient(tar_att_set=eval_df[index1], ref_att_set=eval_df[index2])
-            # assign to matrix
-            if calc_dis > 0.0:
-                row.append(index1)
-                col.append(index2)
-                data.append(calc_dis)
-    return sp.coo_matrix((np.array(data), (np.array(row), np.array(col))), shape=(len(eval_df), len(eval_df)))
+    if to_ids is None:
+        for id1_index in range(0, len(from_ids) - 1):
+            for id2_index in range(id1_index + 1, len(from_ids)):
+                calc_dis = get_distance(index1=id_to_index[from_ids[id1_index]],
+                                        index2=id_to_index[from_ids[id2_index]])
+                # assign to matrix
+                if calc_dis > 0.0:
+                    row.append(id_to_index[from_ids[id1_index]])
+                    col.append(id_to_index[from_ids[id2_index]])
+                    data.append(calc_dis)
+
+    else:
+        for id1 in from_ids:
+            for id2 in to_ids:
+                calc_dis = get_distance(index1=id_to_index[id1], index2=id_to_index[id2])
+                # assign to matrix
+                if calc_dis > 0.0:
+                    row.append(id_to_index[id1])
+                    col.append(id_to_index[id2])
+                    data.append(calc_dis)
+    return sp.coo_matrix((np.array(data), (np.array(row), np.array(col))),
+                         shape=(len(full_att_series), len(full_att_series)))
 
 
 def create_ref_dict(mapping, keys: set, enriched=False):

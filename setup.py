@@ -80,14 +80,14 @@ def load_files(mapper: Mapper):
     mapper.update_distance_ids(in_series=gene_att_mapping[c.ID_TYPE_KEY['entrez']].tolist(), key='gene_mat_ids')
     for attribute in gene_att_mapping.columns[1:]:
         ru.print_current_usage('Precalculate pairwise distances for '+attribute)
-        comp_mat = eu.get_distance_matrix(,
+        comp_mat = eu.get_distance_matrix()
         mapper.update_distances(in_mat=comp_mat, key=c.GENE_DISTANCES[attribute])
 
     ru.print_current_usage('Precalculate pairwise distances for diseases ...')
     mapper.update_distance_ids(in_series=disease_att_mapping['mondo'].tolist(), key='disease_mat_ids')
     for attribute in disease_att_mapping.columns[1:]:
         ru.print_current_usage('Precalculate pairwise distances for ' + attribute)
-        comp_mat = eu.get_distance_matrix(,
+        comp_mat = eu.get_distance_matrix()
         mapper.update_distances(in_mat=comp_mat, key=c.DISEASE_DISTANCES[attribute])
 
     mapper.save_distances()

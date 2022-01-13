@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 import pandas as pd
-import numpy as np
 from d_utils import eval_utils as eu, config as c
 from mappers import gene_mapper as gm, disease_mapper as dm
 from mappers.mapper import Mapper
@@ -16,14 +15,17 @@ class Comparator:
         self.mapping = None
         self.id_set = None
         self.id_type = None
+        self.att_id, self.att_key, self.sparse_key = None, None, None
 
     def load_target(self, id_set, id_type):
         self.id_set = id_set
         self.id_type = id_type
         if id_type in c.SUPPORTED_DISEASE_IDS:
             self.mapping = dm.get_disease_to_attributes(disease_set=id_set, id_type=id_type, mapper=self.mapper)
+            self.sparse_key, self.att_key, self.att_id = 'disease_mat_ids', 'disorder_atts', 'mondo'
         else:  # if id_type in c.SUPPORTED_GENE_IDS:
             self.mapping = gm.get_gene_to_attributes(gene_set=id_set, id_type=id_type, mapper=self.mapper)
+            self.sparse_key, self.att_key, self.att_id = 'gene_mat_ids', 'gene_atts', 'entrezgene'
 
     @abstractmethod
     def compare(self, threshold: float = 0.0):
@@ -37,21 +39,25 @@ class SetComparator(Comparator):
 
     def compare(self, threshold: float = 0.0):
         result = dict()
+        print(self.mapping)
         for attribute in self.mapping.columns[1:]:
             subset_df = self.mapping[self.mapping[attribute].str.len() > 0].reset_index()
             missing_values = len(self.mapping) - len(subset_df)
             if missing_values > 0:
                 print("Missing values for " + attribute + " :" + str(missing_values) + "/" + str(
                     len(self.id_type))) if self.verbose else None
-
-            comp_mat = eu.get_distance_matrix() #todo
-            self.mapper.update_distances(in_mat=comp_mat, key=attribute)
-            if self.id_type in c.SUPPORTED_DISEASE_IDS:
-                distances = self.mapper.get_loaded_distances(in_set=set(subset_df['mondo']), id_type='disease_mat_ids',
-                                                             key=attribute)
-            else:  # if id_type in c.SUPPORTED_GENE_IDS:
-                distances = self.mapper.get_loaded_distances(in_set=set(subset_df['entrezgene']),
-                                                             id_type='gene_mat_ids', key=attribute)
+            new_ids = self.mapper.update_distance_ids(in_series=self.mapper.loaded_mappings[self.att_key][self.att_id],
+                                                      key=self.sparse_key)
+            if len(new_ids) > 0:
+                comp_mat = eu.get_distance_matrix(full_att_series=self.mapper.loaded_mappings[self.att_key][attribute],
+                                                  from_ids=self.mapper.loaded_mappings[self.att_key][self.att_id],
+                                                  id_to_index=self.mapper.loaded_distance_ids[self.sparse_key],
+                                                  to_ids=new_ids)
+                self.mapper.update_distances(in_mat=comp_mat, key=attribute)
+            id_to_entrez = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
+                                                              id_type=self.id_type, to_type=self.att_id)
+            distances = self.mapper.get_loaded_distances(in_set=set(id_to_entrez), id_type=self.sparse_key,
+                                                         key=attribute)
             result[attribute] = sum(distances) / len(distances)
         return result
 
@@ -133,8 +139,15 @@ class ClusterComparator(Comparator):
             missing_values = len(self.mapping) - len(subset_df)
             print("Missing values for " + attribute + " :" + str(missing_values) + "/" + str(
                 len(self.mapping))) if self.verbose else None
-            dist_mat = eu.get_distance_matrix(,
-                       dist_df = pd.DataFrame(dist_mat, columns=subset_df[self.id_type], index=subset_df[self.id_type])
+
+            new_ids = self.mapper.update_distance_ids(in_series=subset_df[self.id_type])
+            if len(new_ids) > 0:
+                comp_mat = eu.get_distance_matrix(full_att_series=self.mapping[attribute],
+                                                  from_ids=self.mapping[self.id_type],
+                                                  id_to_index=self.mapper.loaded_distance_ids[self.sparse_key],
+                                                  to_ids=new_ids)
+                self.mapper.update_distances(in_mat=comp_mat, key=attribute)
+
             ss_score = sc.silhouette_score(distance_matrix=dist_df, ids_cluster=subset_clusters)
             di_score = sc.dunn_index(distance_matrix=dist_df, ids_cluster=subset_clusters)
             result_di[attribute] = di_score
