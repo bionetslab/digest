@@ -27,7 +27,7 @@ def get_disease_to_attributes(disease_set, id_type, mapper: Mapper):
     if len(missing_hits) > 0:
         mapping = get_attributes_from_database(missing=missing_hits)
         mapping = mapping.fillna('').groupby(id_type, as_index=False).agg(
-            {x: mu.combine_rows for x in config.DISEASE_ATTRIBUTES_KEY})
+            {x: mu.combine_rowsets for x in config.DISEASE_ATTRIBUTES_KEY})
         # ===== Add results from missing values =====
         mapper.update_mappings(in_df=mapping, key='disorder_atts')
         hit_mapping = pd.concat([hit_mapping, mapping]) if not hit_mapping.empty else mapping
@@ -62,4 +62,5 @@ def get_attributes_from_database(missing: list, attributes: list = config.DISEAS
     mapping = mapping.fillna('')
     mapping = mapping.astype(str)
     mapping["mondo"] = mapping["mondo"].str.replace('MONDO:', '')
+    mapping[mapping.columns[1:]] = mapping[mapping.columns[1:]].fillna('').applymap(mu.string_to_set)
     return mapping

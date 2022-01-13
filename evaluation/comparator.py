@@ -134,6 +134,7 @@ class ClusterComparator(Comparator):
         result_di, result_ss = dict(), dict()
         for attribute in self.mapping.columns[1:]:
             subset_df = self.mapping[self.mapping[attribute].str.len() > 0].reset_index(drop=True)
+            print(subset_df)
             subset_clusters = self.clustering[self.clustering[0].isin(subset_df[self.id_type])]
             missing_values = len(self.mapping) - len(subset_df)
             print("Missing values for " + attribute + " :" + str(missing_values) + "/" + str(

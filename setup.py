@@ -70,6 +70,7 @@ def load_files(mapper: Mapper):
     mapper.update_mappings(in_df=disease_att_mapping, key='disorder_atts')
     disease_att_mapping = dm.get_disease_to_attributes(disease_set=disease_mapping.mondo, id_type="mondo",
                                                        mapper=mapper)
+
     mapper.save_mappings()
     mapper.drop_mappings()
 
@@ -103,4 +104,7 @@ def load_files(mapper: Mapper):
 
 
 if __name__ == "__main__":
-    load_files(mapper=FileMapper())
+    os.system("mkdir -p "+c.FILES_DIR+"tmp/")
+    load_files(mapper=FileMapper(files_dir=c.FILES_DIR+"tmp/"))
+    os.system("mv -f " + c.FILES_DIR + "tmp/* "+c.FILES_DIR)
+    os.system("rm -rf "+c.FILES_DIR + "tmp/ ")

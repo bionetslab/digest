@@ -121,19 +121,22 @@ class Mapper:
 
 
 class FileMapper(Mapper):
-    file_names = {'gene_ids': config.FILES_DIR + 'gene_id_mapping.csv',
-                  'gene_atts': config.FILES_DIR + 'gene_att_mapping.csv',
-                  'disorder_ids': config.FILES_DIR + 'disease_id_mapping.csv',
-                  'disorder_atts': config.FILES_DIR + 'disease_att_mapping.csv',
-                  'gene_mat_ids': config.FILES_DIR + 'gene_mat_ids.pkl',
-                  'disease_mat_ids': config.FILES_DIR + 'disease_mat_ids.pkl',
-                  'go_BP': config.FILES_DIR + 'gene_dist_go_BP.npz',
-                  'go_CC': config.FILES_DIR + 'gene_dist_go_CC.npz',
-                  'go_MF': config.FILES_DIR + 'gene_dist_go_MF.npz',
-                  'pathway_kegg': config.FILES_DIR + 'gene_dist_pathway_kegg.npz',
-                  'related_genes': config.FILES_DIR + 'disease_dist_rel_genes.npz',
-                  'related_variants': config.FILES_DIR + 'disease_dist_rel_variants.npz',
-                  'related_pathways': config.FILES_DIR + 'disease_dist_rel_pathways.npz'}
+    file_names = {'gene_ids': 'gene_id_mapping.csv',
+                  'gene_atts': 'gene_att_mapping.csv',
+                  'disorder_ids': 'disease_id_mapping.csv',
+                  'disorder_atts': 'disease_att_mapping.csv',
+                  'gene_mat_ids': 'gene_mat_ids.pkl',
+                  'disease_mat_ids': 'disease_mat_ids.pkl',
+                  'go_BP': 'gene_dist_go_BP.npz',
+                  'go_CC': 'gene_dist_go_CC.npz',
+                  'go_MF': 'gene_dist_go_MF.npz',
+                  'pathway_kegg': 'gene_dist_pathway_kegg.npz',
+                  'related_genes': 'disease_dist_rel_genes.npz',
+                  'related_variants': 'disease_dist_rel_variants.npz',
+                  'related_pathways': 'disease_dist_rel_pathways.npz'}
+
+    def __init__(self, files_dir=config.FILES_DIR):
+        self.files_dir = files_dir
 
     def load_mappings(self):
         for mapping_key in ['gene_ids', 'disorder_ids']:
@@ -173,21 +176,22 @@ class FileMapper(Mapper):
 
     def load_file(self, key: str, in_type: str):
         if in_type == "mapping":
-            self._load_file_mapping(file=self.file_names[key], sep=",", mapping_name=key)
+            self._load_file_mapping(file=self.files_dir+self.file_names[key], sep=",", mapping_name=key)
         elif in_type == "distance":
-            self.loaded_distances[key] = sp.load_npz(self.file_names[key])
-            self.loaded_distances[key] = self.loaded_distances[key].tocsr()
+            self.loaded_distances[key] = sp.load_npz(self.files_dir+self.file_names[key]).tocsr()
         else:  # in_type == "distance_id"
             with open(self.file_names[key], 'rb') as f:
                 self.loaded_distance_ids[key] = pickle.load(f)
 
     def save_mappings(self):
         for mapping_key in ['gene_ids', 'disorder_ids']:
-            self.save_file(in_object=self.loaded_mappings[mapping_key], key=mapping_key, in_type='mapping')
+            if not self.loaded_mappings[mapping_key].empty:
+                self.save_file(in_object=self.loaded_mappings[mapping_key], key=mapping_key, in_type='mapping')
         for mapping_key in ['gene_atts', 'disorder_atts']:
-            df = self.loaded_mappings[mapping_key]
-            df[df.columns[1:]] = df[df.columns[1:]].fillna('').applymap(mu.set_to_string)
-            self.save_file(in_object=df, key=mapping_key, in_type='mapping')
+            if not self.loaded_mappings[mapping_key].empty:
+                df = self.loaded_mappings[mapping_key]
+                df[df.columns[1:]] = df[df.columns[1:]].fillna('').applymap(mu.set_to_string)
+                self.save_file(in_object=df, key=mapping_key, in_type='mapping')
 
     def save_distances(self):
         for distance_id_key in ['gene_mat_ids', 'disease_mat_ids']:
@@ -199,9 +203,12 @@ class FileMapper(Mapper):
 
     def save_file(self, in_object, key: str, in_type: str):
         if in_type == "mapping":
-            in_object.to_csv(self.file_names[key], index=False)
+            if not self.loaded_mappings[key].empty:
+                in_object.to_csv(self.files_dir+self.file_names[key], index=False)
         elif in_type == "distance":
-            sp.save_npz(self.file_names[key].tocoo(), in_object)
+            if self.loaded_distances[key].nnz > 0:
+                sp.save_npz(self.files_dir+self.file_names[key].tocoo(), in_object)
         else:  # in_type == "distance_id"
-            with open(self.file_names[key], 'wb+') as f:
-                pickle.dump(in_object, f)
+            if self.loaded_distance_ids[key]:
+                with open(self.files_dir+self.file_names[key], 'wb+') as f:
+                    pickle.dump(in_object, f)

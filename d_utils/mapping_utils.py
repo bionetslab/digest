@@ -20,7 +20,7 @@ def preprocess_results(mapping, multicol, singlecol, key, explode=False):
 
     def convert_to_string(cell):
         if str(cell) != 'nan':
-            extracted_ids = [val.get(key) for val in cell]
+            extracted_ids = [val.get(key) for val in cell if key in val]
             return ';'.join(str(e) for e in list(set(extracted_ids)))
         return cell
 
@@ -72,5 +72,6 @@ def transform_disgenet_mapping(mapping: pd.DataFrame, file, col_old, col_new):
     df = pd.merge(mapping[['diseaseId', 'mondo']], disease_mapping[['diseaseId', col_old]],
                   on="diseaseId", how="left")
     df = df.rename(columns={col_old: col_new})
+    df[col_new] = df[col_new].str.strip()
     df = df[['mondo', col_new]].fillna('').groupby(['mondo'], as_index=False).agg(combine_rows)
     return df
