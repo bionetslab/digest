@@ -129,8 +129,6 @@ def evaluate_values(mapping, ref_dict, threshold, keys, coefficient="jaccard"):
 
 def calc_pvalue(test_value, value_df, maximize=True):
     pvalue = dict()
-    print(test_value)
-    print(value_df)
     for keys in test_value:
         pvalue[keys] = (1 + sum(value_df[keys] <= test_value[keys])) / (len(value_df.index) + 1) if maximize else \
             (1 + sum(value_df[keys] >= test_value[keys])) / (len(value_df.index) + 1)

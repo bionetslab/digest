@@ -46,7 +46,7 @@ class SetComparator(Comparator):
             missing_values = len(self.mapping) - len(subset_df)
             if missing_values > 0:
                 print("Missing values for " + attribute + " :" + str(missing_values) + "/" + str(
-                    len(self.id_type))) if self.verbose else None
+                    len(self.id_set))) if self.verbose else None
             if len(new_ids) > 0:
                 comp_mat = eu.get_distance_matrix(full_att_series=self.mapper.loaded_mappings[self.att_key][attribute],
                                                   from_ids=self.mapper.loaded_mappings[self.att_key][self.att_id],
@@ -55,7 +55,7 @@ class SetComparator(Comparator):
                 self.mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type=self.sparse_key)
             ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
                                                      id_type=self.id_type, to_type=self.att_id)
-            distances, _ = self.mapper.get_loaded_distances(in_series=ids, id_type=self.sparse_key,
+            distances, _ = self.mapper.get_loaded_distances(in_series=ids[self.att_id], id_type=self.sparse_key,
                                                             key=c.DISTANCES[attribute])
             result[attribute] = sum(distances) / len(distances)
         return result
@@ -135,7 +135,7 @@ class ClusterComparator(Comparator):
         new_ids = self.mapper.update_distance_ids(in_series=self.mapper.loaded_mappings[self.att_key][self.att_id],
                                                   key=self.sparse_key)
         for attribute in self.mapping.columns[1:]:
-            subset_df = self.mapping[self.mapping[attribute].str.len() > 0].reset_index(drop=True)
+            subset_df = self.mapping[self.mapping[attribute].str.len() > 0]
             subset_clusters = self.clustering[self.clustering[0].isin(subset_df[self.id_type])]
             missing_values = len(self.mapping) - len(subset_df)
             if missing_values > 0:
@@ -148,13 +148,22 @@ class ClusterComparator(Comparator):
                                                   id_to_index=self.mapper.loaded_distance_ids[self.sparse_key],
                                                   to_ids=new_ids)
                 self.mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type=self.sparse_key)
-            # todo needed mapping
-            # ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
-            #                                          id_type=self.id_type, to_type=self.att_id)
-            # distances, _ = self.mapper.get_loaded_distances(in_series=ids, id_type=self.sparse_key,
-            #                                                 key=c.DISTANCES[attribute])
-            ss_score = sc.silhouette_score(distance_matrix=dist_df, ids_cluster=subset_clusters)
-            di_score = sc.dunn_index(distance_matrix=dist_df, ids_cluster=subset_clusters)
+            ids = None
+            if (self.id_type in c.SUPPORTED_GENE_IDS) and (c.ID_TYPE_KEY[self.id_type] != self.att_id):
+                ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
+                                                         id_type=self.id_type)
+                ids = ids.rename(columns={c.ID_TYPE_KEY[self.id_type]: 0, self.att_id: 1})
+            if (self.id_type in c.SUPPORTED_DISEASE_IDS) and (self.id_type != self.att_id):
+                ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
+                                                         id_type=self.id_type)
+                ids = ids.rename(columns={self.id_type: 0, self.att_id: 1})
+
+            ss_score = sc.silhouette_score(ids_cluster=subset_clusters, ids_mapping=ids,
+                                           comparator={'mapper': self.mapper, 'sparse_key': self.sparse_key,
+                                                       'att_id': c.DISTANCES[attribute]})
+            di_score = sc.dunn_index(ids_cluster=subset_clusters, ids_mapping=ids,
+                                     comparator={'mapper': self.mapper, 'sparse_key': self.sparse_key,
+                                                 'att_id': c.DISTANCES[attribute]})
             result_di[attribute] = di_score
             result_ss[attribute] = ss_score[0]  # ss_score[1] all intermediate results
         return result_di, result_ss

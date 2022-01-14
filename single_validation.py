@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import numpy as np
 import pandas as pd
 from d_utils import runner_utils as ru, config, eval_utils as eu
 from evaluation import comparator as comp
@@ -53,9 +54,13 @@ def single_validation(tar, tar_id, mode, ref=None, ref_id=None, enriched: bool =
 
     # ===== Special case cluster =====
     elif args.mode == "cluster":
+        ru.print_current_usage('Load distances for input into cache ...')
+        mapper.load_distances(set_type=tar_id)
+        ru.print_current_usage('Load input data ...')
         comparator = comp.ClusterComparator(mapper=mapper)
         comparator.load_target(id_set=pd.read_csv(tar, header=None, sep="\t"), id_type=tar_id)
         # ===== Get validation values of input =====
+        ru.print_current_usage('Validation of input ...')
         my_value_di, my_value_ss = comparator.compare()
         ru.print_current_usage('Validation of random runs ...')
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id)
@@ -90,9 +95,7 @@ def get_random_runs_values(comparator: comp.Comparator, mode, mapper: Mapper, ta
         # ===== Calculate values =====
         results.extend((list(), list()))
         for run in range(0, config.NUMBER_OF_RANDOM_RUNS):
-            # comparator.clustering
-            # tar[1] = np.random.permutation(tar[1].values)
-            # TODO Load new clustering
+            comparator.clustering['cluster_index'] = np.random.permutation(comparator.clustering['cluster_index'])
             value_di, value_ss = comparator.compare()
             results[0].append(value_di)
             results[1].append(value_ss)

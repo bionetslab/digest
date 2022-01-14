@@ -35,15 +35,14 @@ class Mapper:
         else:
             self.loaded_mappings[key] = in_df
 
-    def get_loaded_mapping_ids(self, in_ids, id_type: str, to_type: str):
+    def get_loaded_mapping_ids(self, in_ids, id_type: str) -> pd.DataFrame:
         if id_type in config.SUPPORTED_GENE_IDS:
             return \
                 self.loaded_mappings['gene_ids'][
-                    self.loaded_mappings['gene_ids'][config.ID_TYPE_KEY[id_type]].isin(in_ids)][to_type]
+                    self.loaded_mappings['gene_ids'][config.ID_TYPE_KEY[id_type]].isin(in_ids)]
         else:  # if set_type in config.SUPPORTED_DISEASE_IDS
             return \
-                self.loaded_mappings['disorder_ids'][self.loaded_mappings['disorder_ids'][id_type].isin(in_ids)][
-                    to_type]
+                self.loaded_mappings['disorder_ids'][self.loaded_mappings['disorder_ids'][id_type].isin(in_ids)]
 
     def get_loaded_mapping(self, in_set, id_type: str, key: str):
         if not self.loaded_mappings[key].empty:
@@ -180,7 +179,7 @@ class FileMapper(Mapper):
         elif in_type == "distance":
             self.loaded_distances[key] = sp.load_npz(self.files_dir+self.file_names[key]).tocsr()
         else:  # in_type == "distance_id"
-            with open(self.file_names[key], 'rb') as f:
+            with open(self.files_dir+self.file_names[key], 'rb') as f:
                 self.loaded_distance_ids[key] = pickle.load(f)
 
     def save_mappings(self):
