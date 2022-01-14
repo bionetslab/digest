@@ -207,7 +207,7 @@ class FileMapper(Mapper):
                 in_object.to_csv(self.files_dir+self.file_names[key], index=False)
         elif in_type == "distance":
             if self.loaded_distances[key].nnz > 0:
-                sp.save_npz(self.files_dir+self.file_names[key].tocoo(), in_object)
+                sp.save_npz(self.files_dir+self.file_names[key], in_object.tocoo())
         else:  # in_type == "distance_id"
             if self.loaded_distance_ids[key]:
                 with open(self.files_dir+self.file_names[key], 'wb+') as f:

@@ -25,6 +25,7 @@ def get_distance_matrix(full_att_series: pd.Series, from_ids: pd.Series, id_to_i
 
     row, col, data = list(), list(), list()
     if to_ids is None:
+        from_ids = from_ids.to_numpy()
         for id1_index in range(0, len(from_ids) - 1):
             for id2_index in range(id1_index + 1, len(from_ids)):
                 calc_dis = get_distance(index1=id_to_index[from_ids[id1_index]],
@@ -81,7 +82,10 @@ def overlap_coefficient(tar_att_set, ref_att_set):
     """
     if len(tar_att_set) == 0 & len(ref_att_set) == 0:
         return 0.0
-    return len(tar_att_set.intersection(ref_att_set)) / min(len(tar_att_set), len(ref_att_set))
+    intersection = len(tar_att_set.intersection(ref_att_set))
+    if intersection == 0:
+        return 0.0
+    return intersection / min(len(tar_att_set), len(ref_att_set))
 
 
 def jaccard_coefficient(tar_att_set, ref_att_set):
@@ -95,7 +99,10 @@ def jaccard_coefficient(tar_att_set, ref_att_set):
     """
     if len(tar_att_set) == 0 & len(ref_att_set) == 0:
         return 0.0
-    return len(tar_att_set.intersection(ref_att_set)) / len(tar_att_set.union(ref_att_set))
+    intersection = len(tar_att_set.intersection(ref_att_set))
+    if intersection == 0:
+        return 0.0
+    return intersection / len(tar_att_set.union(ref_att_set))
 
 
 def evaluate_values(mapping, ref_dict, threshold, keys, coefficient="jaccard"):
