@@ -6,6 +6,7 @@ from d_utils import runner_utils as ru, config, eval_utils as eu
 from evaluation import comparator as comp
 import random
 from mappers.mapper import Mapper, FileMapper
+import json
 
 
 def single_validation(tar, tar_id, mode, ref=None, ref_id=None, enriched: bool = False,
@@ -72,7 +73,8 @@ def single_validation(tar, tar_id, mode, ref=None, ref_id=None, enriched: bool =
     # mapper.save_mappings()
     # mapper.save_distances()
     ru.print_current_usage('Finished validation')
-    print(p_values)
+    with open(out_dir+"digest_"+args.mode+"_result.json", "w") as outfile:
+        json.dump(p_values, outfile)
 
 
 def get_random_runs_values(comparator: comp.Comparator, mode, mapper: Mapper, tar_id: str) -> list:

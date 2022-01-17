@@ -54,7 +54,7 @@ class SetComparator(Comparator):
                                                   to_ids=new_ids)
                 self.mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type=self.sparse_key)
             ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
-                                                     id_type=self.id_type, to_type=self.att_id)
+                                                     id_type=self.id_type)
             distances, _ = self.mapper.get_loaded_distances(in_series=ids[self.att_id], id_type=self.sparse_key,
                                                             key=c.DISTANCES[attribute])
             result[attribute] = sum(distances) / len(distances)
