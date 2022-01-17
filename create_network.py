@@ -15,7 +15,7 @@ def create_network(node_type, edge_type, out_dir, mapper: Mapper = FileMapper())
         id_dict = mapper.loaded_distance_ids['disease_mat_ids']
         if node_type != 'mondo':
             ru.print_current_usage('Map mondo ID to '+node_type+' ...')
-    else: # node_type in config.SUPPORTED_GENE_IDS:
+    else:  # node_type in config.SUPPORTED_GENE_IDS:
         mapper.load_file(key='gene_mat_ids', in_type='distance_id')
         id_dict = mapper.loaded_distance_ids['gene_mat_ids']
         if node_type != 'entrez':
@@ -24,9 +24,9 @@ def create_network(node_type, edge_type, out_dir, mapper: Mapper = FileMapper())
     for k, v in id_dict.items():
         index_to_id[v] = k
     ru.print_current_usage('Create edge list ...')
+    sparse = mapper.loaded_distances[edge_type].tocoo()
     edge_list = list()
-    for i, j, v in zip(mapper.loaded_distances[edge_type].row, mapper.loaded_distances[edge_type].col,
-                       mapper.loaded_distances[edge_type].data):
+    for i, j, v in zip(sparse.row, sparse.col, sparse.data):
         edge_list.append((index_to_id[i], index_to_id[j], v))
 
     ru.print_current_usage('Create graph ...')
@@ -36,7 +36,7 @@ def create_network(node_type, edge_type, out_dir, mapper: Mapper = FileMapper())
     g.edge_properties["weight"] = edge_weights
     g.vertex_properties["ID"] = node_names
 
-    ru.print_current_usage('Save graph with '+str(g.num_vertices())+' vertices ...')
+    ru.print_current_usage('Save graph with '+str(g.num_vertices())+' vertices and '+str(g.num_edges())+' edges ...')
     g.save(out_dir+node_type+"-"+edge_type+"-network.graphml", fmt="graphml")
 
     ru.print_current_usage('Finished ...')

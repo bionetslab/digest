@@ -70,8 +70,9 @@ def single_validation(tar, tar_id, mode, ref=None, ref_id=None, enriched: bool =
         p_values = {'di': p_values_di, 'ss': p_values_ss}
     else:
         return None
-    # mapper.save_mappings()
-    # mapper.save_distances()
+    ru.print_current_usage('Save files')
+    #mapper.save_mappings()
+    #mapper.save_distances()
     ru.print_current_usage('Finished validation')
     with open(out_dir+"digest_"+args.mode+"_result.json", "w") as outfile:
         json.dump(p_values, outfile)
@@ -95,7 +96,6 @@ def get_random_runs_values(comparator: comp.Comparator, mode, mapper: Mapper, ta
     # ===== Special case cluster =====
     else:
         # ===== Calculate values =====
-        results.extend((list(), list()))
         for run in range(0, config.NUMBER_OF_RANDOM_RUNS):
             comparator.clustering['cluster_index'] = np.random.permutation(comparator.clustering['cluster_index'])
             value_di, value_ss = comparator.compare()

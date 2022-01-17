@@ -49,11 +49,11 @@ def save_parameters(script_desc, arguments):
     if 'n' in arguments:
         required_args.add_argument('-n', '--node_type', type=str, required=True,
                                    choices=c.SUPPORTED_GENE_IDS + c.SUPPORTED_DISEASE_IDS, metavar='NODE_TYPE',
-                                   help='ID type of nodes for network.')
+                                   help='ID type of nodes for network.\n(choose from entrez, ensembl, symbol, uniprot, mondo, omim, snomedct, umls, orpha, mesh, doid, ICD-10)')
     if 'd' in arguments:
         required_args.add_argument('-d', '--distance_type', type=str, required=True,
-                                   choices=list(c.GENE_DISTANCES.values()) + list(c.DISEASE_DISTANCES.values()), metavar='EDGE_TYPE',
-                                   help='Distance type for edges.')
+                                   choices=list(c.DISTANCES.values()), metavar='EDGE_TYPE',
+                                   help='Distance type for edges.\n(choose from go_BP, go_CC, go_MF, pathway_kegg, related_genes, related_variants, related_pathways)')
     optional_args = parser.add_argument_group("optional arguments")
     if 'o' in arguments:
         optional_args.add_argument('-o', '--out_dir', type=str, default='./', help='Output directory. [Default=./]')
