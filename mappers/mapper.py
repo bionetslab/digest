@@ -86,18 +86,21 @@ class Mapper:
                                                   self.loaded_distance_ids[id_type][id1]]
         return None
 
-    def get_loaded_distances(self, in_series: pd.Series, id_type: str, key: str):
+    def get_submatrix(self, in_series: pd.Series, id_type: str, key: str):
         if self.loaded_distance_ids[id_type]:  # is not empty
-            hit_values = list()
-            for id1_index in range(0, len(in_series) - 1):
-                for id2_index in range(id1_index + 1, len(in_series)):
-                    distance = self.get_loaded_distance(id1=in_series.iloc[id1_index], id2=in_series.iloc[id2_index],
-                                                        id_type=id_type, key=key)
-                    if distance is not None:
-                        hit_values.append(distance)
-            return hit_values, set(in_series) - set(self.loaded_distance_ids[id_type].keys())
+            indices = list()
+            for element in in_series:
+                indices.append(self.loaded_distance_ids[id_type][element])
+            # hit_values = list()
+            # for id1_index in range(0, len(in_series) - 1):
+            #     for id2_index in range(id1_index + 1, len(in_series)):
+            #         distance = self.get_loaded_distance(id1=in_series.iloc[id1_index], id2=in_series.iloc[id2_index],
+            #                                             id_type=id_type, key=key)
+            #         if distance is not None:
+            #             hit_values.append(distance)
+            return self.loaded_distances[key][indices, :][:, indices]
         else:
-            return list(), set(in_series)
+            return None
 
     def get_full_set(self, id_type: str, mapping_name: str) -> set:
         return set(self.loaded_mappings[mapping_name][id_type])

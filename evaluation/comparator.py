@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-import pandas as pd
 from d_utils import eval_utils as eu, config as c
 from mappers import gene_mapper as gm, disease_mapper as dm
 from mappers.mapper import Mapper
@@ -55,9 +54,9 @@ class SetComparator(Comparator):
                 self.mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type=self.sparse_key)
             ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
                                                      id_type=self.id_type)
-            distances, _ = self.mapper.get_loaded_distances(in_series=ids[self.att_id], id_type=self.sparse_key,
-                                                            key=c.DISTANCES[attribute])
-            result[attribute] = sum(distances) / len(distances)
+            sub_mat = self.mapper.get_submatrix(in_series=ids[self.att_id], id_type=self.sparse_key,
+                                                key=c.DISTANCES[attribute])
+            result[attribute] = (sub_mat.sum()/2)/((len(self.mapping)*(len(self.mapping)-1))/2)
         return result
 
 
