@@ -96,6 +96,7 @@ def get_random_runs_values(comparator: comp.Comparator, mode, mapper: Mapper, ta
     # ===== Special case cluster =====
     else:
         # ===== Calculate values =====
+        results.extend([list(), list()])
         for run in range(0, config.NUMBER_OF_RANDOM_RUNS):
             comparator.clustering['cluster_index'] = np.random.permutation(comparator.clustering['cluster_index'])
             value_di, value_ss = comparator.compare()

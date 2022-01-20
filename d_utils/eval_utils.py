@@ -32,8 +32,12 @@ def get_distance_matrix(full_att_series: pd.Series, from_ids: pd.Series, id_to_i
                                         index2=id_to_index[from_ids[id2_index]])
                 # assign to matrix
                 if calc_dis > 0.0:
-                    row.append(id_to_index[from_ids[id1_index]])
-                    col.append(id_to_index[from_ids[id2_index]])
+                    if id_to_index[from_ids[id1_index]] < id_to_index[from_ids[id2_index]]:
+                        row.append(id_to_index[from_ids[id1_index]])
+                        col.append(id_to_index[from_ids[id2_index]])
+                    else:
+                        row.append(id_to_index[from_ids[id2_index]])
+                        col.append(id_to_index[from_ids[id1_index]])
                     data.append(calc_dis)
 
     else:
@@ -42,8 +46,12 @@ def get_distance_matrix(full_att_series: pd.Series, from_ids: pd.Series, id_to_i
                 calc_dis = get_distance(index1=id_to_index[id1], index2=id_to_index[id2])
                 # assign to matrix
                 if calc_dis > 0.0:
-                    row.append(id_to_index[id1])
-                    col.append(id_to_index[id2])
+                    if id_to_index[id1] < id_to_index[id2]:
+                        row.append(id_to_index[id1])
+                        col.append(id_to_index[id2])
+                    else:
+                        row.append(id_to_index[id2])
+                        col.append(id_to_index[id1])
                     data.append(calc_dis)
     return sp.coo_matrix((np.array(data), (np.array(row), np.array(col))),
                          shape=(len(full_att_series), len(full_att_series)))

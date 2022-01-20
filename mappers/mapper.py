@@ -29,6 +29,13 @@ class Mapper:
     def load_file(self, key: str, in_type: str):
         pass
 
+    def get_loaded_mapping(self, in_set, id_type: str, key: str):
+        if not self.loaded_mappings[key].empty:
+            hit_mapping = self.loaded_mappings[key].loc[self.loaded_mappings[key][id_type].isin(in_set)]
+            if not hit_mapping.empty:
+                return hit_mapping, set(in_set) - set(hit_mapping[id_type])
+        return pd.DataFrame(), in_set
+
     def update_mappings(self, in_df: pd.DataFrame(), key: str):
         if not self.loaded_mappings[key].empty:
             self.loaded_mappings[key] = pd.concat([self.loaded_mappings[key], in_df], ignore_index=True)
@@ -44,13 +51,6 @@ class Mapper:
             return \
                 self.loaded_mappings['disorder_ids'][self.loaded_mappings['disorder_ids'][id_type].isin(in_ids)]
 
-    def get_loaded_mapping(self, in_set, id_type: str, key: str):
-        if not self.loaded_mappings[key].empty:
-            hit_mapping = self.loaded_mappings[key].loc[self.loaded_mappings[key][id_type].isin(in_set)]
-            if not hit_mapping.empty:
-                return hit_mapping, set(in_set) - set(hit_mapping[id_type])
-        return pd.DataFrame(), in_set
-
     def update_distance_ids(self, in_series: pd.Series, key: str) -> pd.Series:
         if self.loaded_distance_ids[key]:  # is not empty
             if len(self.loaded_distance_ids[key].keys()) < len(in_series):
@@ -65,6 +65,21 @@ class Mapper:
                 self.loaded_distance_ids[key][value] = index
             return in_series
 
+    def get_loaded_distances(self, in_series: pd.Series, id_type: str, key: str, to_series: pd.Series = None) -> sp.csr_matrix:
+        if self.loaded_distance_ids[id_type]:  # is not empty
+            indices = list()
+            for element in in_series:
+                indices.append(self.loaded_distance_ids[id_type][element])
+            if to_series is not None:
+                to_indices = list()
+                for element in to_series:
+                    to_indices.append(self.loaded_distance_ids[id_type][element])
+                return self.loaded_distances[key][indices, :][:, to_indices]
+            else:
+                return self.loaded_distances[key][indices, :][:, indices]
+        else:
+            return sp.csr_matrix(None)
+
     def update_distances(self, in_mat: sp.coo_matrix, id_type: str, key: str):
         if self.loaded_distances[key].nnz > 0:
             old_mat = self.loaded_distances[key].tocoo()
@@ -75,32 +90,6 @@ class Mapper:
                 len(self.loaded_distance_ids[id_type].keys()), len(self.loaded_distance_ids[id_type].keys())))
         else:
             self.loaded_distances[key] = in_mat.tocsr()
-
-    def get_loaded_distance(self, id1, id2, id_type: str, key: str):
-        if id1 in self.loaded_distance_ids[id_type] and id2 in self.loaded_distance_ids[id_type]:
-            if self.loaded_distance_ids[id_type][id1] < self.loaded_distance_ids[id_type][id2]:
-                return self.loaded_distances[key][self.loaded_distance_ids[id_type][id1],
-                                                  self.loaded_distance_ids[id_type][id2]]
-            else:
-                return self.loaded_distances[key][self.loaded_distance_ids[id_type][id2],
-                                                  self.loaded_distance_ids[id_type][id1]]
-        return None
-
-    def get_submatrix(self, in_series: pd.Series, id_type: str, key: str):
-        if self.loaded_distance_ids[id_type]:  # is not empty
-            indices = list()
-            for element in in_series:
-                indices.append(self.loaded_distance_ids[id_type][element])
-            # hit_values = list()
-            # for id1_index in range(0, len(in_series) - 1):
-            #     for id2_index in range(id1_index + 1, len(in_series)):
-            #         distance = self.get_loaded_distance(id1=in_series.iloc[id1_index], id2=in_series.iloc[id2_index],
-            #                                             id_type=id_type, key=key)
-            #         if distance is not None:
-            #             hit_values.append(distance)
-            return self.loaded_distances[key][indices, :][:, indices]
-        else:
-            return None
 
     def get_full_set(self, id_type: str, mapping_name: str) -> set:
         return set(self.loaded_mappings[mapping_name][id_type])

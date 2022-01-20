@@ -54,9 +54,9 @@ class SetComparator(Comparator):
                 self.mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type=self.sparse_key)
             ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
                                                      id_type=self.id_type)
-            sub_mat = self.mapper.get_submatrix(in_series=ids[self.att_id], id_type=self.sparse_key,
-                                                key=c.DISTANCES[attribute])
-            result[attribute] = (sub_mat.sum()/2)/((len(self.mapping)*(len(self.mapping)-1))/2)
+            sub_mat = self.mapper.get_loaded_distances(in_series=ids[self.att_id], id_type=self.sparse_key,
+                                                       key=c.DISTANCES[attribute])
+            result[attribute] = sub_mat.sum() / ((len(self.mapping) * (len(self.mapping) - 1)) / 2)
         return result
 
 
@@ -147,22 +147,21 @@ class ClusterComparator(Comparator):
                                                   id_to_index=self.mapper.loaded_distance_ids[self.sparse_key],
                                                   to_ids=new_ids)
                 self.mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type=self.sparse_key)
-            ids = None
-            if (self.id_type in c.SUPPORTED_GENE_IDS) and (c.ID_TYPE_KEY[self.id_type] != self.att_id):
-                ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
-                                                         id_type=self.id_type)
-                ids = ids.rename(columns={c.ID_TYPE_KEY[self.id_type]: 0, self.att_id: 1})
-            if (self.id_type in c.SUPPORTED_DISEASE_IDS) and (self.id_type != self.att_id):
-                ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
-                                                         id_type=self.id_type)
-                ids = ids.rename(columns={self.id_type: 0, self.att_id: 1})
 
-            ss_score = sc.silhouette_score(ids_cluster=subset_clusters, ids_mapping=ids,
-                                           comparator={'mapper': self.mapper, 'sparse_key': self.sparse_key,
-                                                       'att_id': c.DISTANCES[attribute]})
-            di_score = sc.dunn_index(ids_cluster=subset_clusters, ids_mapping=ids,
-                                     comparator={'mapper': self.mapper, 'sparse_key': self.sparse_key,
-                                                 'att_id': c.DISTANCES[attribute]})
+            ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
+                                                     id_type=self.id_type)
+            distances = self.mapper.get_loaded_distances(in_series=ids[self.att_id], id_type=self.sparse_key,
+                                                         key=c.DISTANCES[attribute])
+            distances = dict(distances.todok().items())
+
+            ss_score = sc.silhouette_score(ids_cluster=subset_clusters, ids_mapping=ids, distances=distances,
+                                           mapper=self.mapper,
+                                           ids={'id_type': c.ID_TYPE_KEY[self.id_type], 'sparse_key': self.sparse_key,
+                                                'att_id': self.att_id, 'attribute': c.DISTANCES[attribute]})
+            di_score = sc.dunn_index(ids_cluster=subset_clusters, ids_mapping=ids, distances=distances,
+                                     mapper=self.mapper,
+                                     ids={'id_type': c.ID_TYPE_KEY[self.id_type], 'sparse_key': self.sparse_key,
+                                          'att_id': self.att_id, 'attribute': c.DISTANCES[attribute]})
             result_di[attribute] = di_score
             result_ss[attribute] = ss_score[0]  # ss_score[1] all intermediate results
         return result_di, result_ss
