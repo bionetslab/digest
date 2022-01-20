@@ -153,15 +153,15 @@ class ClusterComparator(Comparator):
             distances = self.mapper.get_loaded_distances(in_series=ids[self.att_id], id_type=self.sparse_key,
                                                          key=c.DISTANCES[attribute])
             distances = dict(distances.todok().items())
-
-            ss_score = sc.silhouette_score(ids_cluster=subset_clusters, ids_mapping=ids, distances=distances,
-                                           mapper=self.mapper,
-                                           ids={'id_type': c.ID_TYPE_KEY[self.id_type], 'sparse_key': self.sparse_key,
-                                                'att_id': self.att_id, 'attribute': c.DISTANCES[attribute]})
-            di_score = sc.dunn_index(ids_cluster=subset_clusters, ids_mapping=ids, distances=distances,
-                                     mapper=self.mapper,
-                                     ids={'id_type': c.ID_TYPE_KEY[self.id_type], 'sparse_key': self.sparse_key,
-                                          'att_id': self.att_id, 'attribute': c.DISTANCES[attribute]})
+            inv_index_to_id = {index: value for index, value in ids[self.att_id].reset_index(drop=True).items()}
+            precalc_dist = sc.precalc_distance_dicts(ids_cluster=subset_clusters, ids_mapping=ids, distances=distances,
+                                                     index_to_id=inv_index_to_id,
+                                                     ids={'id_type': c.ID_TYPE_KEY[self.id_type],
+                                                          'sparse_key': self.sparse_key, 'att_id': self.att_id,
+                                                          'attribute': c.DISTANCES[attribute]})
+            ss_score = sc.silhouette_score(ids_cluster=subset_clusters, ids_mapping=ids, distances=precalc_dist,
+                                           linkage="average")
+            di_score = sc.dunn_index(ids_cluster=subset_clusters, distances=precalc_dist, linkage="average")
             result_di[attribute] = di_score
             result_ss[attribute] = ss_score[0]  # ss_score[1] all intermediate results
         return result_di, result_ss

@@ -63,6 +63,7 @@ def single_validation(tar, tar_id, mode, ref=None, ref_id=None, enriched: bool =
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...')
         my_value_di, my_value_ss = comparator.compare()
+        print(my_value_di, my_value_ss)
         ru.print_current_usage('Validation of random runs ...')
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id)
         p_values_di = eu.calc_pvalue(test_value=my_value_di, value_df=pd.DataFrame(comp_values[0]))
