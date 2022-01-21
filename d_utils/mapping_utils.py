@@ -59,6 +59,10 @@ def combine_rowsets(x):
     return set().union(*x)
 
 
+def combine_rowsets_list(x):
+    return set().union(x)
+
+
 def string_to_set(x, sep: str = ';'):
     return set(filter(None, x.split(sep)))
 
