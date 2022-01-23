@@ -14,7 +14,6 @@ def precalc_distance_dicts(ids_cluster: pd.DataFrame, ids_mapping: pd.DataFrame,
     # map ids to cluster
     id_to_cluster = ids_cluster.set_index(0).to_dict()['cluster_index']
     # map att ids to ids
-    ids_mapping.to_csv("test.csv", index=False)
     att_id_to_id = ids_mapping.groupby(ids['att_id'])[[ids['id_type']]].agg(
         lambda g: mu.combine_rowsets_list(set(g.values))).to_dict()[ids['id_type']]
 
@@ -62,7 +61,7 @@ def calc_linkage(value_dict, size, linkage="average"):
         return None
 
 
-def silhouette_score(ids_cluster: pd.DataFrame, ids_mapping: pd.DataFrame, distances: dict, linkage="average"):
+def silhouette_score(ids_cluster: pd.DataFrame, distances: dict, linkage="average"):
     cluster_sizes = ids_cluster['cluster_index'].value_counts().to_dict()
     # map ids to cluster
     id_to_cluster = ids_cluster.set_index(0).to_dict()['cluster_index']

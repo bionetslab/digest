@@ -159,8 +159,7 @@ class ClusterComparator(Comparator):
                                                      ids={'id_type': c.ID_TYPE_KEY[self.id_type],
                                                           'sparse_key': self.sparse_key, 'att_id': self.att_id,
                                                           'attribute': c.DISTANCES[attribute]})
-            ss_score = sc.silhouette_score(ids_cluster=subset_clusters, ids_mapping=ids, distances=precalc_dist,
-                                           linkage="average")
+            ss_score = sc.silhouette_score(ids_cluster=subset_clusters, distances=precalc_dist, linkage="average")
             di_score = sc.dunn_index(ids_cluster=subset_clusters, distances=precalc_dist, linkage="average")
             result_di[attribute] = di_score
             result_ss[attribute] = ss_score[0]  # ss_score[1] all intermediate results
