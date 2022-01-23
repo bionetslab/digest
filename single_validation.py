@@ -7,6 +7,7 @@ from evaluation import comparator as comp
 import random
 from mappers.mapper import Mapper, FileMapper
 import json
+import time
 
 
 def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id: str = None, enriched: bool = False,
@@ -24,6 +25,7 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
     :param out_dir: output directory for results
     :param runs: number of random runs to create p-values [Default=1000]
     """
+    ru.start_time = time.time()
     # ===== Comparison with a set =====
     ru.print_current_usage('Starting validation ...')
     ru.print_current_usage('Load mappings for input into cache ...')
@@ -53,10 +55,10 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
             p_values = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=False)
         else:
             p_values = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values))
-        result = {'input_values': my_value, 'p_values:': p_values}
+        result = {'input_values': my_value, 'p_values': p_values}
 
     # ===== Special case cluster =====
-    elif args.mode == "cluster":
+    elif mode == "cluster":
         ru.print_current_usage('Load distances for input into cache ...')
         mapper.load_distances(set_type=tar_id)
         ru.print_current_usage('Load input data ...')
@@ -71,16 +73,16 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
         p_values_di = eu.calc_pvalue(test_value=my_value_di, random_values=pd.DataFrame(comp_values[0]))
         p_values_ss = eu.calc_pvalue(test_value=my_value_ss, random_values=pd.DataFrame(comp_values[1]))
         p_values = {'di': p_values_di, 'ss': p_values_ss}
-        result = {'input_values': {'di': my_value_di, 'ss': my_value_ss}, 'p_values:': p_values}
+        result = {'input_values': {'di': my_value_di, 'ss': my_value_ss}, 'p_values': p_values}
     else:
         result = {None}
 
     # ===== Saving final files and results =====
     ru.print_current_usage('Save files')
-    mapper.save_mappings()
-    mapper.save_distances()
+    #mapper.save_mappings()
+    #mapper.save_distances()
     ru.print_current_usage('Finished validation')
-    with open(out_dir+"digest_"+args.mode+"_result.json", "w") as outfile:
+    with open(out_dir+"digest_"+mode+"_result.json", "w") as outfile:
         json.dump(result, outfile)
 
 
