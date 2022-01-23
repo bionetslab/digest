@@ -1,23 +1,34 @@
 #!/usr/bin/python3
+
 import pandas as pd
-from mappers.mapper import Mapper
 from collections import defaultdict
 from d_utils import mapping_utils as mu
 
 
 def precalc_distance_dicts(ids_cluster: pd.DataFrame, ids_mapping: pd.DataFrame, distances: dict, index_to_id: dict,
                            ids: dict):
+    """
+    Precalculate intra and inter distances based on pairwise distances calculated beforehand.
+
+    :param ids_cluster: mapping of ids to corresponding cluster
+    :param ids_mapping: mapping of different id types to original id type
+    :param distances: all pairwise distances previously calculated
+    :param index_to_id: dictionary with mapping of distance matrix indices to ids
+    :param ids: dictionary with mapping of keys to mapping information in mapper
+    :return: 4 dictionaries consisting of entity intra, entity inter, overall intra and overall inter distances
+    """
+    # ===== create empty default dicts =====
     entity_intra = defaultdict(lambda: {'max': None, 'sum': 0, 'min': None})
     entity_inter = defaultdict(lambda: defaultdict(lambda: {'max': None, 'sum': 0, 'min': None}))
     intra = defaultdict(lambda: {'max': None, 'sum': 0, 'min': None})
     inter = defaultdict(lambda: defaultdict(lambda: {'max': None, 'sum': 0, 'min': None}))
-    # map ids to cluster
+    # ===== map ids to cluster =====
     id_to_cluster = ids_cluster.set_index(0).to_dict()['cluster_index']
-    # map att ids to ids
+    # ===== map att ids to ids =====
     att_id_to_id = ids_mapping.groupby(ids['att_id'])[[ids['id_type']]].agg(
         lambda g: mu.combine_rowsets_list(set(g.values))).to_dict()[ids['id_type']]
 
-    # method to add values
+    # ===== method to add values =====
     def add_value(destination, distance):
         if destination['max'] is None or destination['max'] < distance:
             destination['max'] = distance
@@ -26,7 +37,7 @@ def precalc_distance_dicts(ids_cluster: pd.DataFrame, ids_mapping: pd.DataFrame,
         destination['sum'] = destination['sum'] + distance
         return destination
 
-    # assign distances > 0.0  to dicts
+    # ===== assign distances > 0.0  to dicts =====
     for index1, index2 in distances:
         att_id1 = index_to_id[index1]
         att_id2 = index_to_id[index2]
@@ -50,7 +61,15 @@ def precalc_distance_dicts(ids_cluster: pd.DataFrame, ids_mapping: pd.DataFrame,
     return {'entity_intra': entity_intra, 'entity_inter': entity_inter, 'intra': intra, 'inter': inter}
 
 
-def calc_linkage(value_dict, size, linkage="average"):
+def calc_linkage(value_dict: dict, size: int, linkage="average"):
+    """
+    Calculate desired linkage based on precalculated values.
+
+    :param value_dict: dictionary with precalculated values
+    :param size: size of cluster
+    :param linkage: linkage to be calculated [Default="average"]
+    :return: linkage value
+    """
     if linkage == "average":
         return value_dict['sum'] / size
     if linkage == "complete":
@@ -62,18 +81,26 @@ def calc_linkage(value_dict, size, linkage="average"):
 
 
 def silhouette_score(ids_cluster: pd.DataFrame, distances: dict, linkage="average"):
+    """
+    Calculate the silhouette score for the given cluster.
+
+    :param ids_cluster: mapping of ids to corresponding cluster
+    :param distances: all pairwise distances previously calculated
+    :param linkage: linkage type for intra and inter distance [Default="average"]
+    :return: sillhouette score for the whole clustering and for each cluster separately
+    """
     cluster_sizes = ids_cluster['cluster_index'].value_counts().to_dict()
-    # map ids to cluster
+    # ===== map ids to cluster =====
     id_to_cluster = ids_cluster.set_index(0).to_dict()['cluster_index']
-    # ==== calculate score
+    # ===== calculate score =====
     s_score = 0
     intra_s_scores = dict()
     for entity in set(distances['entity_intra'].keys()).union(set(distances['entity_inter'].keys())):
         current_cluster = id_to_cluster[entity]
-        # calc intra distance
+        # ===== calc intra distance =====
         entity_intra = calc_linkage(value_dict=distances['entity_intra'][entity], size=cluster_sizes[current_cluster],
                                     linkage=linkage) if entity in distances['entity_intra'] else 0
-        # calc min inter distance
+        # ===== calc min inter distance =====
         min_entity_inter = None
         if entity in distances['entity_inter'] and len(distances['entity_inter'][entity]) < (len(cluster_sizes) - 1):
             for cluster in distances['entity_inter'][entity]:
@@ -88,11 +115,11 @@ def silhouette_score(ids_cluster: pd.DataFrame, distances: dict, linkage="averag
             score = ((min_entity_inter - entity_intra) / max(min_entity_inter, entity_intra))
         else:
             score = 0.0
-        # ==== save score for every cluster separately
+        # ===== save score for every cluster separately =====
         if current_cluster not in intra_s_scores:
             intra_s_scores[current_cluster] = 0
         intra_s_scores[current_cluster] += score
-        # ==== save for total score
+        # ===== save for total score =====
         s_score += score
     for cluster in cluster_sizes:
         if cluster in intra_s_scores:
@@ -102,23 +129,33 @@ def silhouette_score(ids_cluster: pd.DataFrame, distances: dict, linkage="averag
     return s_score / len(ids_cluster[0]), intra_s_scores
 
 
-def dunn_index(ids_cluster: pd.DataFrame, distances: dict, linkage="average"):
+def dunn_index(ids_cluster: pd.DataFrame, distances: dict, linkage="average") -> float:
+    """
+    Calculate the dunn index for the given cluster.
+
+    :param ids_cluster: mapping of ids to corresponding cluster
+    :param distances: all pairwise distances previously calculated
+    :param linkage: linkage type for intra and inter distance [Default="average"]
+    :return: dunn index score as float
+    """
     max_intra_dist = 0
     min_inter_dist = None
 
-    # count cluster size
+    # ===== count cluster size =====
     cluster_to_size = ids_cluster['cluster_index'].value_counts().to_dict()
     for cluster in cluster_to_size:
+        # ===== calc intra distance =====
         if cluster in distances['intra']:
             distance = calc_linkage(value_dict=distances['intra'][cluster], size=cluster_to_size[cluster],
                                     linkage=linkage)
             if max_intra_dist is None or max_intra_dist < distance:
                 max_intra_dist = distance
+        # ===== calc min inter distance =====
         if cluster in distances['inter']:
-            # distance to at least one cluster == 0 -> not in dict
+            # ===== distance to at least one cluster == 0 -> not in dict =====
             if len(distances['inter'][cluster]) < (len(cluster_to_size) - 1):
                 min_inter_dist = 0
-            # has distance to all other clusters > 0
+            # ===== has distance to all other clusters > 0 =====
             else:
                 for to_cluster in distances['inter'][cluster]:
                     distance = calc_linkage(value_dict=distances['inter'][cluster][to_cluster],

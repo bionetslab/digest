@@ -35,7 +35,6 @@ class SetComparator(Comparator):
     """
     Compare the set on itself based on connected attributes. See config for more info.
     """
-
     def compare(self, threshold: float = 0.0):
         result = dict()
         new_ids = self.mapper.update_distance_ids(in_series=self.mapper.loaded_mappings[self.att_key][self.att_id],

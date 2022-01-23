@@ -7,16 +7,17 @@ from biothings_client import get_client
 import gseapy
 
 
-def get_gene_mapping(gene_set, id_type, mapper: Mapper):
+def get_gene_mapping(gene_set: set, id_type: str, mapper: Mapper):
     """
-    Simple gene ID mapper using a local mapping file
+    Simple gene ID mapper using local mapping files generated during setup
     and the myGene.info database.
     Supported ID types:
     uniprot, ensembl, entrezgene, genesymbol
 
-    :param gene_set: Set of gene ids
-    :param id_type: Gene ID type of input gene set
-    :return: Dataframe
+    :param gene_set: set of gene ids
+    :param id_type: gene ID type of input gene set
+    :param mapper: mapper from type Mapper defining where the precalculated information comes from
+    :return: gene to id mapping as dataframe
     """
     # ===== Get mapping from previous mappings =====
     hit_mapping, missing_hits = mapper.get_loaded_mapping(in_set=gene_set, id_type=config.ID_TYPE_KEY[id_type], key='gene_ids')
@@ -40,22 +41,23 @@ def get_gene_mapping(gene_set, id_type, mapper: Mapper):
     return hit_mapping
 
 
-def get_gene_to_attributes(gene_set, id_type, mapper: Mapper):
+def get_gene_to_attributes(gene_set: set, id_type: str, mapper: Mapper):
     """
-    Simple attribute mapper using a local mapping file
+    Simple attribute mapper using local mapping files generated during setup
     and the myGene.info database.
     Mapped attributes:
     KEGG pathway, GO biological process, GO molecular function, GO cellular component
 
     :param gene_set: set of gene ids
     :param id_type: id type of set
-    :return: Dataframe
+    :param mapper: mapper from type Mapper defining where the precalculated information comes from
+    :return: gene to attribute mapping as dataframe
     """
     # ===== Get gene ID mappings =====
     gene_mapping = get_gene_mapping(gene_set=gene_set, id_type=id_type, mapper=mapper)
     hit_mapping, missing_hits = mapper.get_loaded_mapping(in_set=set(gene_mapping['entrezgene']), id_type='entrezgene',
                                                           key='gene_atts')
-    #print(missing_hits)
+    # ===== Get mapping for missing values =====
     if len(missing_hits) > 0:
         mg = get_client("gene")
         mapping = mg.querymany(missing_hits, scopes=','.join(config.GENE_IDS),
@@ -71,7 +73,7 @@ def get_gene_to_attributes(gene_set, id_type, mapper: Mapper):
         # ===== Add results from missing values =====
         mapper.update_mappings(in_df=mapping, key='gene_atts')
         hit_mapping = pd.concat([hit_mapping, mapping])
-    # work with not unique values...
+    # ===== work with not unique values =====
     columns = ['entrezgene', config.ID_TYPE_KEY[id_type]] if id_type != 'entrez' else ['entrezgene']
     mapping_subset = gene_mapping[columns].drop_duplicates()
     hit_mapping = pd.merge(mapping_subset, hit_mapping, on=['entrezgene'], how='outer')
@@ -81,7 +83,15 @@ def get_gene_to_attributes(gene_set, id_type, mapper: Mapper):
     return hit_mapping
 
 
-def get_enriched_attributes(gene_set, id_type, mapper: Mapper):
+def get_enriched_attributes(gene_set: set, id_type: str, mapper: Mapper):
+    """
+    Get enriched attribute values for given gene set.
+
+    :param gene_set: gene set to get enriched values for
+    :param id_type: id type of gene ids in set
+    :param mapper: mapper from type Mapper defining where the precalculated information comes from
+    :return: enriched attributes as dataframe
+    """
     gene_mapping = get_gene_mapping(gene_set=gene_set, id_type=id_type, mapper=mapper)
     enrich_df = gseapy.enrichr(
         gene_list=list(gene_mapping['symbol']),

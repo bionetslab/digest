@@ -10,7 +10,7 @@ import d_utils.config as c
 start_time = time.time()
 
 
-def save_parameters(script_desc, arguments):
+def save_parameters(script_desc: str, arguments):
     """
     Save command line options into local variables.
 
@@ -49,17 +49,22 @@ def save_parameters(script_desc, arguments):
     if 'n' in arguments:
         required_args.add_argument('-n', '--node_type', type=str, required=True,
                                    choices=c.SUPPORTED_GENE_IDS + c.SUPPORTED_DISEASE_IDS, metavar='NODE_TYPE',
-                                   help='ID type of nodes for network.\n(choose from entrez, ensembl, symbol, uniprot, mondo, omim, snomedct, umls, orpha, mesh, doid, ICD-10)')
+                                   help='ID type of nodes for network.\n(choose from entrez, ensembl, symbol, uniprot, '
+                                        'mondo, omim, snomedct, umls, orpha, mesh, doid, ICD-10)')
     if 'd' in arguments:
         required_args.add_argument('-d', '--distance_type', type=str, required=True,
                                    choices=list(c.DISTANCES.values()), metavar='EDGE_TYPE',
-                                   help='Distance type for edges.\n(choose from go_BP, go_CC, go_MF, pathway_kegg, related_genes, related_variants, related_pathways)')
+                                   help='Distance type for edges.\n(choose from go_BP, go_CC, go_MF, pathway_kegg, '
+                                        'related_genes, related_variants, related_pathways)')
     optional_args = parser.add_argument_group("optional arguments")
     if 'o' in arguments:
         optional_args.add_argument('-o', '--out_dir', type=str, default='./', help='Output directory. [Default=./]')
     if 'e' in arguments:
         optional_args.add_argument("-e", "--enriched", action='store_true', default=False,
                                    help="Set flag, if only enriched attributes of the reference should be used.")
+    if 'c' in arguments:
+        optional_args.add_argument("-c", "--runs", type=int, default=c.NUMBER_OF_RANDOM_RUNS,
+                                   help="Number of runs with random target values for p-value calculation.")
     optional_args.add_argument("-h", "--help", action="help", help="show this help message and exit")
     args = parser.parse_args()
     return args

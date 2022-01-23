@@ -8,14 +8,15 @@ from mapper import Mapper
 
 def get_disease_to_attributes(disease_set, id_type, mapper: Mapper):
     """
-    Simple attribute mapper using a local mapping file
-    and the myDisease.info database.
+    Attribute mapper using local mapping files generated during setup
+    and the myDisease.info database for missing values.
     Mapped attributes:
     DisGeNET related genes, DisGeNET related variants, ctd + kegg pathways
 
     :param disease_set: set of disease ids
     :param id_type: id type of set
-    :return:
+    :param mapper: mapper from type Mapper defining where the precalculated information comes from
+    :return: disease to attribute mapping as dataframe
     """
     # ==== Get Mondo IDs ====
     disorder_mapping, _ = mapper.get_loaded_mapping(in_set=disease_set, id_type=id_type, key='disorder_ids')
@@ -23,7 +24,7 @@ def get_disease_to_attributes(disease_set, id_type, mapper: Mapper):
     hit_mapping, missing_hits = mapper.get_loaded_mapping(in_set=set(disorder_mapping['mondo']), id_type='mondo',
                                                           key='disorder_atts')
     missing_hits = ['MONDO:' + x for x in missing_hits]
-    # ==== Get att for missing values ====
+    # ===== Get att for missing values =====
     if len(missing_hits) > 0:
         mapping = get_attributes_from_database(missing=missing_hits)
         mapping = mapping.fillna('').groupby(id_type, as_index=False).agg(
@@ -31,7 +32,7 @@ def get_disease_to_attributes(disease_set, id_type, mapper: Mapper):
         # ===== Add results from missing values =====
         mapper.update_mappings(in_df=mapping, key='disorder_atts')
         hit_mapping = pd.concat([hit_mapping, mapping]) if not hit_mapping.empty else mapping
-    # ==== Map back to previous ids ====
+    # ===== Map back to previous ids =====
     columns = ['mondo', id_type] if id_type != 'mondo' else ['mondo']
     mapping_subset = disorder_mapping[columns].drop_duplicates()
     hit_mapping = pd.merge(mapping_subset, hit_mapping, on=['mondo'], how='outer')
@@ -47,13 +48,13 @@ def get_attributes_from_database(missing: list, attributes: list = config.DISEAS
 
     :param missing: list of missing values that should be mapped
     :param attributes: attributes that should be mapped to the missing values
-    :return:
+    :return: retrieved mapping as dataframe
     """
     md = get_client("disease")
     mapping = md.getdiseases(missing, fields=','.join(attributes),
                              species='human', returnall=False, as_dataframe=True, df_index=False)
     mapping.rename(columns={'query': 'mondo'}, inplace=True)
-    # transform dataframe to combine single and multiple results
+    # ===== transform dataframe to combine single and multiple results =====
     for attribute in attributes:
         mapping = mu.preprocess_results(mapping=mapping, multicol=attribute,
                                         singlecol=attribute + '.' + config.DISEASE_ATTRIBUTES_KEY[attribute],

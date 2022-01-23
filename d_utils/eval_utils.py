@@ -9,14 +9,17 @@ import scipy.sparse as sp
 def get_distance_matrix(full_att_series: pd.Series, from_ids: pd.Series, id_to_index: dict, to_ids: pd.Series = None,
                         coefficient='jaccard') -> sp.coo_matrix:
     """
-    Calculating the distance of each element in from_ids to to_ids based on coefficient.
+    Calculating the distance of each element in from_ids to elements in to_ids, if provided, or each
+    element in from_ids based on coefficient.
 
     :param full_att_series: dataframe with 2 columns (id, attribute values)
     :param from_ids: dataframe with 2 columns (id, attribute values)
+    :param id_to_index: dict with mapping of id to index inside sparse matrix
     :param to_ids: dataframe with 2 columns (id, attribute values)
     :param coefficient: coefficient type for the distance. Possible: jaccard or overlap [Default="jaccard"]
     :return: distance sparse matrix
     """
+
     def get_distance(index1: int, index2: int):
         if coefficient == "jaccard":
             return jaccard_coefficient(tar_att_set=full_att_series[index1], ref_att_set=full_att_series[index2])
@@ -24,6 +27,7 @@ def get_distance_matrix(full_att_series: pd.Series, from_ids: pd.Series, id_to_i
             return overlap_coefficient(tar_att_set=full_att_series[index1], ref_att_set=full_att_series[index2])
 
     row, col, data = list(), list(), list()
+    # ===== from_ids against from_ids =====
     if to_ids is None:
         from_ids = from_ids.to_numpy()
         for id1_index in range(0, len(from_ids) - 1):
@@ -40,6 +44,7 @@ def get_distance_matrix(full_att_series: pd.Series, from_ids: pd.Series, id_to_i
                         col.append(id_to_index[from_ids[id1_index]])
                     data.append(calc_dis)
 
+    # ===== from_ids against to_ids =====
     else:
         for id1 in from_ids:
             for id2 in to_ids:
@@ -57,13 +62,14 @@ def get_distance_matrix(full_att_series: pd.Series, from_ids: pd.Series, id_to_i
                          shape=(len(full_att_series), len(full_att_series)))
 
 
-def create_ref_dict(mapping, keys: set, enriched=False):
+def create_ref_dict(mapping: pd.DataFrame, keys: set, enriched: bool = False):
     """
     Create reference dictionary with each attribute type as key
     and the union of all attribute values in the set.
 
     :param mapping: mapping of reference to attributes
     :param keys: attribute names
+    :param enriched: bool if set resulted from enrichment analysis or not
     :return: reference dictionary with unified values
     """
     reference_dict = dict()
@@ -79,7 +85,7 @@ def create_ref_dict(mapping, keys: set, enriched=False):
     return reference_dict
 
 
-def overlap_coefficient(tar_att_set, ref_att_set):
+def overlap_coefficient(tar_att_set: set, ref_att_set: set):
     """
     Calculate overlap coefficient by dividing the length of overlapping elements
     of two sets by the minimum length of the two sets.
@@ -96,7 +102,7 @@ def overlap_coefficient(tar_att_set, ref_att_set):
     return intersection / min(len(tar_att_set), len(ref_att_set))
 
 
-def jaccard_coefficient(tar_att_set, ref_att_set):
+def jaccard_coefficient(tar_att_set: set, ref_att_set: set):
     """
     Calculate jaccard coefficient by dividing the length of overlapping elements
     of two sets by the combined length of the two sets.
@@ -113,7 +119,7 @@ def jaccard_coefficient(tar_att_set, ref_att_set):
     return intersection / len(tar_att_set.union(ref_att_set))
 
 
-def evaluate_values(mapping, ref_dict, threshold, keys, coefficient="jaccard"):
+def evaluate_values(mapping: pd.DataFrame, ref_dict: dict, threshold: float, keys, coefficient: str = "jaccard"):
     """
     Evaluate mapped attribute values of target set with the unified
     attribute values of the reference based on a threshold.
@@ -135,9 +141,18 @@ def evaluate_values(mapping, ref_dict, threshold, keys, coefficient="jaccard"):
     return evaluation
 
 
-def calc_pvalue(test_value, value_df, maximize=True):
+def calc_pvalue(test_value: dict, random_values: pd.DataFrame, maximize=True):
+    """
+    Calculate pvalue based on the values of the original input and the values of random runs.
+
+    :param test_value: values from the original input as dict with attributes as key
+    :param random_values: values from random runs as dataframe and attributes as columns
+    :param maximize: bool if the goal is to have a high test value or low test value [Default=True]
+    :return: pvalue
+    """
     pvalue = dict()
     for keys in test_value:
-        pvalue[keys] = (1 + sum(value_df[keys] <= test_value[keys])) / (len(value_df.index) + 1) if maximize else \
-            (1 + sum(value_df[keys] >= test_value[keys])) / (len(value_df.index) + 1)
+        pvalue[keys] = (1 + sum(random_values[keys] <= test_value[keys])) / (
+                    len(random_values.index) + 1) if maximize else (1 + sum(
+            random_values[keys] >= test_value[keys])) / (len(random_values.index) + 1)
     return pvalue

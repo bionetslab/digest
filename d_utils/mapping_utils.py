@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 
-def preprocess_results(mapping, multicol, singlecol, key, explode=False):
+def preprocess_results(mapping: pd.DataFrame, multicol: str, singlecol: str, key: str, explode=False):
     """
     Depending on the input id the mapping can map either one value of an attribute
     or multiple values resulting in two columns for an attribute. If a mapping
@@ -34,7 +34,7 @@ def preprocess_results(mapping, multicol, singlecol, key, explode=False):
     return mapping
 
 
-def split_and_expand_column(data, split_string, column_name):
+def split_and_expand_column(data: pd.DataFrame, split_string: str, column_name: str):
     """
     Split column value in data by split_string and expand the dataframe
     to have a separate row for each value in split set.
@@ -51,27 +51,36 @@ def split_and_expand_column(data, split_string, column_name):
     return df2
 
 
-def combine_rows(x):
+def combine_rows(x: str):
     return set(filter(None, ';'.join(x).split(';')))
 
 
-def combine_rowsets(x):
+def combine_rowsets(x: list):
     return set().union(*x)
 
 
-def combine_rowsets_list(x):
+def combine_rowsets_list(x: set):
     return set().union(x)
 
 
-def string_to_set(x, sep: str = ';'):
+def string_to_set(x: str, sep: str = ';'):
     return set(filter(None, x.split(sep)))
 
 
-def set_to_string(x, sep: str = ';'):
+def set_to_string(x: set, sep: str = ';'):
     return sep.join(x)
 
 
-def transform_disgenet_mapping(mapping: pd.DataFrame, file, col_old, col_new):
+def transform_disgenet_mapping(mapping: pd.DataFrame, file: str, col_old, col_new):
+    """
+    Transform mapping from disgenet database to create one combined dataframe of attributes to mondo id.
+
+    :param mapping:
+    :param file: path to file with disease mapping from disgenet
+    :param col_old: attribute column name in raw disgenet file
+    :param col_new: desired new column name for col_old
+    :return: combined dataframe
+    """
     disease_mapping = pd.read_csv(file, compression='gzip', sep='\t', dtype=str)
     df = pd.merge(mapping[['diseaseId', 'mondo']], disease_mapping[['diseaseId', col_old]],
                   on="diseaseId", how="left")

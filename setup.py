@@ -7,35 +7,40 @@ from mappers.mapper import Mapper, FileMapper
 
 
 def load_files(mapper: Mapper):
+    """
+    Run setup to generate all files from scratch and gather data from databases.
+
+    :param mapper: object of type Mapper defining where and how to save the generated data
+    """
     ru.print_current_usage('Starting Setup ...')
 
-    # ---- Load disorder ids ----
+    # ===== Load disorder ids =====
     ru.print_current_usage('Load NeDrEx disorder ids ...')
     disorder_ids = pd.read_csv(c.NEDREX_DISORDER_IDS, sep="\t")
     icd10_ids = pd.read_csv(c.NEDREX_ICD10_IDS, sep="\t")
 
-    # ---- Transform disease mapping ----
+    # ===== Transform disease mapping =====
     ru.print_current_usage('Transform loaded mappings ...')
     disease_mapping = mt.transform_id_mapping(disorder_ids.merge(icd10_ids, on='primaryDomainId', how='outer'))
 
-    # ---- Save disease mapping ----
+    # ===== Save disease mapping =====
     mapper.update_mappings(in_df=disease_mapping, key='disorder_ids')
 
-    # ---- Load gene ids ----
+    # ===== Load gene ids =====
     ru.print_current_usage('Load NeDrEx gene ids ...')
     gene_ids = pd.read_csv(c.NEDREX_GENE_IDS, sep="\t")
 
-    # ---- Transform gene mapping ----
+    # ===== Transform gene mapping =====
     ru.print_current_usage('Transform loaded mappings ...')
     gene_ids = gene_ids.rename(columns={'primaryDomainId': "entrez"})
     gene_ids.entrez = gene_ids.entrez.str.replace(r'entrez.', '', regex=True)
 
-    # ---- Get attributes ----
+    # ===== Get attributes =====
     ru.print_current_usage('Get gene attributes ...')
     gene_att_mapping = gm.get_gene_to_attributes(gene_set=gene_ids.entrez, id_type="entrez", mapper=mapper)
 
     ru.print_current_usage('Get disease attributes ...')
-    # ---- Get DisGeNet attributes ----
+    # ===== Get DisGeNet attributes =====
     disgenet_mapping = pd.read_csv(c.DISGENET_DIS_MAP, compression='gzip', sep='\t', dtype=str)
     disgenet_mapping = disgenet_mapping[disgenet_mapping['vocabulary'] == 'MONDO'][['diseaseId', 'code']]
     disgenet_mapping = disgenet_mapping.rename(columns={'code': 'mondo'})
@@ -48,7 +53,7 @@ def load_files(mapper: Mapper):
                                    gene_mapping[['mondo', 'disgenet.genes_related_to_disease']],
                                    on="mondo", how="outer")
 
-    # ---- Get KEGG attributes ----
+    # ===== Get KEGG attributes =====
     omim_to_hsa = pd.read_csv(c.KEGG_OMIM_TO_HSA, names=['hsa', 'omim', 'dir'], sep="\t", dtype=str)
     hsa_to_pathway = pd.read_csv(c.KEGG_HSA_TO_PATH, names=['hsa', 'pathway'], sep="\t", dtype=str)
     omim_to_pathway = pd.merge(omim_to_hsa[['hsa', 'omim']], hsa_to_pathway[['hsa', 'pathway']], on="hsa", how="inner")
@@ -66,7 +71,7 @@ def load_files(mapper: Mapper):
     disease_att_mapping = pd.merge(disease_att_mapping, mapping[['mondo', 'ctd.pathway_related_to_disease']],
                                    on="mondo", how="left")
 
-    # ---- Save mapping ----
+    # ===== Save mapping =====
     mapper.update_mappings(in_df=disease_att_mapping, key='disorder_atts')
     disease_att_mapping = dm.get_disease_to_attributes(disease_set=disease_mapping.mondo, id_type="mondo",
                                                        mapper=mapper)
@@ -74,7 +79,7 @@ def load_files(mapper: Mapper):
     mapper.save_mappings()
     mapper.drop_mappings()
 
-    # ---- Calculate pairwise comparisons ----
+    # ===== Calculate pairwise comparisons =====
     ru.print_current_usage('Precalculate pairwise distances ...')
 
     ru.print_current_usage('Precalculate pairwise distances for genes ...')
@@ -99,7 +104,7 @@ def load_files(mapper: Mapper):
 
     mapper.save_distances()
 
-    # ---- Get PPI network ----
+    # ===== Get PPI network =====
     # ru.print_current_usage('Get PPI network ...')
 
     ru.print_current_usage('Finished Setup ...')

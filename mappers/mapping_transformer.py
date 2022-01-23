@@ -1,14 +1,18 @@
 #!/usr/bin/python3
-import sys
 
 import pandas as pd
-import numpy as np
 import re
 import ast
 from d_utils import config
 
 
 def transform_id_mapping(data):
+    """
+    Transform the disease mapping retrieved from nedrex.
+
+    :param data: dataframe with nedrex disorder mapping merged with icd10 mapping
+    :return: transformed disease mapping as dataframe
+    """
     transformed_list = list()
     for idx, row in data.iterrows():
         current_dict = {entry.split('.')[0]: entry.split('.')[1]for entry in ast.literal_eval(row[1])}
@@ -22,7 +26,13 @@ def transform_id_mapping(data):
     return pd.DataFrame(transformed_list, columns=config.SUPPORTED_DISEASE_IDS)
 
 
-def transform_icd10_mapping(ids_set):
+def transform_icd10_mapping(ids_set: str):
+    """
+    Transform mapped icd10 ids provided by nedrex.
+
+    :param ids_set: cell with icd10 ids
+    :return: string with transformed ids separated with ","
+    """
     trans_ids = set()
     for cur_id in ids_set:
         if "-" in cur_id:
