@@ -62,7 +62,7 @@ def load_files(mapper: Mapper):
     omim_to_pathway = pd.merge(disease_mapping[['mondo', 'omim']], omim_to_pathway[['omim', 'pathway']], on="omim",
                                how="inner")
     omim_to_pathway = omim_to_pathway[['mondo', 'pathway']].fillna('').groupby(['mondo'], as_index=False).agg(
-        mu.combine_rows)
+        mu.combine_rows_to_set)
     omim_to_pathway.rename(columns={'pathway': 'ctd.pathway_related_to_disease'}, inplace=True)
     mapping = dm.get_attributes_from_database(
         missing=['MONDO:' + x for x in set(disease_att_mapping.mondo) - set(omim_to_pathway.mondo)],
@@ -79,30 +79,30 @@ def load_files(mapper: Mapper):
     mapper.save_mappings()
     mapper.drop_mappings()
 
-    # ===== Calculate pairwise comparisons =====
-    ru.print_current_usage('Precalculate pairwise distances ...')
-
-    ru.print_current_usage('Precalculate pairwise distances for genes ...')
-    mapper.update_distance_ids(in_series=gene_att_mapping[c.ID_TYPE_KEY['entrez']], key='gene_mat_ids')
-    for attribute in gene_att_mapping.columns[1:]:
-        ru.print_current_usage('Precalculate pairwise distances for ' + attribute)
-        subset_df = gene_att_mapping[gene_att_mapping[attribute].str.len() > 0]
-        comp_mat = eu.get_distance_matrix(full_att_series=gene_att_mapping[attribute],
-                                          from_ids=subset_df[c.ID_TYPE_KEY['entrez']],
-                                          id_to_index=mapper.loaded_distance_ids['gene_mat_ids'])
-        mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type='gene_mat_ids')
-
-    ru.print_current_usage('Precalculate pairwise distances for diseases ...')
-    mapper.update_distance_ids(in_series=disease_att_mapping['mondo'], key='disease_mat_ids')
-    for attribute in disease_att_mapping.columns[1:]:
-        ru.print_current_usage('Precalculate pairwise distances for ' + attribute)
-        subset_df = disease_att_mapping[disease_att_mapping[attribute].str.len() > 0]
-        comp_mat = eu.get_distance_matrix(full_att_series=disease_att_mapping[attribute],
-                                          from_ids=subset_df['mondo'],
-                                          id_to_index=mapper.loaded_distance_ids['disease_mat_ids'])
-        mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type='disease_mat_ids')
-
-    mapper.save_distances()
+    # # ===== Calculate pairwise comparisons =====
+    # ru.print_current_usage('Precalculate pairwise distances ...')
+    #
+    # ru.print_current_usage('Precalculate pairwise distances for genes ...')
+    # mapper.update_distance_ids(in_series=gene_att_mapping[c.ID_TYPE_KEY['entrez']], key='gene_mat_ids')
+    # for attribute in gene_att_mapping.columns[1:]:
+    #     ru.print_current_usage('Precalculate pairwise distances for ' + attribute)
+    #     subset_df = gene_att_mapping[gene_att_mapping[attribute].str.len() > 0]
+    #     comp_mat = eu.get_distance_matrix(full_att_series=gene_att_mapping[attribute],
+    #                                       from_ids=subset_df[c.ID_TYPE_KEY['entrez']],
+    #                                       id_to_index=mapper.loaded_distance_ids['gene_mat_ids'])
+    #     mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type='gene_mat_ids')
+    #
+    # ru.print_current_usage('Precalculate pairwise distances for diseases ...')
+    # mapper.update_distance_ids(in_series=disease_att_mapping['mondo'], key='disease_mat_ids')
+    # for attribute in disease_att_mapping.columns[1:]:
+    #     ru.print_current_usage('Precalculate pairwise distances for ' + attribute)
+    #     subset_df = disease_att_mapping[disease_att_mapping[attribute].str.len() > 0]
+    #     comp_mat = eu.get_distance_matrix(full_att_series=disease_att_mapping[attribute],
+    #                                       from_ids=subset_df['mondo'],
+    #                                       id_to_index=mapper.loaded_distance_ids['disease_mat_ids'])
+    #     mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type='disease_mat_ids')
+    #
+    # mapper.save_distances()
 
     # ===== Get PPI network =====
     # ru.print_current_usage('Get PPI network ...')
@@ -113,5 +113,5 @@ def load_files(mapper: Mapper):
 if __name__ == "__main__":
     os.system("mkdir -p "+c.FILES_DIR+"tmp/")
     load_files(mapper=FileMapper(files_dir=c.FILES_DIR+"tmp/"))
-    os.system("mv -f " + c.FILES_DIR + "tmp/* "+c.FILES_DIR)
-    os.system("rm -rf "+c.FILES_DIR + "tmp/ ")
+    # os.system("mv -f " + c.FILES_DIR + "tmp/* "+c.FILES_DIR)
+    # os.system("rm -rf "+c.FILES_DIR + "tmp/ ")

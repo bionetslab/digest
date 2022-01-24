@@ -30,11 +30,11 @@ def get_gene_mapping(gene_set: set, id_type: str, mapper: Mapper):
         mapping.rename(columns={'query': config.ID_TYPE_KEY[id_type]}, inplace=True)
         # ===== Split if there are multiple ensembl ids =====
         if 'ensembl' in mapping:
-            mapping = mu.preprocess_results(mapping=mapping, multicol='ensembl', singlecol='ensembl.gene', key='gene',
-                                            explode=True)
+            mapping = mu.preprocess_results(mapping=mapping, multicol='ensembl', singlecol='ensembl.gene', key='gene')
+        mapping['uniprot.Swiss-Prot'] = mapping['uniprot.Swiss-Prot'].fillna("").apply(mu.list_to_string)
         drop_cols = ['_id', '_score', 'notfound'] if 'notfound' in mapping.columns else ['_id', '_score']
         mapping = mapping.drop(columns=drop_cols)
-        mapping.dropna(subset=config.GENE_IDS[2:], inplace=True)
+        mapping = mapping.fillna('')
         # ===== Add results from missing values =====
         mapper.update_mappings(in_df=mapping, key='gene_ids')
         hit_mapping = pd.concat([hit_mapping, mapping])
@@ -68,8 +68,9 @@ def get_gene_to_attributes(gene_set: set, id_type: str, mapper: Mapper):
             mapping = mu.preprocess_results(mapping=mapping, multicol=attribute,
                                             singlecol=attribute + '.' + config.GENE_ATTRIBUTES_KEY[attribute],
                                             key=config.GENE_ATTRIBUTES_KEY[attribute])
-        mapping = mapping.drop(columns=['_id', '_score'])
-        mapping[mapping.columns[1:]] = mapping[mapping.columns[1:]].fillna('').applymap(mu.string_to_set)
+        drop_cols = ['_id', '_score', 'notfound'] if 'notfound' in mapping.columns else ['_id', '_score']
+        mapping = mapping.drop(columns=drop_cols)
+        mapping[mapping.columns[1:]] = mapping[mapping.columns[1:]].fillna('').applymap(mu.combine_rows_to_set)
         # ===== Add results from missing values =====
         mapper.update_mappings(in_df=mapping, key='gene_atts')
         hit_mapping = pd.concat([hit_mapping, mapping])
@@ -79,7 +80,7 @@ def get_gene_to_attributes(gene_set: set, id_type: str, mapper: Mapper):
     hit_mapping = pd.merge(mapping_subset, hit_mapping, on=['entrezgene'], how='outer')
     hit_mapping = hit_mapping.drop(columns=['entrezgene']) if id_type != 'entrez' else hit_mapping
     hit_mapping = hit_mapping.fillna('').groupby([config.ID_TYPE_KEY[id_type]], as_index=False).agg(
-        {x: mu.combine_rowsets for x in config.GENE_ATTRIBUTES_KEY})
+        {x: mu.combine_rows_to_set for x in config.GENE_ATTRIBUTES_KEY})
     return hit_mapping
 
 

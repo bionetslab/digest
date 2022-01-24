@@ -10,7 +10,8 @@ import json
 
 
 def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id: str = None, enriched: bool = False,
-                      mapper: Mapper = FileMapper(), out_dir: str = "", runs: int = config.NUMBER_OF_RANDOM_RUNS):
+                      mapper: Mapper = FileMapper(), out_dir: str = "", runs: int = config.NUMBER_OF_RANDOM_RUNS,
+                      verbose: bool = False):
     """
     Single validation of a set, cluster a id versus set and set versus set.
 
@@ -23,6 +24,7 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
     :param mapper: mapper from type Mapper defining where the precalculated information comes from
     :param out_dir: output directory for results
     :param runs: number of random runs to create p-values [Default=1000]
+    :param verbose: bool if additional info like ids without assigned attributes should be printed
     """
     # ===== Comparison with a set =====
     ru.print_current_usage('Starting validation ...')
@@ -31,13 +33,13 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
 
     if mode in ["set", "set-set", "id-set"]:
         if mode == "set-set":
-            comparator = comp.SetSetComparator(mapper=mapper, enriched=enriched)
+            comparator = comp.SetSetComparator(mapper=mapper, enriched=enriched, verbose=verbose)
             comparator.load_reference(ref=pd.read_csv(ref, header=None, sep="\t")[0], ref_id_type=ref_id)
         elif mode == "id-set":
-            comparator = comp.IDSetComparator(mapper=mapper)
+            comparator = comp.IDSetComparator(mapper=mapper, verbose=verbose)
             comparator.load_reference(ref=ref, ref_id_type=ref_id)
         else:  # mode == "set"
-            comparator = comp.SetComparator(mapper=mapper)
+            comparator = comp.SetComparator(mapper=mapper, verbose=verbose)
             ru.print_current_usage('Load distances for input into cache ...')
             mapper.load_distances(set_type=tar_id)
         comparator.load_target(id_set=pd.read_csv(tar, header=None, sep="\t")[0], id_type=tar_id)
@@ -60,7 +62,7 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
         ru.print_current_usage('Load distances for input into cache ...')
         mapper.load_distances(set_type=tar_id)
         ru.print_current_usage('Load input data ...')
-        comparator = comp.ClusterComparator(mapper=mapper)
+        comparator = comp.ClusterComparator(mapper=mapper, verbose=verbose)
         comparator.load_target(id_set=pd.read_csv(tar, header=None, sep="\t"), id_type=tar_id)
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...')
@@ -125,7 +127,7 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
 
 if __name__ == "__main__":
     desc = "            Evaluation of disease and gene sets and clusters."
-    args = ru.save_parameters(script_desc=desc, arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c'))
+    args = ru.save_parameters(script_desc=desc, arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v'))
     single_validation(tar=args.target, tar_id=args.target_id_type,
                       mode=args.mode, ref=args.reference, ref_id=args.reference_id_type,
                       enriched=args.enriched, out_dir=args.out_dir, runs=args.runs)

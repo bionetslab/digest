@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 
-def preprocess_results(mapping: pd.DataFrame, multicol: str, singlecol: str, key: str, explode=False):
+def preprocess_results(mapping: pd.DataFrame, multicol: str, singlecol: str, key: str):
     """
     Depending on the input id the mapping can map either one value of an attribute
     or multiple values resulting in two columns for an attribute. If a mapping
@@ -14,7 +14,6 @@ def preprocess_results(mapping: pd.DataFrame, multicol: str, singlecol: str, key
     :param multicol: name of the column with multiple mapped values
     :param singlecol: name of the column with single mapped values
     :param key: key of the dict in the multiple mapped values
-    :param explode: (optional) can expand dataframe by giving each value a separate row
     :return: transformed dataframe
     """
 
@@ -28,9 +27,6 @@ def preprocess_results(mapping: pd.DataFrame, multicol: str, singlecol: str, key
     if singlecol in mapping:
         mapping[multicol].fillna(mapping[singlecol], inplace=True)
         mapping = mapping.drop(columns=[singlecol])
-    if explode:
-        mapping[multicol] = mapping[multicol].str.split(';').explode(multicol)
-        mapping.rename(columns={multicol: singlecol}, inplace=True)
     return mapping
 
 
@@ -51,15 +47,35 @@ def split_and_expand_column(data: pd.DataFrame, split_string: str, column_name: 
     return df2
 
 
-def combine_rows(x: str):
-    return set(filter(None, ';'.join(x).split(';')))
+def combine_rows_to_set(x):
+    if isinstance(x, list):
+        return combine_rowsets_list(x)
+    elif isinstance(x, set):
+        return combine_rowsets_set(x)
+    elif isinstance(x, str):
+        return string_to_set(x, sep=";")
+    return None
 
 
-def combine_rowsets(x: list):
+def combine_rows_to_string(x):
+    if isinstance(x, list):
+        return list_to_string(x)
+    elif isinstance(x, set):
+        return set_to_string(x)
+    elif isinstance(x, str):
+        return ';'.join(x).split(';')
+    return None
+
+
+def combine_rowsets_list(x: list):
     return set().union(*x)
 
 
-def combine_rowsets_list(x: set):
+def combine_rowsets_series(x: pd.Series):
+    return set(filter(None, ';'.join(x).split(';')))
+
+
+def combine_rowsets_set(x: set):
     return set().union(x)
 
 
@@ -69,6 +85,13 @@ def string_to_set(x: str, sep: str = ';'):
 
 def set_to_string(x: set, sep: str = ';'):
     return sep.join(x)
+
+
+def list_to_string(x, sep: str = ';'):
+    if isinstance(x, list):
+        return sep.join(x)
+    else:
+        return x
 
 
 def transform_disgenet_mapping(mapping: pd.DataFrame, file: str, col_old, col_new):
@@ -86,5 +109,5 @@ def transform_disgenet_mapping(mapping: pd.DataFrame, file: str, col_old, col_ne
                   on="diseaseId", how="left")
     df = df.rename(columns={col_old: col_new})
     df[col_new] = df[col_new].str.strip()
-    df = df[['mondo', col_new]].fillna('').groupby(['mondo'], as_index=False).agg(combine_rows)
+    df = df[['mondo', col_new]].fillna('').groupby(['mondo'], as_index=False).agg(combine_rowsets_series)
     return df

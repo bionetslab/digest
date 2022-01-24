@@ -65,6 +65,10 @@ def save_parameters(script_desc: str, arguments):
     if 'c' in arguments:
         optional_args.add_argument("-c", "--runs", type=int, default=c.NUMBER_OF_RANDOM_RUNS,
                                    help="Number of runs with random target values for p-value calculation.")
+    if 'v' in arguments:
+        optional_args.add_argument("-v", "--verbose", action='store_true', default=False,
+                                   help="Set flag, if additional info like ids without assigned attributes should "
+                                        "be printed.")
     optional_args.add_argument("-h", "--help", action="help", help="show this help message and exit")
     args = parser.parse_args()
     return args
