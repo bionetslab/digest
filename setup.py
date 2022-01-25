@@ -79,33 +79,33 @@ def load_files(mapper: Mapper):
     mapper.save_mappings()
     mapper.drop_mappings()
 
-    # # ===== Calculate pairwise comparisons =====
-    # ru.print_current_usage('Precalculate pairwise distances ...')
-    #
-    # ru.print_current_usage('Precalculate pairwise distances for genes ...')
-    # mapper.update_distance_ids(in_series=gene_att_mapping[c.ID_TYPE_KEY['entrez']], key='gene_mat_ids')
-    # for attribute in gene_att_mapping.columns[1:]:
-    #     ru.print_current_usage('Precalculate pairwise distances for ' + attribute)
-    #     subset_df = gene_att_mapping[gene_att_mapping[attribute].str.len() > 0]
-    #     comp_mat = eu.get_distance_matrix(full_att_series=gene_att_mapping[attribute],
-    #                                       from_ids=subset_df[c.ID_TYPE_KEY['entrez']],
-    #                                       id_to_index=mapper.loaded_distance_ids['gene_mat_ids'])
-    #     mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type='gene_mat_ids')
-    #
-    # ru.print_current_usage('Precalculate pairwise distances for diseases ...')
-    # mapper.update_distance_ids(in_series=disease_att_mapping['mondo'], key='disease_mat_ids')
-    # for attribute in disease_att_mapping.columns[1:]:
-    #     ru.print_current_usage('Precalculate pairwise distances for ' + attribute)
-    #     subset_df = disease_att_mapping[disease_att_mapping[attribute].str.len() > 0]
-    #     comp_mat = eu.get_distance_matrix(full_att_series=disease_att_mapping[attribute],
-    #                                       from_ids=subset_df['mondo'],
-    #                                       id_to_index=mapper.loaded_distance_ids['disease_mat_ids'])
-    #     mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type='disease_mat_ids')
-    #
-    # mapper.save_distances()
+    # ===== Calculate pairwise comparisons =====
+    ru.print_current_usage('Precalculate pairwise distances ...')
 
-    # ===== Get PPI network =====
-    # ru.print_current_usage('Get PPI network ...')
+    ru.print_current_usage('Precalculate pairwise distances for genes ...')
+    mapper.update_distance_ids(in_series=gene_att_mapping[c.ID_TYPE_KEY['entrez']], key='gene_mat_ids')
+    for attribute in gene_att_mapping.columns[1:]:
+        ru.print_current_usage('Precalculate pairwise distances for ' + attribute)
+        subset_df = gene_att_mapping[gene_att_mapping[attribute].str.len() > 0]
+        comp_mat = eu.get_distance_matrix(full_att_series=gene_att_mapping[attribute],
+                                          from_ids=subset_df[c.ID_TYPE_KEY['entrez']],
+                                          id_to_index=mapper.loaded_distance_ids['gene_mat_ids'])
+        mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type='gene_mat_ids')
+
+    ru.print_current_usage('Precalculate pairwise distances for diseases ...')
+    mapper.update_distance_ids(in_series=disease_att_mapping['mondo'], key='disease_mat_ids')
+    for attribute in disease_att_mapping.columns[1:]:
+        ru.print_current_usage('Precalculate pairwise distances for ' + attribute)
+        subset_df = disease_att_mapping[disease_att_mapping[attribute].str.len() > 0]
+        comp_mat = eu.get_distance_matrix(full_att_series=disease_att_mapping[attribute],
+                                          from_ids=subset_df['mondo'],
+                                          id_to_index=mapper.loaded_distance_ids['disease_mat_ids'])
+        mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type='disease_mat_ids')
+
+    mapper.save_distances()
+
+    # ===== Get GGI network =====
+    #ru.print_current_usage('Get GGI network ...')
 
     ru.print_current_usage('Finished Setup ...')
 

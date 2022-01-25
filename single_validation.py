@@ -81,10 +81,10 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
 
     # ===== Saving final files and results =====
     ru.print_current_usage('Save files')
-    #mapper.save_mappings()
-    #mapper.save_distances()
+    # mapper.save_mappings()
+    # mapper.save_distances()
     ru.print_current_usage('Finished validation')
-    with open(out_dir+"digest_"+mode+"_result.json", "w") as outfile:
+    with open(out_dir + "digest_" + mode + "_result.json", "w") as outfile:
         json.dump(result, outfile)
 
 
@@ -104,14 +104,18 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
     results = list()
     if not mode == "cluster":
         if tar_id in config.SUPPORTED_DISEASE_IDS:
-            full_id_list = mapper.get_full_set(id_type=tar_id, mapping_name='disorder_ids')
+            full_id_map = mapper.get_full_set(id_type=tar_id, mapping_name='disorder_ids')
+            new_id_type="mondo"
         else:  # if tar_id in config.SUPPORTED_GENE_IDS:
-            full_id_list = mapper.get_full_set(id_type=config.ID_TYPE_KEY[tar_id], mapping_name='gene_ids')
-        # ===== Remove empty values =====
-        full_id_list = list(filter(None, full_id_list))
+            full_id_map = mapper.get_full_set(id_type=config.ID_TYPE_KEY[tar_id], mapping_name='gene_ids')
+            new_id_type = "entrez"
         # ===== Calculate values =====
+        full_id_list = list(set(full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]]!=""][config.ID_TYPE_KEY[tar_id]]))
+        size = len(comparator.id_set)
         for run in range(0, runs):
-            comparator.load_target(id_set=random.sample(full_id_list, len(comparator.id_set)), id_type=tar_id)
+            sample = random.sample(full_id_list, size)
+            id_set = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(sample)][comparator.att_id]
+            comparator.load_target(id_set=set(id_set), id_type=new_id_type)
             results.append(comparator.compare())
 
     # ===== Special case cluster =====

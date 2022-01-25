@@ -33,7 +33,10 @@ class Mapper:
 
     def get_loaded_mapping(self, in_set, id_type: str, key: str):
         if not self.loaded_mappings[key].empty:
-            hit_mapping = self.loaded_mappings[key].loc[self.loaded_mappings[key][id_type].isin(in_set)]
+            current_mapping = self.loaded_mappings[key]
+            if id_type not in ['entrezgene', 'mondo']:
+                current_mapping = current_mapping.explode(id_type)
+            hit_mapping = current_mapping.loc[current_mapping[id_type].isin(in_set)]
             if not hit_mapping.empty:
                 return hit_mapping, set(in_set) - set(hit_mapping[id_type])
         return pd.DataFrame(), in_set
@@ -47,12 +50,11 @@ class Mapper:
 
     def get_loaded_mapping_ids(self, in_ids, id_type: str) -> pd.DataFrame:
         if id_type in config.SUPPORTED_GENE_IDS:
-            return \
-                self.loaded_mappings['gene_ids'][
-                    self.loaded_mappings['gene_ids'][config.ID_TYPE_KEY[id_type]].isin(in_ids)]
+            mapping, _ = self.get_loaded_mapping(in_set=in_ids, id_type=config.ID_TYPE_KEY[id_type], key="gene_ids")
+            return mapping
         else:  # if set_type in config.SUPPORTED_DISEASE_IDS
-            return \
-                self.loaded_mappings['disorder_ids'][self.loaded_mappings['disorder_ids'][id_type].isin(in_ids)]
+            mapping, _ = self.get_loaded_mapping(in_set=in_ids, id_type=config.ID_TYPE_KEY[id_type], key="disorder_ids")
+            return mapping
 
     def update_distance_ids(self, in_series: pd.Series, key: str) -> pd.Series:
         self.changed_mappings.add(key)
@@ -69,7 +71,8 @@ class Mapper:
                 self.loaded_distance_ids[key][value] = index
             return in_series
 
-    def get_loaded_distances(self, in_series: pd.Series, id_type: str, key: str, to_series: pd.Series = None) -> sp.csr_matrix:
+    def get_loaded_distances(self, in_series: pd.Series, id_type: str, key: str,
+                             to_series: pd.Series = None) -> sp.csr_matrix:
         if self.loaded_distance_ids[id_type]:  # is not empty
             indices = list()
             for element in in_series:
@@ -96,8 +99,11 @@ class Mapper:
         else:
             self.loaded_distances[key] = in_mat.tocsr()
 
-    def get_full_set(self, id_type: str, mapping_name: str) -> set:
-        return set(self.loaded_mappings[mapping_name][id_type])
+    def get_full_set(self, id_type: str, mapping_name: str) -> pd.DataFrame:
+        current_mapping = self.loaded_mappings[mapping_name]
+        if id_type not in ['entrezgene', 'mondo']:
+            current_mapping = current_mapping.explode(id_type).fillna("")
+        return current_mapping
 
     @abstractmethod
     def save_mappings(self):
@@ -135,9 +141,9 @@ class FileMapper(Mapper):
         self.files_dir = files_dir
 
     def load_mappings(self):
-        for mapping_key in ['gene_ids', 'disorder_ids']:
-            self.load_file(key=mapping_key, in_type='mapping')
-        for mapping_key in ['gene_atts', 'disorder_atts']:
+        # for mapping_key in ['gene_ids', 'disorder_ids']:
+        #     self.load_file(key=mapping_key, in_type='mapping')
+        for mapping_key in ['gene_atts', 'disorder_atts', 'gene_ids', 'disorder_ids']:
             self.load_file(key=mapping_key, in_type='mapping')
             self.loaded_mappings[mapping_key][self.loaded_mappings[mapping_key].columns[1:]] = \
                 self.loaded_mappings[mapping_key][self.loaded_mappings[mapping_key].columns[1:]].fillna(
@@ -153,7 +159,7 @@ class FileMapper(Mapper):
         :return: dataframe with previous mapping
         """
         # ===== Get mapping from local mapping file =====
-        mapping = pd.read_csv(file, sep=sep, header=0, dtype=str)
+        mapping = pd.read_csv(file, sep=sep, header=0, dtype=str).fillna('')
         if mapping_name == "disorder_ids":
             icd_unstack = mu.split_and_expand_column(data=mapping, split_string=",", column_name="ICD-10")
             mapping = pd.concat([icd_unstack, mapping[mapping['ICD-10'] != '']])
@@ -172,11 +178,11 @@ class FileMapper(Mapper):
 
     def load_file(self, key: str, in_type: str):
         if in_type == "mapping":
-            self._load_file_mapping(file=self.files_dir+self.file_names[key], sep=",", mapping_name=key)
+            self._load_file_mapping(file=self.files_dir + self.file_names[key], sep=",", mapping_name=key)
         elif in_type == "distance":
-            self.loaded_distances[key] = sp.load_npz(self.files_dir+self.file_names[key]).tocsr()
+            self.loaded_distances[key] = sp.load_npz(self.files_dir + self.file_names[key]).tocsr()
         else:  # in_type == "distance_id"
-            with open(self.files_dir+self.file_names[key], 'rb') as f:
+            with open(self.files_dir + self.file_names[key], 'rb') as f:
                 self.loaded_distance_ids[key] = pickle.load(f)
 
     def save_mappings(self):
@@ -202,11 +208,11 @@ class FileMapper(Mapper):
     def save_file(self, in_object, key: str, in_type: str):
         if in_type == "mapping":
             if not self.loaded_mappings[key].empty:
-                in_object.to_csv(self.files_dir+self.file_names[key], index=False)
+                in_object.to_csv(self.files_dir + self.file_names[key], index=False)
         elif in_type == "distance":
             if self.loaded_distances[key].nnz > 0:
-                sp.save_npz(self.files_dir+self.file_names[key], in_object.tocoo())
+                sp.save_npz(self.files_dir + self.file_names[key], in_object.tocoo())
         else:  # in_type == "distance_id"
             if self.loaded_distance_ids[key]:
-                with open(self.files_dir+self.file_names[key], 'wb+') as f:
+                with open(self.files_dir + self.file_names[key], 'wb+') as f:
                     pickle.dump(in_object, f)

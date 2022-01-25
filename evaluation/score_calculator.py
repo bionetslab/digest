@@ -25,9 +25,8 @@ def precalc_distance_dicts(ids_cluster: pd.DataFrame, ids_mapping: pd.DataFrame,
     # ===== map ids to cluster =====
     id_to_cluster = ids_cluster.set_index(0).to_dict()['cluster_index']
     # ===== map att ids to ids =====
-    att_id_to_id = ids_mapping.groupby(ids['att_id'])[[ids['id_type']]].agg(
-        lambda g: mu.combine_rowsets_list(set(g.values))).to_dict()[ids['id_type']]
-
+    att_id_to_id = ids_mapping[[ids['att_id'],ids['id_type']]].groupby(ids['att_id']).agg( # TODO
+        lambda g: set(g)).to_dict()[ids['id_type']]
     # ===== method to add values =====
     def add_value(destination, distance):
         if destination['max'] is None or destination['max'] < distance:

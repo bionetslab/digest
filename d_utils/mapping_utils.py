@@ -52,6 +52,8 @@ def combine_rows_to_set(x):
         return combine_rowsets_list(x)
     elif isinstance(x, set):
         return combine_rowsets_set(x)
+    elif isinstance(x, pd.Series):
+        return combine_rowsets_series_to_set(x)
     elif isinstance(x, str):
         return string_to_set(x, sep=";")
     return None
@@ -62,6 +64,8 @@ def combine_rows_to_string(x):
         return list_to_string(x)
     elif isinstance(x, set):
         return set_to_string(x)
+    elif isinstance(x, pd.Series):
+        return combine_rowsets_series_to_string(x)
     elif isinstance(x, str):
         return ';'.join(x).split(';')
     return None
@@ -71,9 +75,17 @@ def combine_rowsets_list(x: list):
     return set().union(*x)
 
 
-def combine_rowsets_series(x: pd.Series):
-    return set(filter(None, ';'.join(x).split(';')))
+def combine_rowsets_series_to_set(x: pd.Series):
+    if isinstance(x.iloc[0], set):
+        return set().union(*x)
+    else:
+        return set(filter(None, ';'.join(x).split(';')))
 
+def combine_rowsets_series_to_string(x: pd.Series):
+    if isinstance(x.iloc[0], set):
+        return ";".join(*x)
+    else:
+        return ';'.join(x)
 
 def combine_rowsets_set(x: set):
     return set().union(x)
@@ -109,5 +121,5 @@ def transform_disgenet_mapping(mapping: pd.DataFrame, file: str, col_old, col_ne
                   on="diseaseId", how="left")
     df = df.rename(columns={col_old: col_new})
     df[col_new] = df[col_new].str.strip()
-    df = df[['mondo', col_new]].fillna('').groupby(['mondo'], as_index=False).agg(combine_rowsets_series)
+    df = df[['mondo', col_new]].fillna('').groupby(['mondo'], as_index=False).agg(combine_rowsets_series_to_set)
     return df
