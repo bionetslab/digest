@@ -26,6 +26,7 @@ python3 setup.py
 ```
 Depending on the system, it could run up to 1 hour.
 ## Run DIGEST
+### Run in terminal
 ```
 usage: python3 single_validation.py [required arguments] [optional arguments]
 
@@ -46,6 +47,7 @@ optional arguments:
                         Output directory. [Default=./]
   -e, --enriched        Set flag, if only enriched attributes of the reference should be used.
   -c RUNS, --runs RUNS  Number of runs with random target values for p-value calculation.
+  -v, --verbose         Set flag, if additional info like ids without assigned attributes should be printed.
   -h, --help            show this help message and exit
 
 ----------------------------------------------------------------------------
@@ -60,3 +62,5 @@ supported modes
   id-set		Compare target set to reference id. Set either genes or diseases, id of disease.
   cluster		Compare cluster quality inside clustering. Either genes or diseases.
  ```
+ ### Run in python script
+ Check out the [tutorial](https://github.com/digest-env/digest/tree/main/tutorial) to see examples of usage in a script.
