@@ -1,21 +1,26 @@
 # DIGEST
 **Di**sease and **Ge**ne **S**et and Clustering Validation **T**ool
 ## Setup
-1. Clone this repository
-2. Setup enviroment
+1. Install git and git-lfs for large precalculated mapping files
+```
+pip install git
+pip install git-lsf
+```
+2. Clone this repository
+3. Setup enviroment
 
-2.1. Import yml file to enviroment
+3.1. Import yml file to enviroment
 ```
 conda env create -f environment.yml
 ```
-2.2. Setup manually
+3.2. Setup manually
 
-2.2.1 Setup enviroment
+3.2.1 Setup enviroment
 ```
 conda create --name digest -c conda-forge graph-tool
 conda activate digest
 ```
-2.2.2. Install dependancies
+3.2.2. Install dependancies
 ```
 pip install pandas os-sys psutils biothings_client
 ```
