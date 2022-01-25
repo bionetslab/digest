@@ -4,9 +4,15 @@
 1. Install git and git-lfs for large precalculated mapping files
 ```
 pip install git
-pip install git-lsf
+# to fetch large files
+pip install git-lsf 
 ```
 2. Clone this repository
+```
+git clone git@github.com:digest-env/digest.git
+# fetch large files
+git lfs fetch origin master 
+```
 3. Setup enviroment
 
 3.1. Import yml file to enviroment
