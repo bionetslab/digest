@@ -12,7 +12,7 @@ import time
 
 def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id: str = None, enriched: bool = False,
                       mapper: Mapper = FileMapper(), out_dir: str = "", runs: int = config.NUMBER_OF_RANDOM_RUNS,
-                      verbose: bool = False):
+                      random_type: str = "complete", replace=100, verbose: bool = False):
     """
     Single validation of a set, cluster a id versus set and set versus set.
 
@@ -25,6 +25,8 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
     :param mapper: mapper from type Mapper defining where the precalculated information comes from
     :param out_dir: output directory for results
     :param runs: number of random runs to create p-values [Default=1000]
+    :param random_type
+    :param replace
     :param verbose: bool if additional info like ids without assigned attributes should be printed
     """
     ru.start_time = time.time()
@@ -32,7 +34,6 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
     ru.print_current_usage('Starting validation ...')
     ru.print_current_usage('Load mappings for input into cache ...')
     mapper.load_mappings()
-
     if mode in ["set", "set-set", "id-set"]:
         if mode == "set-set":
             comparator = comp.SetSetComparator(mapper=mapper, enriched=enriched, verbose=verbose)
@@ -51,7 +52,7 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
         my_value = comparator.compare()
         ru.print_current_usage('Validation of random runs ...')
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
-                                             runs=runs)
+                                             runs=runs, random_type=random_type, replace=replace)
         ru.print_current_usage('Calculating p-values ...')
         if mode == "set":
             p_values = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=False)
@@ -88,7 +89,8 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
         json.dump(result, outfile)
 
 
-def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mapper, tar_id: str, runs: int) -> list:
+def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mapper, tar_id: str, runs: int,
+                           random_type: str = "complete", replace=100) -> list:
     """
     Pick random ids to recreate a target input and run the comparison against reference or itself.
     The random ids are of the same id type of the original target input.
@@ -98,6 +100,8 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
     :param mapper: mapper from type Mapper defining where the precalculated information comes from
     :param tar_id: id type of target input
     :param runs: number of random runs to create p-values [Default=1000]
+    :param random_type
+    :param replace
     :return: comparison
     """
     # ===== On the fly =====
@@ -105,16 +109,20 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
     if not mode == "cluster":
         if tar_id in config.SUPPORTED_DISEASE_IDS:
             full_id_map = mapper.get_full_set(id_type=tar_id, mapping_name='disorder_ids')
-            new_id_type="mondo"
+            new_id_type = "mondo"
         else:  # if tar_id in config.SUPPORTED_GENE_IDS:
             full_id_map = mapper.get_full_set(id_type=config.ID_TYPE_KEY[tar_id], mapping_name='gene_ids')
             new_id_type = "entrez"
         # ===== Calculate values =====
-        full_id_list = list(set(full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]]!=""][config.ID_TYPE_KEY[tar_id]]))
-        size = len(comparator.id_set)
+        full_id_list = list(set(full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]] != ""][config.ID_TYPE_KEY[tar_id]]))
+        orig_ids = set(comparator.id_set)
+        size = len(orig_ids)
+        random_size = int((size / 100) * replace)
         for run in range(0, runs):
-            sample = random.sample(full_id_list, size)
-            id_set = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(sample)][comparator.att_id]
+            random_sample = set(random.sample(full_id_list, random_size))
+            old_sample = set(random.sample(orig_ids, (size - random_size)))
+            id_set = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(random_sample.union(old_sample))][
+                comparator.att_id]
             comparator.load_target(id_set=set(id_set), id_type=new_id_type)
             results.append(comparator.compare())
 
@@ -133,7 +141,8 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
 
 if __name__ == "__main__":
     desc = "            Evaluation of disease and gene sets and clusters."
-    args = ru.save_parameters(script_desc=desc, arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v'))
+    args = ru.save_parameters(script_desc=desc, arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v', 'p', 'pr'))
     single_validation(tar=args.target, tar_id=args.target_id_type,
                       mode=args.mode, ref=args.reference, ref_id=args.reference_id_type,
-                      enriched=args.enriched, out_dir=args.out_dir, runs=args.runs)
+                      enriched=args.enriched, out_dir=args.out_dir, runs=args.runs,
+                      random_type=args.random_type, replace=args.replace)

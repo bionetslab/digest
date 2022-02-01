@@ -65,6 +65,14 @@ def save_parameters(script_desc: str, arguments):
     if 'c' in arguments:
         optional_args.add_argument("-c", "--runs", type=int, default=c.NUMBER_OF_RANDOM_RUNS,
                                    help="Number of runs with random target values for p-value calculation.")
+    if 'p' in arguments:
+        optional_args.add_argument("-p", "--random_type", type=str, default="complete",
+                                   choices=['complete', 'deg-pres', 'term-pres'],
+                                   help="Type of how random values should be picked. See possible options below.")
+    if 'pr' in arguments:
+        optional_args.add_argument("-pr", "--replace", type=int, default=100,
+                                   help="Percentage of how many of the original ids should be replaced with random ids."
+                                        " [Default=100]")
     if 'v' in arguments:
         optional_args.add_argument("-v", "--verbose", action='store_true', default=False,
                                    help="Set flag, if additional info like ids without assigned attributes should "
@@ -86,6 +94,10 @@ def _get_epilog(script_name):
         epilog += "  set-set\t\tCompare target set to reference set. Both either genes or diseases.\n"
         epilog += "  id-set\t\tCompare target set to reference id. Set either genes or diseases, id of disease.\n"
         epilog += "  cluster\t\tCompare cluster quality inside clustering. Either genes or diseases.\n"
+        epilog += "\nsupported random types\n"
+        epilog += "  complete\t\tRandom ids will be picked completely randomly.\n"
+        epilog += "  deg-pres\t\tDegree preserving pick of random ids based on PPI network from IID.\n"
+        epilog += "  term-pres\t\tRandom ids will preserve the number of mapped terms for the replaced ids.\n"
     epilog += "\n############################################################################\n"
     return epilog
 
