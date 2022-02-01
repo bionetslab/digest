@@ -104,6 +104,8 @@ def load_files(mapper: Mapper):
 
     mapper.save_distances()
 
+    # ===== Get term sizes per entry =====
+
     # ===== Get GGI network =====
     # ru.print_current_usage('Get PPI network ...')
     # edge_list = nm.create_edge_list(organism="human", id_type="uniprot", out_dir="./")
