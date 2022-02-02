@@ -81,11 +81,13 @@ def combine_rowsets_series_to_set(x: pd.Series):
     else:
         return set(filter(None, ';'.join(x).split(';')))
 
+
 def combine_rowsets_series_to_string(x: pd.Series):
     if isinstance(x.iloc[0], set):
         return ";".join(*x)
     else:
         return ';'.join(x)
+
 
 def combine_rowsets_set(x: set):
     return set().union(x)
@@ -104,6 +106,10 @@ def list_to_string(x, sep: str = ';'):
         return sep.join(x)
     else:
         return x
+
+
+def set_to_len(x: set):
+    return len(x)
 
 
 def transform_disgenet_mapping(mapping: pd.DataFrame, file: str, col_old, col_new):

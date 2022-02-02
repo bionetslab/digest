@@ -2,7 +2,7 @@
 
 import numpy as np
 import pandas as pd
-from d_utils import runner_utils as ru, config, eval_utils as eu
+from d_utils import runner_utils as ru, config, eval_utils as eu, mapping_utils as mu
 from evaluation import comparator as comp
 import random
 from mappers.mapper import Mapper, FileMapper
@@ -90,7 +90,7 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
 
 
 def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mapper, tar_id: str, runs: int,
-                           random_type: str = "complete", replace=100) -> list:
+                           random_type: str = "complete", replace=100, term: str = "sum") -> list:
     """
     Pick random ids to recreate a target input and run the comparison against reference or itself.
     The random ids are of the same id type of the original target input.
@@ -102,27 +102,40 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
     :param runs: number of random runs to create p-values [Default=1000]
     :param random_type
     :param replace
+    :param term
     :return: comparison
     """
-    # ===== On the fly =====
     results = list()
     if not mode == "cluster":
+        # ===== Get full id mapping =====
         if tar_id in config.SUPPORTED_DISEASE_IDS:
             full_id_map = mapper.get_full_set(id_type=tar_id, mapping_name='disorder_ids')
-            new_id_type = "mondo"
+            new_id_type, map_id_type = "mondo", "disorder_atts"
         else:  # if tar_id in config.SUPPORTED_GENE_IDS:
             full_id_map = mapper.get_full_set(id_type=config.ID_TYPE_KEY[tar_id], mapping_name='gene_ids')
-            new_id_type = "entrez"
-        # ===== Calculate values =====
-        full_id_list = list(set(full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]] != ""][config.ID_TYPE_KEY[tar_id]]))
+            new_id_type, map_id_type = "entrez", "gene_atts"
+        # ===== Precalculate sizes =====
         orig_ids = set(comparator.id_set)
         size = len(orig_ids)
         random_size = int((size / 100) * replace)
+        # ===== Precalculate attribute sizes for term-pres =====
+        if random_type == "term-pres":
+            att_dict = atts_to_size_dicts(pd_map=mapper.loaded_mappings[map_id_type], term=term)
         for run in range(0, runs):
-            random_sample = set(random.sample(full_id_list, random_size))
+            # ===== Pick new samples =====
             old_sample = set(random.sample(orig_ids, (size - random_size)))
+            if random_type == "complete":
+                full_id_list = list(
+                    set(full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]] != ""][config.ID_TYPE_KEY[tar_id]]))
+                random_sample = set(random.sample(full_id_list, random_size))
+            elif random_type == "term-pres":
+                to_replace = orig_ids.difference(old_sample)
+                to_replace = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(to_replace)][comparator.att_id]
+                # TODO get correct possible candidates
+            # ===== Get corresponding id set =====
             id_set = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(random_sample.union(old_sample))][
                 comparator.att_id]
+            # ===== Calculate values =====
             comparator.load_target(id_set=set(id_set), id_type=new_id_type)
             results.append(comparator.compare())
 
@@ -137,6 +150,15 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
             results[1].append(value_ss)
 
     return results
+
+
+def atts_to_size_dicts(pd_map: pd.DataFrame, term: str):
+    att_len = pd_map.copy()
+    att_len[att_len.columns[1:]] = att_len[att_len.columns[1:]].applymap(mu.set_to_len)
+    att_len['sum'] = att_len[att_len.columns[1:]].sum(axis=1)
+    tmp = pd.DataFrame(att_len[term].value_counts()).sort_index().to_dict()
+    # TODO creat dict from size to ids with len > 100
+    return tmp
 
 
 if __name__ == "__main__":
