@@ -69,14 +69,15 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
         comparator.load_target(id_set=pd.read_csv(tar, header=None, sep="\t"), id_type=tar_id)
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...')
-        my_value_di, my_value_ss = comparator.compare()
+        my_value_di, my_value_ss, my_value_dbi = comparator.compare()
         ru.print_current_usage('Validation of random runs ...')
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
                                              runs=runs)
         p_values_di = eu.calc_pvalue(test_value=my_value_di, random_values=pd.DataFrame(comp_values[0]))
         p_values_ss = eu.calc_pvalue(test_value=my_value_ss, random_values=pd.DataFrame(comp_values[1]))
-        p_values = {'di': p_values_di, 'ss': p_values_ss}
-        result = {'input_values': {'di': my_value_di, 'ss': my_value_ss}, 'p_values': p_values}
+        p_values_dbi = eu.calc_pvalue(test_value=my_value_dbi, random_values=pd.DataFrame(comp_values[2]))
+        p_values = {'di': p_values_di, 'ss': p_values_ss, 'dbi': p_values_dbi}
+        result = {'input_values': {'di': my_value_di, 'ss': my_value_ss, 'dbi': my_value_dbi}, 'p_values': p_values}
     else:
         result = {None}
 
