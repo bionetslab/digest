@@ -158,9 +158,41 @@ def dunn_index(ids_cluster: pd.DataFrame, distances: dict, linkage="average") ->
             else:
                 for to_cluster in distances['inter'][cluster]:
                     distance = calc_linkage(value_dict=distances['inter'][cluster][to_cluster],
-                                            size=cluster_to_size[to_cluster], linkage=linkage)
+                                            size=cluster_to_size[cluster]*cluster_to_size[to_cluster], linkage=linkage)
                     if min_inter_dist is None or min_inter_dist > distance:
                         min_inter_dist = distance
         else:
             min_inter_dist = 0
     return min_inter_dist / max_intra_dist
+
+
+def davies_bouldin_index(ids_cluster: pd.DataFrame, distances: dict, linkage="average") -> float:
+    """
+    Calculate the davies bouldin index for the given cluster.
+
+    :param ids_cluster: mapping of ids to corresponding cluster
+    :param distances: all pairwise distances previously calculated
+    :param linkage: linkage type for intra and inter distance [Default="average"]
+    :return: davies bouldin index score as float
+    """
+    max_values = 0
+    # ===== count cluster size =====
+    cluster_to_size = ids_cluster['cluster_index'].value_counts().to_dict()
+    for cluster_i in cluster_to_size:
+        cur_max = 0
+        for cluster_j in cluster_to_size:
+            if cluster_i != cluster_j:
+                # ===== calc intra distances =====
+                distance_i = calc_linkage(value_dict=distances['intra'][cluster_i], size=cluster_to_size[cluster_i],
+                                          linkage=linkage) if cluster_i in distances['intra'] else 0
+                distance_j = calc_linkage(value_dict=distances['intra'][cluster_j], size=cluster_to_size[cluster_j],
+                                          linkage=linkage) if cluster_j in distances['intra'] else 0
+                # ===== calc inter distance =====
+                distance_ij = calc_linkage(value_dict=distances['inter'][cluster_i][cluster_j],
+                                           size=cluster_to_size[cluster_i]*cluster_to_size[cluster_j], linkage=linkage)
+                # ===== calc (q(ci)*q(cj))/p(ci,cj) =====
+                value = (distance_i * distance_j) / distance_ij if distance_ij != 0 else 0
+                if value > cur_max:
+                    cur_max = value
+        max_values = max_values + cur_max
+    return max_values / len(cluster_to_size)
