@@ -129,12 +129,12 @@ class ClusterComparator(Comparator):
         self.clustering = id_set[[0, 'cluster_index']]
 
     def compare(self, threshold: float = 0.0):
-        result_di, result_ss, result_dbi = dict(), dict(), dict()
+        result_di, result_ss, result_ss_intermediate, result_dbi = dict(), dict(), dict(), dict()
         new_ids = self.mapper.update_distance_ids(in_series=self.mapper.loaded_mappings[self.att_key][self.att_id],
                                                   key=self.sparse_key)
         for attribute in self.mapping.columns[1:]:
             subset_df = self.mapping[self.mapping[attribute].str.len() > 0]
-            subset_clusters = self.clustering[self.clustering[0].isin(subset_df[self.id_type])]
+            subset_clusters = self.clustering[self.clustering[0].isin(subset_df[c.ID_TYPE_KEY[self.id_type]])]
             missing_values = len(self.mapping) - len(subset_df)
             if missing_values > 0:
                 print("Missing values for " + attribute + " :" + str(missing_values) + "/" + str(
@@ -162,6 +162,7 @@ class ClusterComparator(Comparator):
             di_score = sc.dunn_index(ids_cluster=subset_clusters, distances=precalc_dist, linkage="average")
             dbi_score = sc.davies_bouldin_index(ids_cluster=subset_clusters, distances=precalc_dist, linkage="average")
             result_di[attribute] = di_score
-            result_ss[attribute] = ss_score[0]  # ss_score[1] all intermediate results
+            result_ss[attribute] = ss_score[0]
+            result_ss_intermediate[attribute] = ss_score[1]
             result_dbi[attribute] = dbi_score
-        return result_di, result_ss, result_dbi
+        return result_di, result_ss, result_dbi, result_ss_intermediate

@@ -25,8 +25,10 @@ def precalc_distance_dicts(ids_cluster: pd.DataFrame, ids_mapping: pd.DataFrame,
     # ===== map ids to cluster =====
     id_to_cluster = ids_cluster.set_index(0).to_dict()['cluster_index']
     # ===== map att ids to ids =====
-    att_id_to_id = ids_mapping[[ids['att_id'],ids['id_type']]].groupby(ids['att_id']).agg( # TODO
-        lambda g: set(g)).to_dict()[ids['id_type']]
+    if ids['att_id'] != ids['id_type']:
+        att_id_to_id = ids_mapping[[ids['att_id'],ids['id_type']]].groupby(ids['att_id']).agg(lambda g: set(g)).to_dict()[ids['id_type']]
+    else:
+        att_id_to_id = None
     # ===== method to add values =====
     def add_value(destination, distance):
         if destination['max'] is None or destination['max'] < distance:
@@ -40,8 +42,10 @@ def precalc_distance_dicts(ids_cluster: pd.DataFrame, ids_mapping: pd.DataFrame,
     for index1, index2 in distances:
         att_id1 = index_to_id[index1]
         att_id2 = index_to_id[index2]
-        for id1 in att_id_to_id[att_id1]:
-            for id2 in att_id_to_id[att_id2]:
+        att_id_to_id1 = att_id_to_id[att_id1] if att_id_to_id is not None else {att_id1}
+        att_id_to_id2 = att_id_to_id[att_id2] if att_id_to_id is not None else {att_id2}
+        for id1 in att_id_to_id1:
+            for id2 in att_id_to_id2:
                 id1_cluster = id_to_cluster[id1]
                 id2_cluster = id_to_cluster[id2]
                 if id1_cluster == id2_cluster:
