@@ -19,8 +19,14 @@ class Mapper:
 
     changed_mappings = set()
 
-    def __init__(self):
-        self.load_mappings()
+    load: bool = True
+
+    def __init__(self, preload: bool = False):
+        if preload:
+            self.load_mappings()
+            self.load_distances(set_type="entrez")
+            self.load_distances(set_type="mondo")
+            self.load = False
 
     @abstractmethod
     def load_mappings(self):
@@ -140,18 +146,19 @@ class FileMapper(Mapper):
                   'related_variants': 'disease_dist_rel_variants.npz',
                   'related_pathways': 'disease_dist_rel_pathways.npz'}
 
-    def __init__(self, files_dir=config.FILES_DIR):
+    def __init__(self, preload: bool = False, files_dir=config.FILES_DIR):
         self.files_dir = files_dir
-        super().__init__()
+        super().__init__(preload=preload)
 
     def load_mappings(self):
         # for mapping_key in ['gene_ids', 'disorder_ids']:
         #     self.load_file(key=mapping_key, in_type='mapping')
-        for mapping_key in ['gene_atts', 'disorder_atts', 'gene_ids', 'disorder_ids']:
-            self.load_file(key=mapping_key, in_type='mapping')
-            self.loaded_mappings[mapping_key][self.loaded_mappings[mapping_key].columns[1:]] = \
-                self.loaded_mappings[mapping_key][self.loaded_mappings[mapping_key].columns[1:]].fillna(
-                    '').applymap(mu.string_to_set)
+        if self.load:
+            for mapping_key in ['gene_atts', 'disorder_atts', 'gene_ids', 'disorder_ids']:
+                self.load_file(key=mapping_key, in_type='mapping')
+                self.loaded_mappings[mapping_key][self.loaded_mappings[mapping_key].columns[1:]] = \
+                    self.loaded_mappings[mapping_key][self.loaded_mappings[mapping_key].columns[1:]].fillna(
+                        '').applymap(mu.string_to_set)
 
     def _load_file_mapping(self, file, sep, mapping_name):
         """
@@ -171,14 +178,15 @@ class FileMapper(Mapper):
         self.loaded_mappings[mapping_name] = mapping
 
     def load_distances(self, set_type):
-        if set_type in config.SUPPORTED_GENE_IDS:
-            self.load_file(key='gene_mat_ids', in_type='gene_id')
-            for distance_key in ['go_BP', 'go_CC', 'go_MF', 'pathway_kegg']:
-                self.load_file(key=distance_key, in_type='distance')
-        else:  # if set_type in config.SUPPORTED_DISEASE_IDS
-            self.load_file(key='disease_mat_ids', in_type='distance_id')
-            for distance_key in ['related_genes', 'related_variants', 'related_pathways']:
-                self.load_file(key=distance_key, in_type='distance')
+        if self.load:
+            if set_type in config.SUPPORTED_GENE_IDS:
+                self.load_file(key='gene_mat_ids', in_type='gene_id')
+                for distance_key in ['go_BP', 'go_CC', 'go_MF', 'pathway_kegg']:
+                    self.load_file(key=distance_key, in_type='distance')
+            else:  # if set_type in config.SUPPORTED_DISEASE_IDS
+                self.load_file(key='disease_mat_ids', in_type='distance_id')
+                for distance_key in ['related_genes', 'related_variants', 'related_pathways']:
+                    self.load_file(key=distance_key, in_type='distance')
 
     def load_file(self, key: str, in_type: str):
         if in_type == "mapping":

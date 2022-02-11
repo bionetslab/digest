@@ -32,8 +32,9 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
     ru.start_time = time.time()
     # ===== Comparison with a set =====
     ru.print_current_usage('Starting validation ...')
-    #ru.print_current_usage('Load mappings for input into cache ...') if verbose else None
-    #mapper.load_mappings()
+    if mapper.load:
+        ru.print_current_usage('Load mappings for input into cache ...') if verbose else None
+        mapper.load_mappings()
     if mode in ["set", "set-set", "id-set"]:
         if mode == "set-set":
             comparator = comp.SetSetComparator(mapper=mapper, enriched=enriched, verbose=verbose)
@@ -43,14 +44,16 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
             comparator.load_reference(ref=ref, ref_id_type=ref_id)
         else:  # mode == "set"
             comparator = comp.SetComparator(mapper=mapper, verbose=verbose)
-            ru.print_current_usage('Load distances for input into cache ...')
-            mapper.load_distances(set_type=tar_id)
+            if mapper.load:
+                ru.print_current_usage('Load distances for input into cache ...')
+                mapper.load_distances(set_type=tar_id)
         comparator.load_target(id_set=pd.read_csv(tar, header=None, sep="\t")[0], id_type=tar_id)
 
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...') if verbose else None
         my_value = comparator.compare()
         ru.print_current_usage('Validation of random runs ...') if verbose else None
+        comparator.verbose = False
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
                                              runs=runs, background_model=background_model, replace=replace)
         ru.print_current_usage('Calculating p-values ...') if verbose else None
@@ -62,8 +65,9 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
 
     # ===== Special case cluster =====
     elif mode == "cluster":
-        ru.print_current_usage('Load distances for input into cache ...') if verbose else None
-        mapper.load_distances(set_type=tar_id)
+        if mapper.load:
+            ru.print_current_usage('Load distances for input into cache ...') if verbose else None
+            mapper.load_distances(set_type=tar_id)
         ru.print_current_usage('Load input data ...') if verbose else None
         comparator = comp.ClusterComparator(mapper=mapper, verbose=verbose)
         comparator.load_target(id_set=pd.read_csv(tar, header=None, sep="\t", dtype=str), id_type=tar_id)
@@ -71,6 +75,7 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
         ru.print_current_usage('Validation of input ...') if verbose else None
         my_value_di, my_value_ss, my_value_dbi, my_value_ss_inter = comparator.compare()
         ru.print_current_usage('Validation of random runs ...') if verbose else None
+        comparator.verbose = False
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
                                              runs=runs)
         p_values_di = eu.calc_pvalue(test_value=my_value_di, random_values=pd.DataFrame(comp_values[0]), maximize=False)
