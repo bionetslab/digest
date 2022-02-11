@@ -147,12 +147,12 @@ def calc_pvalue(test_value: dict, random_values: pd.DataFrame, maximize=True):
 
     :param test_value: values from the original input as dict with attributes as key
     :param random_values: values from random runs as dataframe and attributes as columns
-    :param maximize: bool if the goal is to have a high test value or low test value [Default=True]
+    :param maximize: true if the goal is to have a high test value or false if low test value [Default=True]
     :return: pvalue
     """
     pvalue = dict()
     for keys in test_value:
-        pvalue[keys] = (1 + sum(random_values[keys] <= test_value[keys])) / (
+        pvalue[keys] = (1 + sum(test_value[keys] <= random_values[keys])) / (
                     len(random_values.index) + 1) if maximize else (1 + sum(
-            random_values[keys] >= test_value[keys])) / (len(random_values.index) + 1)
+            test_value[keys] >= random_values[keys])) / (len(random_values.index) + 1)
     return pvalue
