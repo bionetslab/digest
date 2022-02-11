@@ -32,7 +32,7 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
     ru.start_time = time.time()
     # ===== Comparison with a set =====
     ru.print_current_usage('Starting validation ...')
-    ru.print_current_usage('Load mappings for input into cache ...')
+    ru.print_current_usage('Load mappings for input into cache ...') if verbose else None
     mapper.load_mappings()
     if mode in ["set", "set-set", "id-set"]:
         if mode == "set-set":
@@ -48,41 +48,44 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
         comparator.load_target(id_set=pd.read_csv(tar, header=None, sep="\t")[0], id_type=tar_id)
 
         # ===== Get validation values of input =====
-        ru.print_current_usage('Validation of input ...')
+        ru.print_current_usage('Validation of input ...') if verbose else None
         my_value = comparator.compare()
-        ru.print_current_usage('Validation of random runs ...')
+        ru.print_current_usage('Validation of random runs ...') if verbose else None
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
                                              runs=runs, background_model=background_model, replace=replace)
-        ru.print_current_usage('Calculating p-values ...')
+        ru.print_current_usage('Calculating p-values ...') if verbose else None
         if mode == "set":
-            p_values = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=False)
+            p_values = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=True)
         else:
-            p_values = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values))
+            p_values = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=False)
         result = {'input_values': my_value, 'p_values': p_values}
 
     # ===== Special case cluster =====
     elif mode == "cluster":
-        ru.print_current_usage('Load distances for input into cache ...')
+        ru.print_current_usage('Load distances for input into cache ...') if verbose else None
         mapper.load_distances(set_type=tar_id)
-        ru.print_current_usage('Load input data ...')
+        ru.print_current_usage('Load input data ...') if verbose else None
         comparator = comp.ClusterComparator(mapper=mapper, verbose=verbose)
-        comparator.load_target(id_set=pd.read_csv(tar, header=None, sep="\t"), id_type=tar_id)
+        comparator.load_target(id_set=pd.read_csv(tar, header=None, sep="\t", dtype=str), id_type=tar_id)
         # ===== Get validation values of input =====
-        ru.print_current_usage('Validation of input ...')
-        my_value_di, my_value_ss, my_value_dbi = comparator.compare()
-        ru.print_current_usage('Validation of random runs ...')
+        ru.print_current_usage('Validation of input ...') if verbose else None
+        my_value_di, my_value_ss, my_value_dbi, my_value_ss_inter = comparator.compare()
+        ru.print_current_usage('Validation of random runs ...') if verbose else None
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
                                              runs=runs)
-        p_values_di = eu.calc_pvalue(test_value=my_value_di, random_values=pd.DataFrame(comp_values[0]))
-        p_values_ss = eu.calc_pvalue(test_value=my_value_ss, random_values=pd.DataFrame(comp_values[1]))
-        p_values_dbi = eu.calc_pvalue(test_value=my_value_dbi, random_values=pd.DataFrame(comp_values[2]))
+        p_values_di = eu.calc_pvalue(test_value=my_value_di, random_values=pd.DataFrame(comp_values[0]), maximize=False)
+        p_values_ss = eu.calc_pvalue(test_value=my_value_ss, random_values=pd.DataFrame(comp_values[1]), maximize=True)
+        p_values_dbi = eu.calc_pvalue(test_value=my_value_dbi, random_values=pd.DataFrame(comp_values[2]),
+                                      maximize=False)
         p_values = {'di': p_values_di, 'ss': p_values_ss, 'dbi': p_values_dbi}
-        result = {'input_values': {'di': my_value_di, 'ss': my_value_ss, 'dbi': my_value_dbi}, 'p_values': p_values}
+        result = {
+            'input_values': {'di': my_value_di, 'ss': my_value_ss, 'ss_inter': my_value_ss_inter, 'dbi': my_value_dbi},
+            'p_values': p_values}
     else:
         result = {None}
 
     # ===== Saving final files and results =====
-    ru.print_current_usage('Save files')
+    ru.print_current_usage('Save files') if verbose else None
     # mapper.save_mappings()
     # mapper.save_distances()
     ru.print_current_usage('Finished validation')
@@ -119,6 +122,8 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
         orig_ids = set(comparator.id_set)
         size = len(orig_ids)
         random_size = int((size / 100) * replace)
+        if background_model == "complete":
+            full_id_set = set(full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]] != ""][config.ID_TYPE_KEY[tar_id]])
         # ===== Precalculate attribute sizes for term-pres =====
         if background_model == "term-pres":
             att_size = atts_to_size(pd_map=mapper.loaded_mappings[map_id_type])
@@ -128,9 +133,7 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
             # ===== Pick new samples =====
             old_sample = set(random.sample(orig_ids, (size - random_size)))
             if background_model == "complete":
-                full_id_list = list(
-                    set(full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]] != ""][config.ID_TYPE_KEY[tar_id]]))
-                random_sample = set(random.sample(full_id_list, random_size))
+                random_sample = set(random.sample(full_id_set, random_size))
             elif background_model == "term-pres":
                 to_replace = orig_ids.difference(old_sample)
                 to_replace = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(to_replace)][comparator.att_id]
@@ -149,13 +152,23 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
     # ===== Special case cluster =====
     else:
         # ===== Calculate values =====
-        results.extend([list(), list()])
+        results.extend([list(), list(), list()])
+        # ===== Precalculate sizes =====
+        orig_ids = set(comparator.clustering[0])
+        orig_clusters = comparator.clustering
+        size = len(orig_ids)
+        random_size = int((size / 100) * replace)
         for run in range(0, runs):
-            comparator.clustering['cluster_index'] = np.random.permutation(comparator.clustering['cluster_index'])
-            value_di, value_ss = comparator.compare()
+            old_sample = set(random.sample(orig_ids, (size - random_size)))
+            # ===== Shuffle subset of clusters =====
+            subset = orig_clusters[~orig_clusters[0].isin(old_sample)]
+            subset["cluster_index"] = np.random.permutation(subset["cluster_index"])
+            comparator.clustering = pd.concat([orig_clusters[orig_clusters[0].isin(old_sample)], subset])
+            # ===== Start validating =====
+            value_di, value_ss, value_dbi, value_ss_inter = comparator.compare()
             results[0].append(value_di)
             results[1].append(value_ss)
-
+            results[2].append(value_dbi)
     return results
 
 
@@ -191,7 +204,8 @@ def size_mapping_to_dict(pd_size_map: pd.DataFrame, id_col: str, term_col: str, 
 
 if __name__ == "__main__":
     desc = "            Evaluation of disease and gene sets and clusters."
-    args = ru.save_parameters(script_desc=desc, arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v', 'b', 'pr'))
+    args = ru.save_parameters(script_desc=desc,
+                              arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v', 'b', 'pr', 'p'))
     single_validation(tar=args.target, tar_id=args.target_id_type,
                       mode=args.mode, ref=args.reference, ref_id=args.reference_id_type,
                       enriched=args.enriched, out_dir=args.out_dir, runs=args.runs,

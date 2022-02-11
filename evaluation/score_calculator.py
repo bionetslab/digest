@@ -25,8 +25,10 @@ def precalc_distance_dicts(ids_cluster: pd.DataFrame, ids_mapping: pd.DataFrame,
     # ===== map ids to cluster =====
     id_to_cluster = ids_cluster.set_index(0).to_dict()['cluster_index']
     # ===== map att ids to ids =====
-    att_id_to_id = ids_mapping[[ids['att_id'],ids['id_type']]].groupby(ids['att_id']).agg( # TODO
-        lambda g: set(g)).to_dict()[ids['id_type']]
+    if ids['att_id'] != ids['id_type']:
+        att_id_to_id = ids_mapping[[ids['att_id'],ids['id_type']]].groupby(ids['att_id']).agg(lambda g: set(g)).to_dict()[ids['id_type']]
+    else:
+        att_id_to_id = None
     # ===== method to add values =====
     def add_value(destination, distance):
         if destination['max'] is None or destination['max'] < distance:
@@ -40,8 +42,10 @@ def precalc_distance_dicts(ids_cluster: pd.DataFrame, ids_mapping: pd.DataFrame,
     for index1, index2 in distances:
         att_id1 = index_to_id[index1]
         att_id2 = index_to_id[index2]
-        for id1 in att_id_to_id[att_id1]:
-            for id2 in att_id_to_id[att_id2]:
+        att_id_to_id1 = att_id_to_id[att_id1] if att_id_to_id is not None else {att_id1}
+        att_id_to_id2 = att_id_to_id[att_id2] if att_id_to_id is not None else {att_id2}
+        for id1 in att_id_to_id1:
+            for id2 in att_id_to_id2:
                 id1_cluster = id_to_cluster[id1]
                 id2_cluster = id_to_cluster[id2]
                 if id1_cluster == id2_cluster:
@@ -98,7 +102,7 @@ def silhouette_score(ids_cluster: pd.DataFrame, distances: dict, linkage="averag
         current_cluster = id_to_cluster[entity]
         # ===== calc intra distance =====
         entity_intra = calc_linkage(value_dict=distances['entity_intra'][entity], size=cluster_sizes[current_cluster],
-                                    linkage=linkage) if entity in distances['entity_intra'] else 0
+                                    linkage=linkage) if entity in distances['entity_intra'] else 0 # todo: not 0
         # ===== calc min inter distance =====
         min_entity_inter = None
         if entity in distances['entity_inter'] and len(distances['entity_inter'][entity]) < (len(cluster_sizes) - 1):
@@ -108,7 +112,7 @@ def silhouette_score(ids_cluster: pd.DataFrame, distances: dict, linkage="averag
                 if min_entity_inter is None or min_entity_inter > distance:
                     min_entity_inter = distance
         else:
-            min_entity_inter = 0
+            min_entity_inter = 0 # todo: not 0
 
         if cluster_sizes[current_cluster] > 1 and max(min_entity_inter, entity_intra) > 0.0:
             score = ((min_entity_inter - entity_intra) / max(min_entity_inter, entity_intra))
