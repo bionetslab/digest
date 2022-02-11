@@ -191,7 +191,7 @@ def size_mapping_to_dict(pd_size_map: pd.DataFrame, id_col: str, term_col: str, 
 
 if __name__ == "__main__":
     desc = "            Evaluation of disease and gene sets and clusters."
-    args = ru.save_parameters(script_desc=desc, arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v', 'b', 'pr'))
+    args = ru.save_parameters(script_desc=desc, arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v', 'b', 'pr','p'))
     single_validation(tar=args.target, tar_id=args.target_id_type,
                       mode=args.mode, ref=args.reference, ref_id=args.reference_id_type,
                       enriched=args.enriched, out_dir=args.out_dir, runs=args.runs,

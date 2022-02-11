@@ -116,8 +116,8 @@ def load_files(mapper: Mapper):
 def main():
     os.system("mkdir -p " + c.FILES_DIR + "tmp/")
     load_files(mapper=FileMapper(files_dir=c.FILES_DIR + "tmp/"))
-    # os.system("mv -f " + c.FILES_DIR + "tmp/* "+c.FILES_DIR)
-    # os.system("rm -rf "+c.FILES_DIR + "tmp/ ")
+    os.system("mv -f " + c.FILES_DIR + "tmp/* "+c.FILES_DIR)
+    os.system("rm -rf "+c.FILES_DIR + "tmp/ ")
 
 if __name__ == "__main__":
     main()
