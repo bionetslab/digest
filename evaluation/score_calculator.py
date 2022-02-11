@@ -102,7 +102,7 @@ def silhouette_score(ids_cluster: pd.DataFrame, distances: dict, linkage="averag
         current_cluster = id_to_cluster[entity]
         # ===== calc intra distance =====
         entity_intra = calc_linkage(value_dict=distances['entity_intra'][entity], size=cluster_sizes[current_cluster],
-                                    linkage=linkage) if entity in distances['entity_intra'] else 0
+                                    linkage=linkage) if entity in distances['entity_intra'] else 0 # todo: not 0
         # ===== calc min inter distance =====
         min_entity_inter = None
         if entity in distances['entity_inter'] and len(distances['entity_inter'][entity]) < (len(cluster_sizes) - 1):
@@ -112,7 +112,7 @@ def silhouette_score(ids_cluster: pd.DataFrame, distances: dict, linkage="averag
                 if min_entity_inter is None or min_entity_inter > distance:
                     min_entity_inter = distance
         else:
-            min_entity_inter = 0
+            min_entity_inter = 0 # todo: not 0
 
         if cluster_sizes[current_cluster] > 1 and max(min_entity_inter, entity_intra) > 0.0:
             score = ((min_entity_inter - entity_intra) / max(min_entity_inter, entity_intra))

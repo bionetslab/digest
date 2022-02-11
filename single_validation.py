@@ -55,9 +55,9 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
                                              runs=runs, background_model=background_model, replace=replace)
         ru.print_current_usage('Calculating p-values ...') if verbose else None
         if mode == "set":
-            p_values = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=False)
+            p_values = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=True)
         else:
-            p_values = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values))
+            p_values = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=False)
         result = {'input_values': my_value, 'p_values': p_values}
 
     # ===== Special case cluster =====
@@ -122,6 +122,8 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
         orig_ids = set(comparator.id_set)
         size = len(orig_ids)
         random_size = int((size / 100) * replace)
+        if background_model == "complete":
+            full_id_set = set(full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]] != ""][config.ID_TYPE_KEY[tar_id]])
         # ===== Precalculate attribute sizes for term-pres =====
         if background_model == "term-pres":
             att_size = atts_to_size(pd_map=mapper.loaded_mappings[map_id_type])
@@ -131,9 +133,7 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
             # ===== Pick new samples =====
             old_sample = set(random.sample(orig_ids, (size - random_size)))
             if background_model == "complete":
-                full_id_list = list(
-                    set(full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]] != ""][config.ID_TYPE_KEY[tar_id]]))
-                random_sample = set(random.sample(full_id_list, random_size))
+                random_sample = set(random.sample(full_id_set, random_size))
             elif background_model == "term-pres":
                 to_replace = orig_ids.difference(old_sample)
                 to_replace = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(to_replace)][comparator.att_id]

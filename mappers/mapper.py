@@ -19,6 +19,9 @@ class Mapper:
 
     changed_mappings = set()
 
+    def __init__(self):
+        self.load_mappings()
+
     @abstractmethod
     def load_mappings(self):
         pass
@@ -139,6 +142,7 @@ class FileMapper(Mapper):
 
     def __init__(self, files_dir=config.FILES_DIR):
         self.files_dir = files_dir
+        super().__init__()
 
     def load_mappings(self):
         # for mapping_key in ['gene_ids', 'disorder_ids']:
