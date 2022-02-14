@@ -131,14 +131,15 @@ def evaluate_values(mapping: pd.DataFrame, ref_dict: dict, threshold: float, key
     :param coefficient: type of coefficient to validate two sets [Default="jaccard"]
     :return:
     """
-    evaluation = dict()
+    evaluation, mapped = dict(), dict()
     for attribute in keys:
         if coefficient == "jaccard":
             evaluated_series = mapping[attribute].apply(jaccard_coefficient, ref_att_set=ref_dict[attribute])
         else:  # == "overlap_coefficient"
             evaluated_series = mapping[attribute].apply(overlap_coefficient, ref_att_set=ref_dict[attribute])
         evaluation[attribute] = str(len(evaluated_series[evaluated_series > threshold]) / len(evaluated_series))
-    return evaluation
+        mapped[attribute] = mapping[mapping[attribute]!=""][mapping.columns[0]]
+    return evaluation, mapped
 
 
 def calc_pvalue(test_value: dict, random_values: pd.DataFrame, maximize=True):

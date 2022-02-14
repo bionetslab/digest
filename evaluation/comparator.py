@@ -12,8 +12,7 @@ class Comparator:
         self.mapper = mapper
         self.verbose = verbose
         self.mapping = None
-        self.id_set = None
-        self.id_type = None
+        self.id_set, self.id_type = None, None
         self.att_id, self.att_key, self.sparse_key = None, None, None
 
     def load_target(self, id_set, id_type):
@@ -35,8 +34,9 @@ class SetComparator(Comparator):
     """
     Compare the set on itself based on connected attributes. See config for more info.
     """
+
     def compare(self, threshold: float = 0.0):
-        result = dict()
+        result, mapped = dict(), dict()
         new_ids = self.mapper.update_distance_ids(in_series=self.mapper.loaded_mappings[self.att_key][self.att_id],
                                                   key=self.sparse_key)
         for attribute in self.mapping.columns[1:]:
@@ -59,7 +59,8 @@ class SetComparator(Comparator):
                 sub_mat = self.mapper.get_loaded_distances(in_series=ids[self.att_id], id_type=self.sparse_key,
                                                            key=c.DISTANCES[attribute])
                 result[attribute] = sub_mat.sum() / ((len(self.mapping) * (len(self.mapping) - 1)) / 2)
-        return result
+                mapped[attribute] = list(subset_df[c.ID_TYPE_KEY[self.id_type]])
+        return result, mapped
 
 
 class SetSetComparator(Comparator):
@@ -132,7 +133,7 @@ class ClusterComparator(Comparator):
         self.clustering = id_set[[0, 'cluster_index']]
 
     def compare(self, threshold: float = 0.0):
-        result_di, result_ss, result_ss_intermediate, result_dbi = dict(), dict(), dict(), dict()
+        result_di, result_ss, result_ss_intermediate, result_dbi, mapped = dict(), dict(), dict(), dict(), dict()
         new_ids = self.mapper.update_distance_ids(in_series=self.mapper.loaded_mappings[self.att_key][self.att_id],
                                                   key=self.sparse_key)
         for attribute in self.mapping.columns[1:]:
@@ -141,7 +142,7 @@ class ClusterComparator(Comparator):
             missing_values = len(self.mapping) - len(subset_df)
             if missing_values > 0:
                 print("Missing values for " + attribute + " :" + str(missing_values) + "/" + str(
-                    len(self.mapping))) if self.verbose else None
+                    len(self.mapping)) + "") if self.verbose else None
 
             if len(new_ids) > 0:
                 comp_mat = eu.get_distance_matrix(full_att_series=self.mapper.loaded_mappings[self.att_key][attribute],
@@ -168,4 +169,5 @@ class ClusterComparator(Comparator):
             result_ss[attribute] = ss_score[0]
             result_ss_intermediate[attribute] = ss_score[1]
             result_dbi[attribute] = dbi_score
-        return result_di, result_ss, result_dbi, result_ss_intermediate
+            mapped[attribute] = list(subset_df[c.ID_TYPE_KEY[self.id_type]])
+        return result_di, result_ss, result_dbi, result_ss_intermediate, mapped
