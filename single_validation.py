@@ -32,6 +32,7 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
     ru.start_time = time.time()
     # ===== Comparison with a set =====
     ru.print_current_usage('Starting validation ...')
+
     if mapper.load:
         ru.print_current_usage('Load mappings for input into cache ...') if verbose else None
         mapper.load_mappings()
