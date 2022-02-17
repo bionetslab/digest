@@ -77,12 +77,14 @@ def get_gene_to_attributes(gene_set: set, id_type: str, mapper: Mapper):
         mapper.update_mappings(in_df=mapping, key='gene_atts')
         hit_mapping = pd.concat([hit_mapping, mapping])
     # ===== work with not unique values =====
-    columns = ['entrezgene', config.ID_TYPE_KEY[id_type]] if id_type != 'entrez' else ['entrezgene']
-    mapping_subset = gene_mapping[columns].drop_duplicates()
-    hit_mapping = pd.merge(mapping_subset, hit_mapping, on=['entrezgene'], how='outer')
-    hit_mapping = hit_mapping.drop(columns=['entrezgene']) if id_type != 'entrez' else hit_mapping
-    hit_mapping = hit_mapping.fillna('').groupby([config.ID_TYPE_KEY[id_type]], as_index=False).agg(
-        {x: mu.combine_rows_to_set for x in config.GENE_ATTRIBUTES_KEY})
+    hit_mapping = mu.map_to_prev_id(main_id_type="entrezgene", id_type=config.ID_TYPE_KEY[id_type],
+                                    id_mapping=gene_mapping, att_mapping=hit_mapping)
+    # columns = ['entrezgene', config.ID_TYPE_KEY[id_type]] if id_type != 'entrez' else ['entrezgene']
+    # mapping_subset = gene_mapping[columns].drop_duplicates()
+    # hit_mapping = pd.merge(mapping_subset, hit_mapping, on=['entrezgene'], how='outer')
+    # hit_mapping = hit_mapping.drop(columns=['entrezgene']) if id_type != 'entrez' else hit_mapping
+    # hit_mapping = hit_mapping.fillna('').groupby([config.ID_TYPE_KEY[id_type]], as_index=False).agg(
+    #     {x: mu.combine_rows_to_set for x in config.GENE_ATTRIBUTES_KEY})
     return hit_mapping
 
 

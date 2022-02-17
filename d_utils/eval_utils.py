@@ -138,7 +138,7 @@ def evaluate_values(mapping: pd.DataFrame, ref_dict: dict, threshold: float, key
         else:  # == "overlap_coefficient"
             evaluated_series = mapping[attribute].apply(overlap_coefficient, ref_att_set=ref_dict[attribute])
         evaluation[attribute] = str(len(evaluated_series[evaluated_series > threshold]) / len(evaluated_series))
-        mapped[attribute] = mapping[mapping[attribute]!=""][mapping.columns[0]]
+        mapped[attribute] = list(mapping[mapping[attribute]!=""][mapping.columns[0]])
     return evaluation, mapped
 
 

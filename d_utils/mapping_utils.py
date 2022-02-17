@@ -2,6 +2,7 @@
 
 import pandas as pd
 import numpy as np
+import config as c
 
 
 def preprocess_results(mapping: pd.DataFrame, multicol: str, singlecol: str, key: str):
@@ -110,6 +111,30 @@ def list_to_string(x, sep: str = ';'):
 
 def set_to_len(x: set):
     return len(x)
+
+
+def map_to_prev_id(main_id_type: str, id_type: str, id_mapping: pd.DataFrame, att_mapping: pd.DataFrame):
+    """
+    Map attribute mapping back to original id.
+
+    :param main_id_type:
+    :param id_type:
+    :param id_mapping:
+    :param att_mapping:
+    :return:
+    """
+    if id_type not in ['entrezgene', 'mondo']:
+        id_mapping = id_mapping.explode(id_type)
+    attributes = c.DISEASE_ATTRIBUTES_KEY if main_id_type == "mondo" else c.GENE_ATTRIBUTES_KEY
+    columns = [main_id_type, id_type] if id_type != main_id_type else [main_id_type]
+    mapping_subset = id_mapping[columns].drop_duplicates()
+    hit_mapping = pd.merge(mapping_subset, att_mapping, on=[main_id_type], how='outer')
+    hit_mapping = hit_mapping.drop(columns=[main_id_type]) if id_type != main_id_type else hit_mapping
+    hit_mapping = hit_mapping.fillna('')
+    hit_mapping = hit_mapping[hit_mapping[id_type] != ""]
+    hit_mapping = hit_mapping.groupby(id_type, as_index=False).agg(
+        {x: combine_rows_to_set for x in attributes})
+    return hit_mapping
 
 
 def transform_disgenet_mapping(mapping: pd.DataFrame, file: str, col_old, col_new):

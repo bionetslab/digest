@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 import os
 import pandas as pd
-from d_utils import config as c, runner_utils as ru, eval_utils as eu, mapping_utils as mu
-from mappers import mapping_transformer as mt, gene_mapper as gm, disease_mapper as dm, network_mapper as nm
+from d_utils import config as c, runner_utils as ru, mapping_utils as mu
+from mappers import mapping_transformer as mt, gene_mapper as gm, disease_mapper as dm
 from mappers.mapper import Mapper, FileMapper
 
 
@@ -22,6 +22,7 @@ def load_files(mapper: Mapper):
     # ===== Transform disease mapping =====
     ru.print_current_usage('Transform loaded mappings ...')
     disease_mapping = mt.transform_id_mapping(disorder_ids.merge(icd10_ids, on='primaryDomainId', how='outer'))
+    disease_mapping["ICD-10"] = disease_mapping["ICD-10"].apply(mt.reduce_to_parent)
 
     # ===== Save disease mapping =====
     mapper.update_mappings(in_df=disease_mapping, key='disorder_ids')
@@ -104,12 +105,6 @@ def load_files(mapper: Mapper):
 
     mapper.save_distances()
 
-    # ===== Get GGI network =====
-    # ru.print_current_usage('Get PPI network ...')
-    # edge_list = nm.create_edge_list(organism="human", id_type="uniprot", out_dir="./")
-    # g = nm.create_network(edge_list=edge_list)
-    # g.save("tmp-network.graphml", fmt="graphml")
-
     ru.print_current_usage('Finished Setup ...')
 
 
@@ -118,6 +113,7 @@ def main():
     load_files(mapper=FileMapper(files_dir=c.FILES_DIR + "tmp/"))
     os.system("mv -f " + c.FILES_DIR + "tmp/* "+c.FILES_DIR)
     os.system("rm -rf "+c.FILES_DIR + "tmp/ ")
+
 
 if __name__ == "__main__":
     main()

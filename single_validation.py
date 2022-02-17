@@ -32,14 +32,13 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
     ru.start_time = time.time()
     # ===== Comparison with a set =====
     ru.print_current_usage('Starting validation ...')
-
     if mapper.load:
         ru.print_current_usage('Load mappings for input into cache ...') if verbose else None
         mapper.load_mappings()
     if mode in ["set", "set-set", "id-set"]:
         if mode == "set-set":
             comparator = comp.SetSetComparator(mapper=mapper, enriched=enriched, verbose=verbose)
-            comparator.load_reference(ref=pd.read_csv(ref, header=None, sep="\t")[0], ref_id_type=ref_id)
+            comparator.load_reference(ref=pd.read_csv(ref, header=None, sep="\t", dtype=str)[0], ref_id_type=ref_id)
         elif mode == "id-set":
             comparator = comp.IDSetComparator(mapper=mapper, verbose=verbose)
             comparator.load_reference(ref=ref, ref_id_type=ref_id)
@@ -48,7 +47,7 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
             if mapper.load:
                 ru.print_current_usage('Load distances for input into cache ...')
                 mapper.load_distances(set_type=tar_id)
-        comparator.load_target(id_set=pd.read_csv(tar, header=None, sep="\t")[0], id_type=tar_id)
+        comparator.load_target(id_set=pd.read_csv(tar, header=None, sep="\t", dtype=str)[0], id_type=tar_id)
 
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...') if verbose else None
@@ -58,10 +57,10 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
                                              runs=runs, background_model=background_model, replace=replace)
         ru.print_current_usage('Calculating p-values ...') if verbose else None
-        if mode == "set":
-            p_values = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=True)
-        else:
-            p_values = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=False)
+        #if mode == "set":
+        p_values = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=True)
+        #else:
+        #    p_values = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=False)
         result = {'input_values': {'value': my_value, 'mapped_ids': mapped}, 'p_values': p_values}
 
     # ===== Special case cluster =====
@@ -95,7 +94,7 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
     # mapper.save_mappings()
     # mapper.save_distances()
     ru.print_current_usage('Finished validation')
-    with open(out_dir + "digest_" + mode + "_result.json", "w") as outfile:
+    with open(out_dir + "digest_" + mode + "_" + tar_id + "_result.json", "w") as outfile:
         json.dump(result, outfile)
 
 
@@ -120,10 +119,10 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
         # ===== Get full id mapping =====
         if tar_id in config.SUPPORTED_DISEASE_IDS:
             full_id_map = mapper.get_full_set(id_type=tar_id, mapping_name='disorder_ids')
-            new_id_type, map_id_type = "mondo", "disorder_atts"
+            new_id_type, map_id_type, map_att_type = "mondo", "disorder_ids", "disorder_atts"
         else:  # if tar_id in config.SUPPORTED_GENE_IDS:
             full_id_map = mapper.get_full_set(id_type=config.ID_TYPE_KEY[tar_id], mapping_name='gene_ids')
-            new_id_type, map_id_type = "entrez", "gene_atts"
+            new_id_type, map_id_type, map_att_type = "entrez", "gene_ids", "gene_atts"
         # ===== Precalculate sizes =====
         orig_ids = set(comparator.id_set)
         size = len(orig_ids)
@@ -132,8 +131,13 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
             full_id_set = set(full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]] != ""][config.ID_TYPE_KEY[tar_id]])
         # ===== Precalculate attribute sizes for term-pres =====
         if background_model == "term-pres":
-            att_size = atts_to_size(pd_map=mapper.loaded_mappings[map_id_type])
-            att_dict = size_mapping_to_dict(pd_size_map=att_size, id_col=config.ID_TYPE_KEY[new_id_type], term_col=term,
+            att_map = mu.map_to_prev_id(main_id_type=config.ID_TYPE_KEY[new_id_type],
+                                        id_type=config.ID_TYPE_KEY[tar_id],
+                                        id_mapping=mapper.loaded_mappings[map_id_type],
+                                        att_mapping=mapper.loaded_mappings[map_att_type])
+            #print(att_map)
+            att_size = atts_to_size(pd_map=att_map)
+            att_dict = size_mapping_to_dict(pd_size_map=att_size, id_col=config.ID_TYPE_KEY[tar_id], term_col=term,
                                             threshold=100)
         for run in range(0, runs):
             # ===== Pick new samples =====
@@ -142,13 +146,14 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
                 random_sample = set(random.sample(full_id_set, random_size))
             elif background_model == "term-pres":
                 to_replace = orig_ids.difference(old_sample)
-                to_replace = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(to_replace)][comparator.att_id]
+                #to_replace = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(to_replace)][comparator.att_id]
                 random_sample = set()
                 for replace_id in to_replace:
-                    random_sample.add(
-                        att_size[att_size[term].isin(att_dict[replace_id])][config.ID_TYPE_KEY[new_id_type]].sample(
-                            n=1).values[0])
-                random_sample = set(full_id_map[full_id_map[comparator.att_id].isin(random_sample)][config.ID_TYPE_KEY[tar_id]])
+                    if replace_id in att_dict:  # only if id is mappable to other ids
+                        random_sample.add(
+                            att_size[att_size[term].isin(att_dict[replace_id])][config.ID_TYPE_KEY[tar_id]].sample(
+                                n=1).values[0])
+                #random_sample = set(full_id_map[full_id_map[comparator.att_id].isin(random_sample)][config.ID_TYPE_KEY[tar_id]])
             # ===== Get corresponding id set =====
             id_set = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(random_sample.union(old_sample))][
                 comparator.att_id]
@@ -212,8 +217,8 @@ def size_mapping_to_dict(pd_size_map: pd.DataFrame, id_col: str, term_col: str, 
 
 if __name__ == "__main__":
     desc = "            Evaluation of disease and gene sets and clusters."
-    args = ru.save_parameters(script_desc=desc, arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v', 'b', 'pr','p'))
-    single_validation(tar=args.target, tar_id=args.target_id_type,
+    args = ru.save_parameters(script_desc=desc, arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v', 'b', 'pr'))
+    single_validation(tar=args.target, tar_id=args.target_id_type, verbose=args.verbose,
                       mode=args.mode, ref=args.reference, ref_id=args.reference_id_type,
                       enriched=args.enriched, out_dir=args.out_dir, runs=args.runs,
                       background_model=args.background_model, replace=args.replace)

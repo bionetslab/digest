@@ -1,25 +1,12 @@
-E10	Type1 diabetes mellitus
-E11	Type2 diabetes mellitus
-E12	Malnutrition-related diabetes mellitus
-E13	Other specified diabetes mellitus
-E14	Unspecified diabetes mellitus
-E66	Obesity
-F00	Dementia in Alzheimer disease
-F01	Vascular dementia
-F02	Dementia in other diseases classified elsewhere
-F03	Unspecified dementia
-G20	Parkinson
-G30	Alzheimer
-G43	Migraine
-I10	Essential (primary) Hypertension
-I11	Hypertensive heart disease
-I12	Hypertensive renal disease
-I13	Hypertensive heart and renal disease
-I15	Secondary hypertension
-I21	Acute myocardial infarction
-I22	Subsequent myocardial imfarction
-I50	Heart failure
-I63	Cerebral infarction
-I64	Stroke, not specified as haemorrhage or infarction
-I70	Athersosclerosis
-J45	Asthma
+D020521	Stroke
+D000544	Alzheimer
+D003704	Dementia
+D050197	Atherosclerosis
+D001249	Asthma
+D003924	Diabetes mellitus type 2
+D010300	Parkinson disease
+D006333	Heart failure
+D008881	Migraine disorders
+D009203	Myocardial infarction
+D006973	Hypertension
+D009765	Obesity

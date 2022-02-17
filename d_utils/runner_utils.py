@@ -65,9 +65,9 @@ def save_parameters(script_desc: str, arguments):
     if 'c' in arguments:
         optional_args.add_argument("-c", "--runs", type=int, default=c.NUMBER_OF_RANDOM_RUNS,
                                    help="Number of runs with random target values for p-value calculation.")
-    if 'p' in arguments:
+    if 'b' in arguments:
         optional_args.add_argument("-b", "--background_model", type=str, default="complete",
-                                   choices=['complete', 'deg-pres', 'term-pres'],
+                                   choices=['complete', 'term-pres'],
                                    help="Model defining how random values should be picked. See possible options below.")
     if 'pr' in arguments:
         optional_args.add_argument("-pr", "--replace", type=int, default=100,

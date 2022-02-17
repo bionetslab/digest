@@ -68,3 +68,6 @@ def transform_icd10_mapping(ids_set: str):
             trans_ids.add(cur_id)
     return ','.join(str(s) for s in trans_ids)
 
+
+def reduce_to_parent(x: str):
+    return ",".join(set([entry.split(".")[0] for entry in x.split(",")]))
