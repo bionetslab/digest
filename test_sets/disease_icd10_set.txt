@@ -1,5 +1,0 @@
-E10	Type1 diabetes mellitus
-E11	Type2 diabetes mellitus
-E12	Malnutrition-related diabetes mellitus
-E13	Other specified diabetes mellitus
-E14	Unspecified diabetes mellitus
