@@ -77,6 +77,9 @@ def save_parameters(script_desc: str, arguments):
         optional_args.add_argument("-v", "--verbose", action='store_true', default=False,
                                    help="Set flag, if additional info like ids without assigned attributes should "
                                         "be printed.")
+    if 'p' in arguments:
+        optional_args.add_argument("-p", "--plot", action='store_true', default=False,
+                                   help="Set flag, if plots should be created.")
     optional_args.add_argument("-h", "--help", action="help", help="show this help message and exit")
     args = parser.parse_args()
     return args

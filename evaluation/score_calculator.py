@@ -2,7 +2,6 @@
 
 import pandas as pd
 from collections import defaultdict
-from d_utils import mapping_utils as mu
 
 
 def precalc_distance_dicts(ids_cluster: pd.DataFrame, ids_mapping: pd.DataFrame, distances: dict, index_to_id: dict,
@@ -23,7 +22,7 @@ def precalc_distance_dicts(ids_cluster: pd.DataFrame, ids_mapping: pd.DataFrame,
     intra = defaultdict(lambda: {'max': None, 'sum': 0, 'min': None})
     inter = defaultdict(lambda: defaultdict(lambda: {'max': None, 'sum': 0, 'min': None}))
     # ===== map ids to cluster =====
-    id_to_cluster = ids_cluster.set_index(0).to_dict()['cluster_index']
+    id_to_cluster = ids_cluster.set_index('id').to_dict()['cluster_index']
     # ===== map att ids to ids =====
     if ids['att_id'] != ids['id_type']:
         att_id_to_id = ids_mapping[[ids['att_id'],ids['id_type']]].groupby(ids['att_id']).agg(lambda g: set(g)).to_dict()[ids['id_type']]
@@ -94,7 +93,7 @@ def silhouette_score(ids_cluster: pd.DataFrame, distances: dict, linkage="averag
     """
     cluster_sizes = ids_cluster['cluster_index'].value_counts().to_dict()
     # ===== map ids to cluster =====
-    id_to_cluster = ids_cluster.set_index(0).to_dict()['cluster_index']
+    id_to_cluster = ids_cluster.set_index('id').to_dict()['cluster_index']
     # ===== calculate score =====
     s_score = 0
     intra_s_scores = dict()
@@ -129,7 +128,7 @@ def silhouette_score(ids_cluster: pd.DataFrame, distances: dict, linkage="averag
             intra_s_scores[cluster] = intra_s_scores[cluster] / cluster_sizes[cluster]
         else:
             intra_s_scores[cluster] = 0
-    return s_score / len(ids_cluster[0]), intra_s_scores
+    return s_score / len(ids_cluster['id']), intra_s_scores
 
 
 def dunn_index(ids_cluster: pd.DataFrame, distances: dict, linkage="average") -> float:

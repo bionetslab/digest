@@ -128,9 +128,9 @@ class ClusterComparator(Comparator):
         self.clustering = None
 
     def load_target(self, id_set, id_type):
-        id_set['cluster_index'] = id_set.groupby(1).ngroup()
-        super().load_target(id_set=id_set[0], id_type=id_type)
-        self.clustering = id_set[[0, 'cluster_index']]
+        id_set['cluster_index'] = id_set.groupby('cluster').ngroup()
+        super().load_target(id_set=id_set["id"], id_type=id_type)
+        self.clustering = id_set[['id', 'cluster', 'cluster_index']]
 
     def compare(self, threshold: float = 0.0):
         result_di, result_ss, result_ss_intermediate, result_dbi, mapped = dict(), dict(), dict(), dict(), dict()
@@ -138,7 +138,8 @@ class ClusterComparator(Comparator):
                                                   key=self.sparse_key)
         for attribute in self.mapping.columns[1:]:
             subset_df = self.mapping[self.mapping[attribute].str.len() > 0]
-            subset_clusters = self.clustering[self.clustering[0].isin(subset_df[c.ID_TYPE_KEY[self.id_type]])]
+            subset_clusters = self.clustering[self.clustering['id'].isin(subset_df[c.ID_TYPE_KEY[self.id_type]])][
+                ['id', 'cluster_index']]
             missing_values = len(self.mapping) - len(subset_df)
             if missing_values > 0:
                 print("Missing values for " + attribute + " :" + str(missing_values) + "/" + str(

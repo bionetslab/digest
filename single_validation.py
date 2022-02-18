@@ -1,17 +1,19 @@
 #!/usr/bin/python3
 
+import os
 import numpy as np
 import pandas as pd
-from d_utils import runner_utils as ru, config, eval_utils as eu, mapping_utils as mu
+from d_utils import runner_utils as ru, config, eval_utils as eu, mapping_utils as mu, plotting_utils as pu
 from evaluation import comparator as comp
 import random
 from mappers.mapper import Mapper, FileMapper
 import json
 import time
+from pathlib import Path
 
 
 def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id: str = None, enriched: bool = False,
-                      mapper: Mapper = FileMapper(), out_dir: str = "", runs: int = config.NUMBER_OF_RANDOM_RUNS,
+                      mapper: Mapper = FileMapper(), runs: int = config.NUMBER_OF_RANDOM_RUNS,
                       background_model: str = "complete", replace=100, verbose: bool = False):
     """
     Single validation of a set, cluster a id versus set and set versus set.
@@ -23,7 +25,6 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
     :param ref_id: id type of reference input
     :param enriched: bool setting if values of reference set should be filtered for enriched values [Default=False]
     :param mapper: mapper from type Mapper defining where the precalculated information comes from
-    :param out_dir: output directory for results
     :param runs: number of random runs to create p-values [Default=1000]
     :param background_model
     :param replace
@@ -48,7 +49,6 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
                 ru.print_current_usage('Load distances for input into cache ...')
                 mapper.load_distances(set_type=tar_id)
         comparator.load_target(id_set=pd.read_csv(tar, header=None, sep="\t", dtype=str)[0], id_type=tar_id)
-
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...') if verbose else None
         my_value, mapped = comparator.compare()
@@ -57,11 +57,10 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
                                              runs=runs, background_model=background_model, replace=replace)
         ru.print_current_usage('Calculating p-values ...') if verbose else None
-        #if mode == "set":
-        p_values = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=True)
-        #else:
-        #    p_values = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=False)
-        result = {'input_values': {'value': my_value, 'mapped_ids': mapped}, 'p_values': p_values}
+        p_values = {
+            'set_value': eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=True)}
+        results = {'input_values': {'values': {'set_value': my_value}, 'mapped_ids': mapped},
+                   'p_values': {'values': p_values}}
 
     # ===== Special case cluster =====
     elif mode == "cluster":
@@ -70,7 +69,9 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
             mapper.load_distances(set_type=tar_id)
         ru.print_current_usage('Load input data ...') if verbose else None
         comparator = comp.ClusterComparator(mapper=mapper, verbose=verbose)
-        comparator.load_target(id_set=pd.read_csv(tar, header=None, sep="\t", dtype=str), id_type=tar_id)
+        comparator.load_target(
+            id_set=pd.read_csv(tar, header=None, sep="\t", dtype=str, names=["id", "cluster", "desc"]),
+            id_type=tar_id)
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...') if verbose else None
         my_value_di, my_value_ss, my_value_dbi, my_value_ss_inter, mapped = comparator.compare()
@@ -83,19 +84,14 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
         p_values_dbi = eu.calc_pvalue(test_value=my_value_dbi, random_values=pd.DataFrame(comp_values[2]),
                                       maximize=False)
         p_values = {'di': p_values_di, 'ss': p_values_ss, 'dbi': p_values_dbi}
-        result = {
-            'input_values': {'di': my_value_di, 'ss': my_value_ss, 'ss_inter': my_value_ss_inter, 'dbi': my_value_dbi,
-                             'mapped_ids': mapped}, 'p_values': p_values}
+        results = {
+            'input_values': {'values': {'di': my_value_di, 'ss': my_value_ss, 'ss_inter': my_value_ss_inter,
+                                        'dbi': my_value_dbi},
+                             'mapped_ids': mapped}, 'p_values': {'values': p_values}}
     else:
-        result = {None}
-
-    # ===== Saving final files and results =====
-    ru.print_current_usage('Save files') if verbose else None
-    # mapper.save_mappings()
-    # mapper.save_distances()
+        results = {None}
     ru.print_current_usage('Finished validation')
-    with open(out_dir + "digest_" + mode + "_" + tar_id + "_result.json", "w") as outfile:
-        json.dump(result, outfile)
+    return results
 
 
 def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mapper, tar_id: str, runs: int,
@@ -135,7 +131,6 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
                                         id_type=config.ID_TYPE_KEY[tar_id],
                                         id_mapping=mapper.loaded_mappings[map_id_type],
                                         att_mapping=mapper.loaded_mappings[map_att_type])
-            #print(att_map)
             att_size = atts_to_size(pd_map=att_map)
             att_dict = size_mapping_to_dict(pd_size_map=att_size, id_col=config.ID_TYPE_KEY[tar_id], term_col=term,
                                             threshold=100)
@@ -146,14 +141,12 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
                 random_sample = set(random.sample(full_id_set, random_size))
             elif background_model == "term-pres":
                 to_replace = orig_ids.difference(old_sample)
-                #to_replace = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(to_replace)][comparator.att_id]
                 random_sample = set()
                 for replace_id in to_replace:
                     if replace_id in att_dict:  # only if id is mappable to other ids
                         random_sample.add(
                             att_size[att_size[term].isin(att_dict[replace_id])][config.ID_TYPE_KEY[tar_id]].sample(
                                 n=1).values[0])
-                #random_sample = set(full_id_map[full_id_map[comparator.att_id].isin(random_sample)][config.ID_TYPE_KEY[tar_id]])
             # ===== Get corresponding id set =====
             id_set = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(random_sample.union(old_sample))][
                 comparator.att_id]
@@ -167,16 +160,16 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
         # ===== Calculate values =====
         results.extend([list(), list(), list()])
         # ===== Precalculate sizes =====
-        orig_ids = set(comparator.clustering[0])
+        orig_ids = set(comparator.clustering['id'])
         orig_clusters = comparator.clustering
         size = len(orig_ids)
         random_size = int((size / 100) * replace)
         for run in range(0, runs):
             old_sample = set(random.sample(orig_ids, (size - random_size)))
             # ===== Shuffle subset of clusters =====
-            subset = orig_clusters[~orig_clusters[0].isin(old_sample)]
+            subset = orig_clusters[~orig_clusters['id'].isin(old_sample)]
             subset["cluster_index"] = np.random.permutation(subset["cluster_index"])
-            comparator.clustering = pd.concat([orig_clusters[orig_clusters[0].isin(old_sample)], subset])
+            comparator.clustering = pd.concat([orig_clusters[orig_clusters['id'].isin(old_sample)], subset])
             # ===== Start validating =====
             value_di, value_ss, value_dbi, value_ss_inter, mapped = comparator.compare()
             results[0].append(value_di)
@@ -215,10 +208,28 @@ def size_mapping_to_dict(pd_size_map: pd.DataFrame, id_col: str, term_col: str, 
     return new_dict
 
 
+def save_results(results: dict, prefix: str, out_dir):
+    # ===== Save complete output =====
+    with open(os.path.join(out_dir, prefix + "_result.json"), "w") as outfile:
+        json.dump(results, outfile)
+    # ===== Save output to tables =====
+    pd.DataFrame(results["input_values"]['values']).to_csv(os.path.join(out_dir, prefix + "_input_validation.csv"))
+    pd.DataFrame(results["p_values"]['values']).to_csv(os.path.join(out_dir, prefix + "_p-value_validation.csv"))
+
+
 if __name__ == "__main__":
     desc = "            Evaluation of disease and gene sets and clusters."
-    args = ru.save_parameters(script_desc=desc, arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v', 'b', 'pr'))
-    single_validation(tar=args.target, tar_id=args.target_id_type, verbose=args.verbose,
-                      mode=args.mode, ref=args.reference, ref_id=args.reference_id_type,
-                      enriched=args.enriched, out_dir=args.out_dir, runs=args.runs,
-                      background_model=args.background_model, replace=args.replace)
+    args = ru.save_parameters(script_desc=desc,
+                              arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v', 'b', 'pr', 'p'))
+    result = single_validation(tar=args.target, tar_id=args.target_id_type, verbose=args.verbose,
+                               mode=args.mode, ref=args.reference, ref_id=args.reference_id_type,
+                               enriched=args.enriched, runs=args.runs,
+                               background_model=args.background_model, replace=args.replace)
+    # ===== Saving final files and results =====
+    ru.print_current_usage('Save files') if args.verbose else None
+    Path(args.out_dir).mkdir(parents=True, exist_ok=True)  # make sure output dir exists
+    pref = "_".join([args.mode, args.target_id_type, args.background_model])
+    save_results(results=result, prefix=pref, out_dir=args.out_dir)
+    if args.plot:
+        pu.create_plots(results=result, mode=args.mode, tar=args.target, tar_id=args.target_id_type,
+                        out_dir=args.out_dir, prefix=pref)
