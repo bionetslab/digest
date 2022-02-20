@@ -35,12 +35,6 @@ def get_disease_to_attributes(disease_set, id_type, mapper: Mapper):
     # ===== Map back to previous ids =====
     hit_mapping = mu.map_to_prev_id(main_id_type="mondo", id_type=id_type,
                                     id_mapping=disorder_mapping, att_mapping=hit_mapping)
-    # columns = ['mondo', id_type] if id_type != 'mondo' else ['mondo']
-    # mapping_subset = disorder_mapping[columns].drop_duplicates()
-    # hit_mapping = pd.merge(mapping_subset, hit_mapping, on=['mondo'], how='outer')
-    # hit_mapping = hit_mapping.drop(columns=['mondo']) if id_type != 'mondo' else hit_mapping
-    # hit_mapping = hit_mapping.fillna('').groupby(id_type, as_index=False).agg(
-    #     {x: mu.combine_rows_to_set for x in config.DISEASE_ATTRIBUTES_KEY})
     return hit_mapping
 
 

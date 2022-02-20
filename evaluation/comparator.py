@@ -152,23 +152,27 @@ class ClusterComparator(Comparator):
                                                   to_ids=new_ids)
                 self.mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type=self.sparse_key)
 
-            ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
-                                                     id_type=self.id_type)
-            distances = self.mapper.get_loaded_distances(in_series=ids[self.att_id], id_type=self.sparse_key,
-                                                         key=c.DISTANCES[attribute])
-            distances = dict(distances.todok().items())
-            inv_index_to_id = {index: value for index, value in ids[self.att_id].reset_index(drop=True).items()}
-            precalc_dist = sc.precalc_distance_dicts(ids_cluster=subset_clusters, ids_mapping=ids, distances=distances,
-                                                     index_to_id=inv_index_to_id,
-                                                     ids={'id_type': c.ID_TYPE_KEY[self.id_type],
-                                                          'sparse_key': self.sparse_key, 'att_id': self.att_id,
-                                                          'attribute': c.DISTANCES[attribute]})
-            ss_score = sc.silhouette_score(ids_cluster=subset_clusters, distances=precalc_dist, linkage="average")
-            di_score = sc.dunn_index(ids_cluster=subset_clusters, distances=precalc_dist, linkage="average")
-            dbi_score = sc.davies_bouldin_index(ids_cluster=subset_clusters, distances=precalc_dist, linkage="average")
-            result_di[attribute] = di_score
-            result_ss[attribute] = ss_score[0]
-            result_ss_intermediate[attribute] = ss_score[1]
-            result_dbi[attribute] = dbi_score
-            mapped[attribute] = list(subset_df[c.ID_TYPE_KEY[self.id_type]])
+            if subset_df.empty:
+                result_di[attribute], result_ss[attribute], result_ss_intermediate[attribute] = None, None, None
+                result_dbi[attribute], mapped[attribute] = None, []
+            else:
+                ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
+                                                         id_type=self.id_type)
+                distances = self.mapper.get_loaded_distances(in_series=ids[self.att_id], id_type=self.sparse_key,
+                                                             key=c.DISTANCES[attribute])
+                distances = dict(distances.todok().items())
+                inv_index_to_id = {index: value for index, value in ids[self.att_id].reset_index(drop=True).items()}
+                precalc_dist = sc.precalc_distance_dicts(ids_cluster=subset_clusters, ids_mapping=ids, distances=distances,
+                                                         index_to_id=inv_index_to_id,
+                                                         ids={'id_type': c.ID_TYPE_KEY[self.id_type],
+                                                              'sparse_key': self.sparse_key, 'att_id': self.att_id,
+                                                              'attribute': c.DISTANCES[attribute]})
+                ss_score = sc.silhouette_score(ids_cluster=subset_clusters, distances=precalc_dist, linkage="average")
+                di_score = sc.dunn_index(ids_cluster=subset_clusters, distances=precalc_dist, linkage="average")
+                dbi_score = sc.davies_bouldin_index(ids_cluster=subset_clusters, distances=precalc_dist, linkage="average")
+                result_di[attribute] = di_score
+                result_ss[attribute] = ss_score[0]
+                result_ss_intermediate[attribute] = ss_score[1]
+                result_dbi[attribute] = dbi_score
+                mapped[attribute] = list(subset_df[c.ID_TYPE_KEY[self.id_type]])
         return result_di, result_ss, result_dbi, result_ss_intermediate, mapped

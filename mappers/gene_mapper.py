@@ -79,12 +79,6 @@ def get_gene_to_attributes(gene_set: set, id_type: str, mapper: Mapper):
     # ===== work with not unique values =====
     hit_mapping = mu.map_to_prev_id(main_id_type="entrezgene", id_type=config.ID_TYPE_KEY[id_type],
                                     id_mapping=gene_mapping, att_mapping=hit_mapping)
-    # columns = ['entrezgene', config.ID_TYPE_KEY[id_type]] if id_type != 'entrez' else ['entrezgene']
-    # mapping_subset = gene_mapping[columns].drop_duplicates()
-    # hit_mapping = pd.merge(mapping_subset, hit_mapping, on=['entrezgene'], how='outer')
-    # hit_mapping = hit_mapping.drop(columns=['entrezgene']) if id_type != 'entrez' else hit_mapping
-    # hit_mapping = hit_mapping.fillna('').groupby([config.ID_TYPE_KEY[id_type]], as_index=False).agg(
-    #     {x: mu.combine_rows_to_set for x in config.GENE_ATTRIBUTES_KEY})
     return hit_mapping
 
 
@@ -104,7 +98,8 @@ def get_enriched_attributes(gene_set: set, id_type: str, mapper: Mapper):
         gene_sets=list(config.ENRICH_KEY.keys()),
         cutoff=0.05).results
     enrich_df = enrich_df[enrich_df['Adjusted P-value'] < 0.05]
-    if len(enrich_df) > 0:
-        enrich_df.insert(2, 'Term_ID', enrich_df['Term'].str.extract(r'(GO:[0-9]*|hsa[0-9]*)')[0])
+    if enrich_df.empty:
+        return pd.DataFrame()
+    enrich_df.insert(2, 'Term_ID', enrich_df['Term'].str.extract(r'(GO:[0-9]*|hsa[0-9]*)')[0])
     enrich_df = enrich_df[['Gene_set', 'Term_ID']].pivot(columns='Gene_set')['Term_ID']
     return enrich_df

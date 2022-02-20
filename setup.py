@@ -1,7 +1,8 @@
 #!/usr/bin/python3
+
 import os
 import pandas as pd
-from d_utils import config as c, runner_utils as ru, mapping_utils as mu
+from d_utils import config as c, runner_utils as ru, mapping_utils as mu, eval_utils as eu
 from mappers import mapping_transformer as mt, gene_mapper as gm, disease_mapper as dm
 from mappers.mapper import Mapper, FileMapper
 

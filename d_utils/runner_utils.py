@@ -6,6 +6,7 @@ import argparse
 import time
 import psutil
 import d_utils.config as c
+import pandas as pd
 
 start_time = time.time()
 
@@ -26,10 +27,10 @@ def save_parameters(script_desc: str, arguments):
                                      usage=argparse.SUPPRESS, add_help=False)
     required_args = parser.add_argument_group("required arguments")
     if 'r' in arguments:
-        required_args.add_argument('-r', '--reference', type=str,
+        required_args.add_argument('-r', '--reference', type=str, default=None,
                                    help='[Only for mode id-set and set-set] Reference file or id. ')
     if 'ri' in arguments:
-        required_args.add_argument('-ri', '--reference_id_type', type=str,
+        required_args.add_argument('-ri', '--reference_id_type', type=str, default=None,
                                    choices=c.SUPPORTED_GENE_IDS + c.SUPPORTED_DISEASE_IDS, metavar='REFERENCE_ID_TYPE',
                                    help='[Only for mode id-set and set-set] Reference id type. See possible options below.')
     if 't' in arguments:
@@ -43,7 +44,7 @@ def save_parameters(script_desc: str, arguments):
         required_args.add_argument('-m', '--mode', type=str, required=True,
                                    choices=['set', 'set-set', 'id-set', 'cluster'],
                                    help='Desired mode. See possible options below.')
-    # =============================================================================
+    # ============================================================================
     # for network creation
     # ============================================================================
     if 'n' in arguments:
@@ -82,6 +83,17 @@ def save_parameters(script_desc: str, arguments):
                                    help="Set flag, if plots should be created.")
     optional_args.add_argument("-h", "--help", action="help", help="show this help message and exit")
     args = parser.parse_args()
+    # ============================================================================
+    # prepare input
+    # ============================================================================
+    if args.mode == "set-set":
+        args.reference = pd.read_csv(args.reference, header=None, sep="\t", dtype=str)[0]
+        args.reference = set(args.reference)
+    if args.mode == "clutser":
+        args.target = pd.read_csv(args.target, header=None, sep="\t", dtype=str, names=["id", "cluster", "desc"])
+    else:
+        args.target = pd.read_csv(args.target, header=None, sep="\t", dtype=str)[0]
+        args.target = set(args.target)
     return args
 
 

@@ -166,6 +166,8 @@ def dunn_index(ids_cluster: pd.DataFrame, distances: dict, linkage="average") ->
                         min_inter_dist = distance
         else:
             min_inter_dist = 0
+    if max_intra_dist == 0:
+        return 0.0
     return min_inter_dist / max_intra_dist
 
 

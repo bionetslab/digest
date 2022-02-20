@@ -70,4 +70,4 @@ def transform_icd10_mapping(ids_set: str):
 
 
 def reduce_to_parent(x: str):
-    return ",".join(set([entry.split(".")[0] for entry in x.split(",")]))
+    return ";".join(set([entry.split(".")[0] for entry in x.split(",")]))

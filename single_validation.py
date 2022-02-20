@@ -10,25 +10,27 @@ from mappers.mapper import Mapper, FileMapper
 import json
 import time
 from pathlib import Path
+from typing import Union
 
 
-def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id: str = None, enriched: bool = False,
+def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str,
+                      ref: Union[str, set] = None, ref_id: str = None, enriched: bool = False,
                       mapper: Mapper = FileMapper(), runs: int = config.NUMBER_OF_RANDOM_RUNS,
                       background_model: str = "complete", replace=100, verbose: bool = False):
     """
     Single validation of a set, cluster a id versus set and set versus set.
 
-    :param tar: path to the file with the target input
+    :param tar: cluster as type dataframe with columns=["id","cluster"] or set as type set
     :param tar_id: id type of target input
     :param mode: comparison mode [set, id-set, set-set, cluster]
-    :param ref: path to the file with the reference input or string with reference id [Default=None]
-    :param ref_id: id type of reference input
+    :param ref: set of reference ids or string with reference id [Default=None]
+    :param ref_id: id type of reference input [Default=None]
     :param enriched: bool setting if values of reference set should be filtered for enriched values [Default=False]
-    :param mapper: mapper from type Mapper defining where the precalculated information comes from
+    :param mapper: mapper from type Mapper defining where the precalculated information comes from [Default=FileMapper]
     :param runs: number of random runs to create p-values [Default=1000]
-    :param background_model
-    :param replace
-    :param verbose: bool if additional info like ids without assigned attributes should be printed
+    :param background_model: which background model to use for random picks [Default="complete"]
+    :param replace: how many % of target input should be replaced by random picks [Default=100]
+    :param verbose: bool if additional info like ids without assigned attributes should be printed [Default=False]
     """
     ru.start_time = time.time()
     # ===== Comparison with a set =====
@@ -39,7 +41,7 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
     if mode in ["set", "set-set", "id-set"]:
         if mode == "set-set":
             comparator = comp.SetSetComparator(mapper=mapper, enriched=enriched, verbose=verbose)
-            comparator.load_reference(ref=pd.read_csv(ref, header=None, sep="\t", dtype=str)[0], ref_id_type=ref_id)
+            comparator.load_reference(ref=ref, ref_id_type=ref_id)
         elif mode == "id-set":
             comparator = comp.IDSetComparator(mapper=mapper, verbose=verbose)
             comparator.load_reference(ref=ref, ref_id_type=ref_id)
@@ -48,7 +50,7 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
             if mapper.load:
                 ru.print_current_usage('Load distances for input into cache ...')
                 mapper.load_distances(set_type=tar_id)
-        comparator.load_target(id_set=pd.read_csv(tar, header=None, sep="\t", dtype=str)[0], id_type=tar_id)
+        comparator.load_target(id_set=tar, id_type=tar_id)
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...') if verbose else None
         my_value, mapped = comparator.compare()
@@ -69,9 +71,7 @@ def single_validation(tar: str, tar_id: str, mode: str, ref: str = None, ref_id:
             mapper.load_distances(set_type=tar_id)
         ru.print_current_usage('Load input data ...') if verbose else None
         comparator = comp.ClusterComparator(mapper=mapper, verbose=verbose)
-        comparator.load_target(
-            id_set=pd.read_csv(tar, header=None, sep="\t", dtype=str, names=["id", "cluster", "desc"]),
-            id_type=tar_id)
+        comparator.load_target(id_set=tar, id_type=tar_id)
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...') if verbose else None
         my_value_di, my_value_ss, my_value_dbi, my_value_ss_inter, mapped = comparator.compare()
@@ -124,7 +124,7 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
         size = len(orig_ids)
         random_size = int((size / 100) * replace)
         if background_model == "complete":
-            full_id_set = set(full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]] != ""][config.ID_TYPE_KEY[tar_id]])
+            full_id_set = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]] != ""][config.ID_TYPE_KEY[tar_id]].tolist()
         # ===== Precalculate attribute sizes for term-pres =====
         if background_model == "term-pres":
             att_map = mu.map_to_prev_id(main_id_type=config.ID_TYPE_KEY[new_id_type],
@@ -136,7 +136,7 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
                                             threshold=100)
         for run in range(0, runs):
             # ===== Pick new samples =====
-            old_sample = set(random.sample(orig_ids, (size - random_size)))
+            old_sample = set(random.sample(list(orig_ids), (size - random_size)))
             if background_model == "complete":
                 random_sample = set(random.sample(full_id_set, random_size))
             elif background_model == "term-pres":
