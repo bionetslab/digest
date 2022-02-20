@@ -3,7 +3,7 @@
 import os
 import math
 import pandas as pd
-import config as c
+from .. import config as c
 import seaborn as sns
 from pathlib import Path
 from matplotlib import pyplot as plt

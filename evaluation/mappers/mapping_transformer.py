@@ -3,7 +3,7 @@
 import pandas as pd
 import re
 import ast
-from d_utils import config
+from .. import config
 
 
 def transform_id_mapping(data):

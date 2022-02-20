@@ -5,7 +5,7 @@ import sys
 import argparse
 import time
 import psutil
-import d_utils.config as c
+from .. import config as c
 import pandas as pd
 
 start_time = time.time()
@@ -60,6 +60,10 @@ def save_parameters(script_desc: str, arguments):
     optional_args = parser.add_argument_group("optional arguments")
     if 'o' in arguments:
         optional_args.add_argument('-o', '--out_dir', type=str, default='./', help='Output directory. [Default=./]')
+    if 'dg' in arguments:
+        optional_args.add_argument('-dg', '--distance_measure', type=str, default='jaccard',
+                                   choices=["jaccard","overlap"],
+                                   help='Distance measure. [Default="jaccard"]')
     if 'e' in arguments:
         optional_args.add_argument("-e", "--enriched", action='store_true', default=False,
                                    help="Set flag, if only enriched attributes of the reference should be used.")
@@ -81,19 +85,25 @@ def save_parameters(script_desc: str, arguments):
     if 'p' in arguments:
         optional_args.add_argument("-p", "--plot", action='store_true', default=False,
                                    help="Set flag, if plots should be created.")
+    if 's' in arguments:
+        optional_args.add_argument("-s", "--scratch", action='store_true', default=False,
+                                   help="Set flag, setup should be generated from scratch. If not, it will load the "
+                                        "files from the api [suggested option].")
     optional_args.add_argument("-h", "--help", action="help", help="show this help message and exit")
     args = parser.parse_args()
     # ============================================================================
     # prepare input
     # ============================================================================
-    if args.mode == "set-set":
-        args.reference = pd.read_csv(args.reference, header=None, sep="\t", dtype=str)[0]
-        args.reference = set(args.reference)
-    if args.mode == "clutser":
-        args.target = pd.read_csv(args.target, header=None, sep="\t", dtype=str, names=["id", "cluster", "desc"])
-    else:
-        args.target = pd.read_csv(args.target, header=None, sep="\t", dtype=str)[0]
-        args.target = set(args.target)
+    if 'm' in arguments:
+        if args.mode == "set-set":
+            args.reference = pd.read_csv(args.reference, header=None, sep="\t", dtype=str)[0]
+            args.reference = set(args.reference)
+        if args.mode == "clutser":
+            args.target = pd.read_csv(args.target, header=None, sep="\t", dtype=str, names=["id", "cluster", "desc"])
+        else:
+            args.target = pd.read_csv(args.target, header=None, sep="\t", dtype=str)[0]
+            args.target = set(args.target)
+
     return args
 
 

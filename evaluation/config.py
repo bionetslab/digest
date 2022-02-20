@@ -1,8 +1,6 @@
 #!/usr/bin/python3
 
-import sys
 import os
-import inspect
 
 # =============================================================================
 # SETUP
@@ -13,18 +11,9 @@ SUPPORTED_DISEASE_IDS = ['mondo', 'omim', 'snomedct', 'umls', 'orpha', 'mesh', '
 NUMBER_OF_RANDOM_RUNS = 1000
 
 # =============================================================================
-# Load all paths of required folders with scripts
-# =============================================================================
-UTILS_DIR = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-BASE_DIR = os.path.dirname(UTILS_DIR)
-sys.path.insert(0, BASE_DIR + '/setup')
-sys.path.insert(0, BASE_DIR + '/d_utils')
-sys.path.insert(0, BASE_DIR + '/mappers')
-
-# =============================================================================
 # Set directories
 # ============================================================================
-FILES_DIR = BASE_DIR + '/mapping_files/'
+FILES_DIR = os.getcwd() + '/mapping_files/'
 
 # =============================================================================
 # Set ID names mapping

@@ -2,7 +2,7 @@
 
 import pandas as pd
 import numpy as np
-import config as c
+from .. import config as c
 
 
 def preprocess_results(mapping: pd.DataFrame, multicol: str, singlecol: str, key: str):

@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 
 import pandas as pd
-from d_utils import config, mapping_utils as mu
+from .. import config
+from . import mapping_utils as mu
 from biothings_client import get_client
-from mapper import Mapper
+from .mapper import Mapper
 
 
 def get_disease_to_attributes(disease_set, id_type, mapper: Mapper):

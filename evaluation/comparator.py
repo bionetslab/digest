@@ -1,16 +1,18 @@
 #!/usr/bin/python3
 
-from d_utils import eval_utils as eu, config as c
-from mappers import gene_mapper as gm, disease_mapper as dm
-from mappers.mapper import Mapper
-from evaluation import score_calculator as sc
+from .d_utils import eval_utils as eu
+from . import config as c
+from .mappers import gene_getter as gg, disease_getter as dg
+from .mappers.mapper import Mapper
+from . import score_calculator as sc
 from abc import abstractmethod
 
 
 class Comparator:
-    def __init__(self, mapper: Mapper, verbose: bool = False):
+    def __init__(self, mapper: Mapper, distance_measure: str, verbose: bool = False):
         self.mapper = mapper
         self.verbose = verbose
+        self.distance_measure = distance_measure
         self.mapping = None
         self.id_set, self.id_type = None, None
         self.att_id, self.att_key, self.sparse_key = None, None, None
@@ -19,10 +21,10 @@ class Comparator:
         self.id_set = id_set
         self.id_type = id_type
         if id_type in c.SUPPORTED_DISEASE_IDS:
-            self.mapping = dm.get_disease_to_attributes(disease_set=id_set, id_type=id_type, mapper=self.mapper)
+            self.mapping = dg.get_disease_to_attributes(disease_set=id_set, id_type=id_type, mapper=self.mapper)
             self.sparse_key, self.att_key, self.att_id = 'disease_mat_ids', 'disorder_atts', 'mondo'
         else:  # if id_type in c.SUPPORTED_GENE_IDS:
-            self.mapping = gm.get_gene_to_attributes(gene_set=id_set, id_type=id_type, mapper=self.mapper)
+            self.mapping = gg.get_gene_to_attributes(gene_set=id_set, id_type=id_type, mapper=self.mapper)
             self.sparse_key, self.att_key, self.att_id = 'gene_mat_ids', 'gene_atts', 'entrezgene'
 
     @abstractmethod
@@ -38,7 +40,7 @@ class SetComparator(Comparator):
     def compare(self, threshold: float = 0.0):
         result, mapped = dict(), dict()
         new_ids = self.mapper.update_distance_ids(in_series=self.mapper.loaded_mappings[self.att_key][self.att_id],
-                                                  key=self.sparse_key)
+                                                  key=self.sparse_key, distance_measure=self.distance_measure)
         for attribute in self.mapping.columns[1:]:
             subset_df = self.mapping[self.mapping[attribute].str.len() > 0]
             missing_values = len(self.mapping) - len(subset_df)
@@ -50,14 +52,16 @@ class SetComparator(Comparator):
                                                   from_ids=self.mapper.loaded_mappings[self.att_key][self.att_id],
                                                   id_to_index=self.mapper.loaded_distance_ids[self.sparse_key],
                                                   to_ids=new_ids)
-                self.mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type=self.sparse_key)
+                self.mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type=self.sparse_key,
+                                             distance_measure=self.distance_measure)
             if subset_df.empty:
                 result[attribute] = 0
             else:
                 ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
                                                          id_type=self.id_type)
                 sub_mat = self.mapper.get_loaded_distances(in_series=ids[self.att_id], id_type=self.sparse_key,
-                                                           key=c.DISTANCES[attribute])
+                                                           key=c.DISTANCES[attribute],
+                                                           distance_measure=self.distance_measure)
                 result[attribute] = sub_mat.sum() / ((len(self.mapping) * (len(self.mapping) - 1)) / 2)
                 mapped[attribute] = list(subset_df[c.ID_TYPE_KEY[self.id_type]])
         return result, mapped
@@ -69,19 +73,19 @@ class SetSetComparator(Comparator):
     The tar set is evaluated how good it matches to the ref set.
     """
 
-    def __init__(self, mapper: Mapper, enriched: bool = False, verbose: bool = False):
-        super().__init__(mapper=mapper, verbose=verbose)
+    def __init__(self, mapper: Mapper, distance_measure: str, enriched: bool = False, verbose: bool = False):
+        super().__init__(mapper=mapper, verbose=verbose, distance_measure=distance_measure)
         self.enriched = enriched
         self.ref_dict = None
 
     def load_reference(self, ref, ref_id_type):
         if ref_id_type in c.SUPPORTED_DISEASE_IDS:
-            reference_mapping = dm.get_disease_to_attributes(disease_set=ref, id_type=ref_id_type, mapper=self.mapper)
+            reference_mapping = dg.get_disease_to_attributes(disease_set=ref, id_type=ref_id_type, mapper=self.mapper)
         else:  # if ref_id_type in c.SUPPORTED_GENE_IDS:
             if self.enriched:
-                reference_mapping = gm.get_enriched_attributes(gene_set=ref, id_type=ref_id_type, mapper=self.mapper)
+                reference_mapping = gg.get_enriched_attributes(gene_set=ref, id_type=ref_id_type, mapper=self.mapper)
             else:
-                reference_mapping = gm.get_gene_to_attributes(gene_set=ref, id_type=ref_id_type, mapper=self.mapper)
+                reference_mapping = gg.get_gene_to_attributes(gene_set=ref, id_type=ref_id_type, mapper=self.mapper)
         if self.enriched:
             self.ref_dict = eu.create_ref_dict(mapping=reference_mapping, keys=c.ENRICH_KEY.keys(), enriched=True)
         else:
@@ -99,12 +103,12 @@ class IDSetComparator(Comparator):
     The tar set is evaluated how good it matches to the ref id.
     """
 
-    def __init__(self, mapper: Mapper, verbose: bool = False):
-        super().__init__(mapper=mapper, verbose=verbose)
+    def __init__(self, mapper: Mapper, distance_measure: str, verbose: bool = False):
+        super().__init__(mapper=mapper, verbose=verbose, distance_measure=distance_measure)
         self.ref_dict = None
 
     def load_reference(self, ref, ref_id_type):
-        id_mapping = dm.get_disease_to_attributes(disease_set={ref}, id_type=ref_id_type, mapper=self.mapper)
+        id_mapping = dg.get_disease_to_attributes(disease_set={ref}, id_type=ref_id_type, mapper=self.mapper)
         if self.id_type in c.SUPPORTED_DISEASE_IDS:
             self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=id_mapping.columns[1:])
         else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
@@ -123,8 +127,8 @@ class ClusterComparator(Comparator):
     silhouette score and dunn index.
     """
 
-    def __init__(self, mapper: Mapper, verbose: bool = False):
-        super().__init__(mapper, verbose)
+    def __init__(self, mapper: Mapper, distance_measure: str, verbose: bool = False):
+        super().__init__(mapper=mapper, verbose=verbose, distance_measure=distance_measure)
         self.clustering = None
 
     def load_target(self, id_set, id_type):
@@ -135,7 +139,7 @@ class ClusterComparator(Comparator):
     def compare(self, threshold: float = 0.0):
         result_di, result_ss, result_ss_intermediate, result_dbi, mapped = dict(), dict(), dict(), dict(), dict()
         new_ids = self.mapper.update_distance_ids(in_series=self.mapper.loaded_mappings[self.att_key][self.att_id],
-                                                  key=self.sparse_key)
+                                                  key=self.sparse_key, distance_measure=self.distance_measure)
         for attribute in self.mapping.columns[1:]:
             subset_df = self.mapping[self.mapping[attribute].str.len() > 0]
             subset_clusters = self.clustering[self.clustering['id'].isin(subset_df[c.ID_TYPE_KEY[self.id_type]])][
@@ -148,9 +152,11 @@ class ClusterComparator(Comparator):
             if len(new_ids) > 0:
                 comp_mat = eu.get_distance_matrix(full_att_series=self.mapper.loaded_mappings[self.att_key][attribute],
                                                   from_ids=self.mapper.loaded_mappings[self.att_key][self.att_id],
-                                                  id_to_index=self.mapper.loaded_distance_ids[self.sparse_key],
+                                                  id_to_index=self.mapper.loaded_distance_ids[self.distance_measure][
+                                                      self.sparse_key],
                                                   to_ids=new_ids)
-                self.mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type=self.sparse_key)
+                self.mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type=self.sparse_key,
+                                             distance_measure=self.distance_measure)
 
             if subset_df.empty:
                 result_di[attribute], result_ss[attribute], result_ss_intermediate[attribute] = None, None, None
@@ -159,17 +165,20 @@ class ClusterComparator(Comparator):
                 ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
                                                          id_type=self.id_type)
                 distances = self.mapper.get_loaded_distances(in_series=ids[self.att_id], id_type=self.sparse_key,
-                                                             key=c.DISTANCES[attribute])
+                                                             key=c.DISTANCES[attribute],
+                                                             distance_measure=self.distance_measure)
                 distances = dict(distances.todok().items())
                 inv_index_to_id = {index: value for index, value in ids[self.att_id].reset_index(drop=True).items()}
-                precalc_dist = sc.precalc_distance_dicts(ids_cluster=subset_clusters, ids_mapping=ids, distances=distances,
+                precalc_dist = sc.precalc_distance_dicts(ids_cluster=subset_clusters, ids_mapping=ids,
+                                                         distances=distances,
                                                          index_to_id=inv_index_to_id,
                                                          ids={'id_type': c.ID_TYPE_KEY[self.id_type],
                                                               'sparse_key': self.sparse_key, 'att_id': self.att_id,
                                                               'attribute': c.DISTANCES[attribute]})
                 ss_score = sc.silhouette_score(ids_cluster=subset_clusters, distances=precalc_dist, linkage="average")
                 di_score = sc.dunn_index(ids_cluster=subset_clusters, distances=precalc_dist, linkage="average")
-                dbi_score = sc.davies_bouldin_index(ids_cluster=subset_clusters, distances=precalc_dist, linkage="average")
+                dbi_score = sc.davies_bouldin_index(ids_cluster=subset_clusters, distances=precalc_dist,
+                                                    linkage="average")
                 result_di[attribute] = di_score
                 result_ss[attribute] = ss_score[0]
                 result_ss_intermediate[attribute] = ss_score[1]

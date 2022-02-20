@@ -2,7 +2,7 @@
 
 import numpy as np
 import pandas as pd
-import config
+from .. import config
 import scipy.sparse as sp
 
 

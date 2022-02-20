@@ -3,17 +3,18 @@
 import os
 import numpy as np
 import pandas as pd
-from d_utils import runner_utils as ru, config, eval_utils as eu, mapping_utils as mu, plotting_utils as pu
-from evaluation import comparator as comp
+from evaluation.d_utils import runner_utils as ru, eval_utils as eu, plotting_utils as pu
+from evaluation.mappers.mapper import Mapper, FileMapper
+from evaluation.mappers import mapping_utils as mu
+from evaluation import config, comparator as comp
 import random
-from mappers.mapper import Mapper, FileMapper
 import json
 import time
 from pathlib import Path
 from typing import Union
 
 
-def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str,
+def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, distance: str = "jaccard",
                       ref: Union[str, set] = None, ref_id: str = None, enriched: bool = False,
                       mapper: Mapper = FileMapper(), runs: int = config.NUMBER_OF_RANDOM_RUNS,
                       background_model: str = "complete", replace=100, verbose: bool = False):
@@ -40,16 +41,17 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str,
         mapper.load_mappings()
     if mode in ["set", "set-set", "id-set"]:
         if mode == "set-set":
-            comparator = comp.SetSetComparator(mapper=mapper, enriched=enriched, verbose=verbose)
+            comparator = comp.SetSetComparator(mapper=mapper, enriched=enriched, verbose=verbose,
+                                               distance_measure=distance)
             comparator.load_reference(ref=ref, ref_id_type=ref_id)
         elif mode == "id-set":
-            comparator = comp.IDSetComparator(mapper=mapper, verbose=verbose)
+            comparator = comp.IDSetComparator(mapper=mapper, verbose=verbose, distance_measure=distance)
             comparator.load_reference(ref=ref, ref_id_type=ref_id)
         else:  # mode == "set"
-            comparator = comp.SetComparator(mapper=mapper, verbose=verbose)
+            comparator = comp.SetComparator(mapper=mapper, verbose=verbose, distance_measure=distance)
             if mapper.load:
                 ru.print_current_usage('Load distances for input into cache ...')
-                mapper.load_distances(set_type=tar_id)
+                mapper.load_distances(set_type=tar_id, distance_measure=distance)
         comparator.load_target(id_set=tar, id_type=tar_id)
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...') if verbose else None
@@ -68,9 +70,9 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str,
     elif mode == "cluster":
         if mapper.load:
             ru.print_current_usage('Load distances for input into cache ...') if verbose else None
-            mapper.load_distances(set_type=tar_id)
+            mapper.load_distances(set_type=tar_id, distance_measure=distance)
         ru.print_current_usage('Load input data ...') if verbose else None
-        comparator = comp.ClusterComparator(mapper=mapper, verbose=verbose)
+        comparator = comp.ClusterComparator(mapper=mapper, verbose=verbose, distance_measure=distance)
         comparator.load_target(id_set=tar, id_type=tar_id)
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...') if verbose else None
@@ -124,7 +126,8 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
         size = len(orig_ids)
         random_size = int((size / 100) * replace)
         if background_model == "complete":
-            full_id_set = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]] != ""][config.ID_TYPE_KEY[tar_id]].tolist()
+            full_id_set = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]] != ""][
+                config.ID_TYPE_KEY[tar_id]].tolist()
         # ===== Precalculate attribute sizes for term-pres =====
         if background_model == "term-pres":
             att_map = mu.map_to_prev_id(main_id_type=config.ID_TYPE_KEY[new_id_type],
@@ -220,10 +223,10 @@ def save_results(results: dict, prefix: str, out_dir):
 if __name__ == "__main__":
     desc = "            Evaluation of disease and gene sets and clusters."
     args = ru.save_parameters(script_desc=desc,
-                              arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v', 'b', 'pr', 'p'))
+                              arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v', 'b', 'pr', 'p', 'dg'))
     result = single_validation(tar=args.target, tar_id=args.target_id_type, verbose=args.verbose,
                                mode=args.mode, ref=args.reference, ref_id=args.reference_id_type,
-                               enriched=args.enriched, runs=args.runs,
+                               enriched=args.enriched, runs=args.runs, distance=args.distance_measure,
                                background_model=args.background_model, replace=args.replace)
     # ===== Saving final files and results =====
     ru.print_current_usage('Save files') if args.verbose else None
