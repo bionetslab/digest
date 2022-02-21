@@ -99,7 +99,7 @@ def create_files(mapper: Mapper):
     # ===== Calculate pairwise comparisons =====
     ru.print_current_usage('Precalculate pairwise distances ...')
 
-    for distance_measure in ["overlap"]:  #["jaccard", "overlap"]:
+    for distance_measure in ["jaccard", "overlap"]:
         os.system("mkdir -p " + os.path.join(mapper.files_dir, distance_measure, ""))
         ru.print_current_usage('Precalculate pairwise distances for genes [' + distance_measure + '] ...')
         mapper.update_distance_ids(in_series=gene_att_mapping[c.ID_TYPE_KEY['entrez']], key='gene_mat_ids',
