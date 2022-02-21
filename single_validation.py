@@ -107,9 +107,9 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
     :param mapper: mapper from type Mapper defining where the precalculated information comes from
     :param tar_id: id type of target input
     :param runs: number of random runs to create p-values [Default=1000]
-    :param background_model
-    :param replace
-    :param term
+    :param background_model: which background model to use for random picks [Default="complete"]
+    :param replace: how many % of target input should be replaced by random picks [Default=100]
+    :param term: on what term the term preserving background model should calculate [Default="sum"]
     :return: comparison
     """
     results = list()

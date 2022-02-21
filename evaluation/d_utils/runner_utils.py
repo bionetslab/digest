@@ -63,7 +63,7 @@ def save_parameters(script_desc: str, arguments):
     if 'dg' in arguments:
         optional_args.add_argument('-dg', '--distance_measure', type=str, default='jaccard',
                                    choices=["jaccard","overlap"],
-                                   help='Distance measure. [Default="jaccard"]')
+                                   help="Distance measure. [Default=jaccard]")
     if 'e' in arguments:
         optional_args.add_argument("-e", "--enriched", action='store_true', default=False,
                                    help="Set flag, if only enriched attributes of the reference should be used.")
@@ -72,7 +72,7 @@ def save_parameters(script_desc: str, arguments):
                                    help="Number of runs with random target values for p-value calculation.")
     if 'b' in arguments:
         optional_args.add_argument("-b", "--background_model", type=str, default="complete",
-                                   choices=['complete', 'term-pres'],
+                                   choices=['complete', 'term_pres'],
                                    help="Model defining how random values should be picked. See possible options below.")
     if 'pr' in arguments:
         optional_args.add_argument("-pr", "--replace", type=int, default=100,
@@ -86,9 +86,9 @@ def save_parameters(script_desc: str, arguments):
         optional_args.add_argument("-p", "--plot", action='store_true', default=False,
                                    help="Set flag, if plots should be created.")
     if 's' in arguments:
-        optional_args.add_argument("-s", "--scratch", action='store_true', default=False,
-                                   help="Set flag, setup should be generated from scratch. If not, it will load the "
-                                        "files from the api [suggested option].")
+        optional_args.add_argument("-s", "--setup_type", type=str, default='api', choices=['create', 'api'],
+                                   help="Choose 'api' do load data from API (1GB) [recommended], "
+                                        "or 'create' to create it from scratch (runtime: ~2h) [Default=api]")
     optional_args.add_argument("-h", "--help", action="help", help="show this help message and exit")
     args = parser.parse_args()
     # ============================================================================
@@ -121,8 +121,7 @@ def _get_epilog(script_name):
         epilog += "  cluster\t\tCompare cluster quality inside clustering. Either genes or diseases.\n"
         epilog += "\nsupported background models\n"
         epilog += "  complete\t\tRandom ids will be picked completely randomly.\n"
-        epilog += "  deg-pres\t\tDegree preserving pick of random ids based on PPI network from IID.\n"
-        epilog += "  term-pres\t\tRandom ids will preserve the number of mapped terms for the replaced ids.\n"
+        epilog += "  term_pres\t\tRandom ids will preserve the number of mapped terms for the replaced ids.\n"
     epilog += "\n############################################################################\n"
     return epilog
 

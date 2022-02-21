@@ -229,7 +229,7 @@ class FileMapper(Mapper):
                                    in_type='distance_id')
             for distance_key in ['go_BP', 'go_CC', 'go_MF', 'pathway_kegg', 'related_genes', 'related_variants',
                                  'related_pathways']:
-                if distance_id_key in self.changed_mappings:
+                if distance_key in self.changed_mappings:
                     self.save_file(in_object=self.loaded_distances[distance_measure][distance_key], key=distance_key,
                                    in_type='distance')
 

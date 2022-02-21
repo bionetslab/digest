@@ -99,7 +99,7 @@ class SetSetComparator(Comparator):
 
 class IDSetComparator(Comparator):
     """
-    Compare disease id to either gene or disease set.
+    Compare single id to either gene or disease set.
     The tar set is evaluated how good it matches to the ref id.
     """
 
@@ -108,12 +108,13 @@ class IDSetComparator(Comparator):
         self.ref_dict = None
 
     def load_reference(self, ref, ref_id_type):
-        id_mapping = dg.get_disease_to_attributes(disease_set={ref}, id_type=ref_id_type, mapper=self.mapper)
-        if self.id_type in c.SUPPORTED_DISEASE_IDS:
-            self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=id_mapping.columns[1:])
-        else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
-            id_mapping = id_mapping.rename(columns={'ctd.pathway_related_to_disease': 'pathway.kegg'})
-            self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys={'pathway.kegg'})
+        if ref_id_type in c.SUPPORTED_DISEASE_IDS:
+            id_mapping = dg.get_disease_to_attributes(disease_set={ref}, id_type=ref_id_type, mapper=self.mapper)
+            if self.id_type in c.SUPPORTED_DISEASE_IDS:
+                self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=id_mapping.columns[1:])
+            else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
+                id_mapping = id_mapping.rename(columns={'ctd.pathway_related_to_disease': 'pathway.kegg'})
+                self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys={'pathway.kegg'})
 
     def compare(self, threshold: float = 0.0):
         return eu.evaluate_values(mapping=self.mapping, ref_dict=self.ref_dict, threshold=threshold,

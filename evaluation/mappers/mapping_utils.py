@@ -117,11 +117,11 @@ def map_to_prev_id(main_id_type: str, id_type: str, id_mapping: pd.DataFrame, at
     """
     Map attribute mapping back to original id.
 
-    :param main_id_type:
-    :param id_type:
-    :param id_mapping:
-    :param att_mapping:
-    :return:
+    :param main_id_type: main id type, here mondo for diseases or entrez for genes
+    :param id_type: target id type of user input
+    :param id_mapping: full mapping of all id types of either genes or diseases
+    :param att_mapping: full attribute mapping from terms to main id
+    :return: return attribute mapping mapped to target id type
     """
     if id_type not in ['entrezgene', 'mondo']:
         id_mapping = id_mapping.explode(id_type)
@@ -141,7 +141,7 @@ def transform_disgenet_mapping(mapping: pd.DataFrame, file: str, col_old, col_ne
     """
     Transform mapping from disgenet database to create one combined dataframe of attributes to mondo id.
 
-    :param mapping:
+    :param mapping: disease id mapping from disgenet
     :param file: path to file with disease mapping from disgenet
     :param col_old: attribute column name in raw disgenet file
     :param col_new: desired new column name for col_old

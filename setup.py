@@ -2,6 +2,7 @@
 
 import os
 import pandas as pd
+import scipy.sparse as sp
 from evaluation.d_utils import runner_utils as ru, eval_utils as eu
 from evaluation import config as c
 from evaluation.mappers import mapping_transformer as mt, gene_getter as gm, mapping_utils as mu
@@ -9,7 +10,7 @@ from evaluation.mappers import disease_getter as dm
 from evaluation.mappers.mapper import Mapper, FileMapper
 
 
-def load_files(mapper: Mapper, scratch: bool = False):
+def load_files(mapper: Mapper):
     """
     Run setup to generate all files from scratch and gather data from databases.
 
@@ -17,117 +18,132 @@ def load_files(mapper: Mapper, scratch: bool = False):
     """
     ru.print_current_usage('Starting Setup ...')
 
-    if not scratch:
-        print("test")
-    else:
-        # ===== Load disorder ids =====
-        ru.print_current_usage('Load NeDrEx disorder ids ...')
-        disorder_ids = pd.read_csv(c.NEDREX_DISORDER_IDS, sep="\t")
-        icd10_ids = pd.read_csv(c.NEDREX_ICD10_IDS, sep="\t")
+    ru.print_current_usage('Finished Setup ...')
 
-        # ===== Transform disease mapping =====
-        ru.print_current_usage('Transform loaded mappings ...')
-        disease_mapping = mt.transform_id_mapping(disorder_ids.merge(icd10_ids, on='primaryDomainId', how='outer'))
-        disease_mapping["ICD-10"] = disease_mapping["ICD-10"].apply(mt.reduce_to_parent)
 
-        # ===== Save disease mapping =====
-        mapper.update_mappings(in_df=disease_mapping, key='disorder_ids')
+def create_files(mapper: Mapper):
+    """
+    Run setup to generate all files from scratch and gather data from databases.
 
-        # ===== Load gene ids =====
-        ru.print_current_usage('Load NeDrEx gene ids ...')
-        gene_ids = pd.read_csv(c.NEDREX_GENE_IDS, sep="\t")
+    :param mapper: object of type Mapper defining where and how to save the generated data
+    """
+    ru.print_current_usage('Starting Setup ...')
+    # ===== Load disorder ids =====
+    ru.print_current_usage('Load NeDrEx disorder ids ...')
+    disorder_ids = pd.read_csv(c.NEDREX_DISORDER_IDS, sep="\t")
+    icd10_ids = pd.read_csv(c.NEDREX_ICD10_IDS, sep="\t")
 
-        # ===== Transform gene mapping =====
-        ru.print_current_usage('Transform loaded mappings ...')
-        gene_ids = gene_ids.rename(columns={'primaryDomainId': "entrez"})
-        gene_ids.entrez = gene_ids.entrez.str.replace(r'entrez.', '', regex=True)
+    # ===== Transform disease mapping =====
+    ru.print_current_usage('Transform loaded mappings ...')
+    disease_mapping = mt.transform_id_mapping(disorder_ids.merge(icd10_ids, on='primaryDomainId', how='outer'))
+    disease_mapping["ICD-10"] = disease_mapping["ICD-10"].apply(mt.reduce_to_parent)
 
-        # ===== Get attributes =====
-        ru.print_current_usage('Get gene attributes ...')
-        gene_att_mapping = gm.get_gene_to_attributes(gene_set=gene_ids.entrez, id_type="entrez", mapper=mapper)
+    # ===== Save disease mapping =====
+    mapper.update_mappings(in_df=disease_mapping, key='disorder_ids')
 
-        ru.print_current_usage('Get disease attributes ...')
-        # ===== Get DisGeNet attributes =====
-        disgenet_mapping = pd.read_csv(c.DISGENET_DIS_MAP, compression='gzip', sep='\t', dtype=str)
-        disgenet_mapping = disgenet_mapping[disgenet_mapping['vocabulary'] == 'MONDO'][['diseaseId', 'code']]
-        disgenet_mapping = disgenet_mapping.rename(columns={'code': 'mondo'})
+    # ===== Load gene ids =====
+    ru.print_current_usage('Load NeDrEx gene ids ...')
+    gene_ids = pd.read_csv(c.NEDREX_GENE_IDS, sep="\t")
 
-        var_mapping = mu.transform_disgenet_mapping(mapping=disgenet_mapping, file=c.DISGENET_REL_VARS, col_old='snpId',
-                                                    col_new='disgenet.variants_related_to_disease')
-        gene_mapping = mu.transform_disgenet_mapping(mapping=disgenet_mapping, file=c.DISGENET_REL_GENES,
-                                                     col_old='geneId',
-                                                     col_new='disgenet.genes_related_to_disease')
-        disease_att_mapping = pd.merge(var_mapping[['mondo', 'disgenet.variants_related_to_disease']],
-                                       gene_mapping[['mondo', 'disgenet.genes_related_to_disease']],
-                                       on="mondo", how="outer")
+    # ===== Transform gene mapping =====
+    ru.print_current_usage('Transform loaded mappings ...')
+    gene_ids = gene_ids.rename(columns={'primaryDomainId': "entrez"})
+    gene_ids.entrez = gene_ids.entrez.str.replace(r'entrez.', '', regex=True)
 
-        # ===== Get KEGG attributes =====
-        omim_to_hsa = pd.read_csv(c.KEGG_OMIM_TO_HSA, names=['hsa', 'omim', 'dir'], sep="\t", dtype=str)
-        hsa_to_pathway = pd.read_csv(c.KEGG_HSA_TO_PATH, names=['hsa', 'pathway'], sep="\t", dtype=str)
-        omim_to_pathway = pd.merge(omim_to_hsa[['hsa', 'omim']], hsa_to_pathway[['hsa', 'pathway']], on="hsa",
-                                   how="inner")
-        omim_to_pathway.omim = omim_to_pathway.omim.str.replace('omim:', '')
-        omim_to_pathway.pathway = omim_to_pathway.pathway.str.replace('path:', '')
-        omim_to_pathway = pd.merge(disease_mapping[['mondo', 'omim']], omim_to_pathway[['omim', 'pathway']], on="omim",
-                                   how="inner")
-        omim_to_pathway = omim_to_pathway[['mondo', 'pathway']].fillna('').groupby(['mondo'], as_index=False).agg(
-            mu.combine_rows_to_set)
-        omim_to_pathway.rename(columns={'pathway': 'ctd.pathway_related_to_disease'}, inplace=True)
-        mapping = dm.get_attributes_from_database(
-            missing=['MONDO:' + x for x in set(disease_att_mapping.mondo) - set(omim_to_pathway.mondo)],
-            attributes=['ctd.pathway_related_to_disease'])
-        mapping = pd.concat([omim_to_pathway, mapping])
-        disease_att_mapping = pd.merge(disease_att_mapping, mapping[['mondo', 'ctd.pathway_related_to_disease']],
-                                       on="mondo", how="left")
+    # ===== Get attributes =====
+    ru.print_current_usage('Get gene attributes ...')
+    gene_att_mapping = gm.get_gene_to_attributes(gene_set=gene_ids.entrez, id_type="entrez", mapper=mapper)
 
-        # ===== Save mapping =====
-        mapper.update_mappings(in_df=disease_att_mapping, key='disorder_atts')
-        disease_att_mapping = dm.get_disease_to_attributes(disease_set=disease_mapping.mondo, id_type="mondo",
-                                                           mapper=mapper)
+    ru.print_current_usage('Get disease attributes ...')
+    # ===== Get DisGeNet attributes =====
+    disgenet_mapping = pd.read_csv(c.DISGENET_DIS_MAP, compression='gzip', sep='\t', dtype=str)
+    disgenet_mapping = disgenet_mapping[disgenet_mapping['vocabulary'] == 'MONDO'][['diseaseId', 'code']]
+    disgenet_mapping = disgenet_mapping.rename(columns={'code': 'mondo'})
 
-        mapper.save_mappings()
-        mapper.drop_mappings()
+    var_mapping = mu.transform_disgenet_mapping(mapping=disgenet_mapping, file=c.DISGENET_REL_VARS, col_old='snpId',
+                                                col_new='disgenet.variants_related_to_disease')
+    gene_mapping = mu.transform_disgenet_mapping(mapping=disgenet_mapping, file=c.DISGENET_REL_GENES,
+                                                 col_old='geneId',
+                                                 col_new='disgenet.genes_related_to_disease')
+    disease_att_mapping = pd.merge(var_mapping[['mondo', 'disgenet.variants_related_to_disease']],
+                                   gene_mapping[['mondo', 'disgenet.genes_related_to_disease']],
+                                   on="mondo", how="outer")
 
-        # ===== Calculate pairwise comparisons =====
-        ru.print_current_usage('Precalculate pairwise distances ...')
+    # ===== Get KEGG attributes =====
+    omim_to_hsa = pd.read_csv(c.KEGG_OMIM_TO_HSA, names=['hsa', 'omim', 'dir'], sep="\t", dtype=str)
+    hsa_to_pathway = pd.read_csv(c.KEGG_HSA_TO_PATH, names=['hsa', 'pathway'], sep="\t", dtype=str)
+    omim_to_pathway = pd.merge(omim_to_hsa[['hsa', 'omim']], hsa_to_pathway[['hsa', 'pathway']], on="hsa",
+                               how="inner")
+    omim_to_pathway.omim = omim_to_pathway.omim.str.replace('omim:', '')
+    omim_to_pathway.pathway = omim_to_pathway.pathway.str.replace('path:', '')
+    omim_to_pathway = pd.merge(disease_mapping[['mondo', 'omim']], omim_to_pathway[['omim', 'pathway']], on="omim",
+                               how="inner")
+    omim_to_pathway = omim_to_pathway[['mondo', 'pathway']].fillna('').groupby(['mondo'], as_index=False).agg(
+        mu.combine_rows_to_set)
+    omim_to_pathway.rename(columns={'pathway': 'ctd.pathway_related_to_disease'}, inplace=True)
+    mapping = dm.get_attributes_from_database(
+        missing=['MONDO:' + x for x in set(disease_att_mapping.mondo) - set(omim_to_pathway.mondo)],
+        attributes=['ctd.pathway_related_to_disease'])
+    mapping = pd.concat([omim_to_pathway, mapping])
+    disease_att_mapping = pd.merge(disease_att_mapping, mapping[['mondo', 'ctd.pathway_related_to_disease']],
+                                   on="mondo", how="left")
 
-        for distance_measure in ["jaccard", "overlap"]:
-            ru.print_current_usage('Precalculate pairwise distances for genes [' + distance_measure + '] ...')
-            mapper.update_distance_ids(in_series=gene_att_mapping[c.ID_TYPE_KEY['entrez']], key='gene_mat_ids',
-                                       distance_measure=distance_measure)
-            for attribute in gene_att_mapping.columns[1:]:
-                ru.print_current_usage('Precalculate pairwise distances for ' + attribute)
-                subset_df = gene_att_mapping[gene_att_mapping[attribute].str.len() > 0]
-                comp_mat = eu.get_distance_matrix(full_att_series=gene_att_mapping[attribute],
-                                                  from_ids=subset_df[c.ID_TYPE_KEY['entrez']],
-                                                  coefficient=distance_measure,
-                                                  id_to_index=mapper.loaded_distance_ids[distance_measure][
-                                                      'gene_mat_ids'])
-                mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type='gene_mat_ids',
-                                        distance_measure=distance_measure)
+    # ===== Save mapping =====
+    mapper.update_mappings(in_df=disease_att_mapping, key='disorder_atts')
+    disease_att_mapping = dm.get_disease_to_attributes(disease_set=disease_mapping.mondo, id_type="mondo",
+                                                       mapper=mapper)
 
-            ru.print_current_usage('Precalculate pairwise distances for diseases [' + distance_measure + '] ...')
-            mapper.update_distance_ids(in_series=disease_att_mapping['mondo'], key='disease_mat_ids',
-                                       distance_measure=distance_measure)
-            for attribute in disease_att_mapping.columns[1:]:
-                ru.print_current_usage('Precalculate pairwise distances for ' + attribute)
-                subset_df = disease_att_mapping[disease_att_mapping[attribute].str.len() > 0]
-                comp_mat = eu.get_distance_matrix(full_att_series=disease_att_mapping[attribute],
-                                                  from_ids=subset_df['mondo'],
-                                                  coefficient=distance_measure,
-                                                  id_to_index=mapper.loaded_distance_ids[distance_measure][
-                                                      'disease_mat_ids'])
-                mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type='disease_mat_ids',
-                                        distance_measure=distance_measure)
+    mapper.save_mappings()
+    mapper.drop_mappings()
 
-        mapper.save_distances()
+    # ===== Calculate pairwise comparisons =====
+    ru.print_current_usage('Precalculate pairwise distances ...')
+
+    for distance_measure in ["jaccard", "overlap"]:
+        os.system("mkdir -p " + os.path.join(mapper.files_dir, distance_measure, ""))
+        ru.print_current_usage('Precalculate pairwise distances for genes [' + distance_measure + '] ...')
+        mapper.update_distance_ids(in_series=gene_att_mapping[c.ID_TYPE_KEY['entrez']], key='gene_mat_ids',
+                                   distance_measure=distance_measure)
+        for attribute in gene_att_mapping.columns[1:]:
+            ru.print_current_usage('Precalculate pairwise distances for ' + attribute)
+            subset_df = gene_att_mapping[gene_att_mapping[attribute].str.len() > 0]
+            comp_mat = eu.get_distance_matrix(full_att_series=gene_att_mapping[attribute],
+                                              from_ids=subset_df[c.ID_TYPE_KEY['entrez']],
+                                              coefficient=distance_measure,
+                                              id_to_index=mapper.loaded_distance_ids[distance_measure][
+                                                  'gene_mat_ids'])
+            sp.save_npz(os.path.join(mapper.files_dir, distance_measure, mapper.file_names[c.DISTANCES[attribute]]),
+                        comp_mat)
+            # mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type='gene_mat_ids',
+            #                         distance_measure=distance_measure)
+
+        ru.print_current_usage('Precalculate pairwise distances for diseases [' + distance_measure + '] ...')
+        mapper.update_distance_ids(in_series=disease_att_mapping['mondo'], key='disease_mat_ids',
+                                   distance_measure=distance_measure)
+        for attribute in disease_att_mapping.columns[1:]:
+            ru.print_current_usage('Precalculate pairwise distances for ' + attribute)
+            subset_df = disease_att_mapping[disease_att_mapping[attribute].str.len() > 0]
+            comp_mat = eu.get_distance_matrix(full_att_series=disease_att_mapping[attribute],
+                                              from_ids=subset_df['mondo'],
+                                              coefficient=distance_measure,
+                                              id_to_index=mapper.loaded_distance_ids[distance_measure][
+                                                  'disease_mat_ids'])
+            sp.save_npz(os.path.join(mapper.files_dir, distance_measure, mapper.file_names[c.DISTANCES[attribute]]),
+                        comp_mat)
+            # mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type='disease_mat_ids',
+            #                         distance_measure=distance_measure)
+
+    mapper.save_distances()
 
     ru.print_current_usage('Finished Setup ...')
 
 
-def main(scratch: bool = False):
+def main(setup_type: str):
     os.system("mkdir -p " + c.FILES_DIR + "tmp/")
-    load_files(mapper=FileMapper(files_dir=os.path.join(c.FILES_DIR, "tmp", "")), scratch=scratch)
+    if setup_type == "create":
+        create_files(mapper=FileMapper(files_dir=os.path.join(c.FILES_DIR, "tmp", "")))
+    elif setup_type == "api":
+        load_files(mapper=FileMapper(files_dir=os.path.join(c.FILES_DIR, "tmp", "")))
     os.system("mv -f " + os.path.join(c.FILES_DIR, "tmp", "") + "* " + c.FILES_DIR)
     os.system("rm -rf " + os.path.join(c.FILES_DIR, "tmp", ""))
 
@@ -135,4 +151,4 @@ def main(scratch: bool = False):
 if __name__ == "__main__":
     desc = "     Run setup to create/load precalculated files."
     args = ru.save_parameters(script_desc=desc, arguments=('s', 'o'))
-    main(scratch=args.scratch)
+    main(setup_type=args.setup_type)
