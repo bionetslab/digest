@@ -89,6 +89,7 @@ def save_parameters(script_desc: str, arguments):
         optional_args.add_argument("-s", "--setup_type", type=str, default='api', choices=['create', 'api'],
                                    help="Choose 'api' do load data from API (1GB) [highly recommended], "
                                         "or 'create' to create it from scratch (runtime: ~3h) [Default=api]")
+
     optional_args.add_argument("-h", "--help", action="help", help="show this help message and exit")
     args = parser.parse_args()
     # ============================================================================

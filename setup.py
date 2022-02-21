@@ -19,6 +19,7 @@ def load_files(mapper: Mapper):
     """
     ru.print_current_usage('Starting Setup ...')
 
+
     ru.print_current_usage('Get id and attribute mappings ...')
     for file_id in mapper.loaded_mappings:
         r = requests.get(c.DIGEST+"name="+mapper.file_names[file_id])
