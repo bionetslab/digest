@@ -115,11 +115,17 @@ class IDSetComparator(Comparator):
             else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
                 id_mapping = id_mapping.rename(columns={'ctd.pathway_related_to_disease': 'pathway.kegg'})
                 self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys={'pathway.kegg'})
-       # else: # if targets_id_type in c.SUPPORTED_GENE_IDS:
+        else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
+            id_mapping = gg.get_gene_to_attributes(gene_set={ref}, id_type=ref_id_type, mapper=self.mapper)
+            if self.id_type in c.SUPPORTED_DISEASE_IDS:
+                id_mapping = id_mapping.rename(columns={'pathway.kegg': 'ctd.pathway_related_to_disease'})
+                self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys={'ctd.pathway_related_to_disease'})
+            else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
+                self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=id_mapping.columns[1:])
 
     def compare(self, threshold: float = 0.0):
         return eu.evaluate_values(mapping=self.mapping, ref_dict=self.ref_dict, threshold=threshold,
-                                  keys={'pathway.kegg'})
+                                  keys=self.ref_dict.keys())
 
 
 class ClusterComparator(Comparator):

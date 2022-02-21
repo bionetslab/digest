@@ -52,6 +52,11 @@ DISTANCES = {  # GENES
              'ctd.pathway_related_to_disease': 'related_pathways'}
 
 # =============================================================================
+# Set API paths to digest data
+# ============================================================================
+DIGEST = "https://api.digest-validation.net/files?"
+
+# =============================================================================
 # Set API paths to nedrex data
 # ============================================================================
 NEDREX_DISORDER_IDS = "https://api.nedrex.net/disorder/attributes/domainIds/tsv"

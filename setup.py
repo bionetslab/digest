@@ -2,6 +2,7 @@
 
 import os
 import pandas as pd
+import requests
 import scipy.sparse as sp
 from evaluation.d_utils import runner_utils as ru, eval_utils as eu
 from evaluation import config as c
@@ -12,11 +13,31 @@ from evaluation.mappers.mapper import Mapper, FileMapper
 
 def load_files(mapper: Mapper):
     """
-    Run setup to generate all files from scratch and gather data from databases.
+    Run setup to load all needed files from api.
 
     :param mapper: object of type Mapper defining where and how to save the generated data
     """
     ru.print_current_usage('Starting Setup ...')
+
+    ru.print_current_usage('Get id and attribute mappings ...')
+    for file_id in mapper.loaded_mappings:
+        r = requests.get(c.DIGEST+"name="+mapper.file_names[file_id])
+        with open(os.path.join(mapper.files_dir, mapper.file_names[file_id]), 'wb') as f:
+            f.write(r.content)
+
+    ru.print_current_usage('Get distance mappings ...')
+    for distance_measure in ["jaccard", "overlap"]:
+        ru.print_current_usage('Get distance mappings for '+distance_measure+' ...')
+        os.system("mkdir -p " + os.path.join(mapper.files_dir, distance_measure, ""))
+        for file_id in mapper.loaded_distance_ids[distance_measure]:
+            r = requests.get(c.DIGEST + "name=" + mapper.file_names[file_id] + "&measure="+distance_measure)
+            with open(os.path.join(mapper.files_dir, distance_measure, mapper.file_names[file_id]), 'wb') as f:
+                f.write(r.content)
+
+        for file_id in mapper.loaded_distances[distance_measure]:
+            r = requests.get(c.DIGEST + "name=" + mapper.file_names[file_id] + "&measure=" + distance_measure)
+            with open(os.path.join(mapper.files_dir, distance_measure, mapper.file_names[file_id]), 'wb') as f:
+                f.write(r.content)
 
     ru.print_current_usage('Finished Setup ...')
 
@@ -114,8 +135,6 @@ def create_files(mapper: Mapper):
                                                   'gene_mat_ids'])
             sp.save_npz(os.path.join(mapper.files_dir, distance_measure, mapper.file_names[c.DISTANCES[attribute]]),
                         comp_mat)
-            # mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type='gene_mat_ids',
-            #                         distance_measure=distance_measure)
 
         ru.print_current_usage('Precalculate pairwise distances for diseases [' + distance_measure + '] ...')
         mapper.update_distance_ids(in_series=disease_att_mapping['mondo'], key='disease_mat_ids',
@@ -130,8 +149,6 @@ def create_files(mapper: Mapper):
                                                   'disease_mat_ids'])
             sp.save_npz(os.path.join(mapper.files_dir, distance_measure, mapper.file_names[c.DISTANCES[attribute]]),
                         comp_mat)
-            # mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type='disease_mat_ids',
-            #                         distance_measure=distance_measure)
 
     mapper.save_distances()
 
