@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 
 import os
+import warnings
+warnings.filterwarnings("ignore")
 
 # =============================================================================
 # SETUP
