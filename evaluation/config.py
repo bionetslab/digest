@@ -13,7 +13,7 @@ NUMBER_OF_RANDOM_RUNS = 1000
 # =============================================================================
 # Set directories
 # ============================================================================
-FILES_DIR = os.getcwd() + '/mapping_files/'
+FILES_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__))) + '/mapping_files/'
 
 # =============================================================================
 # Set ID names mapping

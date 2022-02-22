@@ -107,17 +107,17 @@ class IDSetComparator(Comparator):
         super().__init__(mapper=mapper, verbose=verbose, distance_measure=distance_measure)
         self.ref_dict = None
 
-    def load_reference(self, ref, ref_id_type):
+    def load_reference(self, ref, ref_id_type, tar_id_type):
         if ref_id_type in c.SUPPORTED_DISEASE_IDS:
             id_mapping = dg.get_disease_to_attributes(disease_set={ref}, id_type=ref_id_type, mapper=self.mapper)
-            if self.id_type in c.SUPPORTED_DISEASE_IDS:
+            if tar_id_type in c.SUPPORTED_DISEASE_IDS:
                 self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=id_mapping.columns[1:])
             else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
                 id_mapping = id_mapping.rename(columns={'ctd.pathway_related_to_disease': 'pathway.kegg'})
                 self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys={'pathway.kegg'})
         else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
             id_mapping = gg.get_gene_to_attributes(gene_set={ref}, id_type=ref_id_type, mapper=self.mapper)
-            if self.id_type in c.SUPPORTED_DISEASE_IDS:
+            if tar_id_type in c.SUPPORTED_DISEASE_IDS:
                 id_mapping = id_mapping.rename(columns={'pathway.kegg': 'ctd.pathway_related_to_disease'})
                 self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys={'ctd.pathway_related_to_disease'})
             else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:

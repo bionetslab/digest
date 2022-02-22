@@ -51,7 +51,7 @@ class Mapper:
 
     def get_loaded_mapping(self, in_set, id_type: str, key: str):
         if not self.loaded_mappings[key].empty:
-            current_mapping = self.loaded_mappings[key]
+            current_mapping = self.loaded_mappings[key].copy()
             if id_type not in ['entrezgene', 'mondo']:
                 current_mapping = current_mapping.explode(id_type)
             hit_mapping = current_mapping.loc[current_mapping[id_type].isin(in_set)]
@@ -75,7 +75,7 @@ class Mapper:
             return mapping
 
     def update_distance_ids(self, in_series: pd.Series, key: str, distance_measure: str) -> pd.Series:
-        self.changed_mappings.add(distance_measure+"_"+key)
+        self.changed_mappings.add(distance_measure + "_" + key)
         if self.loaded_distance_ids[distance_measure][key]:  # is not empty
             if len(self.loaded_distance_ids[distance_measure][key].keys()) < len(in_series):
                 new_ids = in_series[len(self.loaded_distance_ids[distance_measure][key].keys()):]
@@ -84,7 +84,7 @@ class Mapper:
                     self.loaded_distance_ids[distance_measure][key][value] = index
                 return new_ids
             else:
-                return pd.Series()
+                return pd.Series([],dtype=pd.StringDtype())
         else:
             for index, value in enumerate(iterable=in_series, start=0):
                 self.loaded_distance_ids[distance_measure][key][value] = index
@@ -107,7 +107,7 @@ class Mapper:
             return sp.csr_matrix(None)
 
     def update_distances(self, in_mat: sp.coo_matrix, id_type: str, key: str, distance_measure: str):
-        self.changed_mappings.add(distance_measure+"_"+key)
+        self.changed_mappings.add(distance_measure + "_" + key)
         if self.loaded_distances[distance_measure][key].nnz > 0:
             old_mat = self.loaded_distances[distance_measure][key].tocoo()
             row = np.concatenate((old_mat.row, in_mat.row), axis=None)
@@ -223,16 +223,15 @@ class FileMapper(Mapper):
         for distance_measure in ['jaccard', 'overlap']:
             os.system("mkdir -p " + os.path.join(self.files_dir, distance_measure))
             for distance_id_key in ['gene_mat_ids', 'disease_mat_ids']:
-                if distance_measure+"_"+distance_id_key in self.changed_mappings:
-
+                if distance_measure + "_" + distance_id_key in self.changed_mappings:
                     self.save_file(in_object=self.loaded_distance_ids[distance_measure][distance_id_key],
                                    key=distance_id_key, distance_measure=distance_measure,
                                    in_type='distance_id')
             for distance_key in ['go_BP', 'go_CC', 'go_MF', 'pathway_kegg', 'related_genes', 'related_variants',
                                  'related_pathways']:
-                if distance_measure+"_"+distance_key in self.changed_mappings:
+                if distance_measure + "_" + distance_key in self.changed_mappings:
                     self.save_file(in_object=self.loaded_distances[distance_measure][distance_key], key=distance_key,
-                                   in_type='distance',  distance_measure=distance_measure)
+                                   in_type='distance', distance_measure=distance_measure)
 
     def save_file(self, in_object, key: str, in_type: str, distance_measure: str = None):
         if in_type == "mapping":

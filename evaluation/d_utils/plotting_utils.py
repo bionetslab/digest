@@ -28,12 +28,10 @@ def create_plots(results, mode, tar, tar_id, out_dir, prefix):
     """
     Path(out_dir).mkdir(parents=True, exist_ok=True)  # make sure output dir exists
     if mode == "cluster":
-        clustering = pd.read_csv(tar, header=None, sep="\t", dtype=str, names=["id", "cluster", "desc"])
-        cluster_plot(results=results, user_input={"clustering": clustering, "type": tar_id},
+        cluster_plot(results=results, user_input={"clustering": tar, "type": tar_id},
                      out_dir=out_dir, prefix=prefix)
     else:
-        id_set = pd.read_csv(tar, header=None, sep="\t", dtype=str)[0]
-        set_plot(results=results, user_input={"set": id_set, "type": tar_id},
+        set_plot(results=results, user_input={"set": tar, "type": tar_id},
                  out_dir=out_dir, prefix=prefix)
 
 

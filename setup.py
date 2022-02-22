@@ -162,7 +162,7 @@ def main(setup_type: str):
         create_files(mapper=FileMapper(files_dir=os.path.join(c.FILES_DIR, "tmp", "")))
     elif setup_type == "api":
         load_files(mapper=FileMapper(files_dir=os.path.join(c.FILES_DIR, "tmp", "")))
-    os.system("mv -f " + os.path.join(c.FILES_DIR, "tmp", "") + "* " + c.FILES_DIR)
+    os.system("cp -r " + os.path.join(c.FILES_DIR, "tmp", "") + "* " + c.FILES_DIR)
     os.system("rm -rf " + os.path.join(c.FILES_DIR, "tmp", ""))
 
 
