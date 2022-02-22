@@ -1,17 +1,13 @@
 # DIGEST
 **Di**sease and **Ge**ne **S**et and Clustering Validation **T**ool
 ## Setup
-1. Install git and git-lfs for large precalculated mapping files
+1. Install git
 ```
 pip install git
-# to fetch large files
-pip install git-lsf 
 ```
 2. Clone this repository
 ```
 git clone git@github.com:digest-env/digest.git
-# fetch large files
-git lfs fetch origin master 
 ```
 3. Setup enviroment
 
@@ -23,19 +19,22 @@ conda env create -f environment.yml
 
 3.2.1 Setup enviroment
 ```
-conda create --name digest -c conda-forge graph-tool
+conda create --name digest python==3.8
 conda activate digest
 ```
 3.2.2. Install dependancies
 ```
-pip install pandas os-sys psutils biothings_client
+pip install pandas numpy psutils scipy seaborn biothings_client gseapy
 ```
-## Update Files
-To make sure, that all mappings in the [mappings file folder](https://github.com/digest-env/digest/tree/main/mapping_files) are up to date, run the setup script.
+## Setup Files
+To make sure, that all mappings are up to date, run the setup script. This will retrieve the mappings from the api. Runtime: ~1 Minute. This is recommended as the files on the api will be kept updated.
 ```
 python3 setup.py
 ```
-Depending on the system, it could run up to 1 hour.
+Alternatively you can setup the files while creating them from scratch. This is not recommended, as depending on the system, it could run up to 3 hour.
+```
+python3 setup.py -s="create"
+```
 ## Run DIGEST
 ### Run in terminal
 ```
@@ -56,9 +55,16 @@ required arguments:
 optional arguments:
   -o OUT_DIR, --out_dir OUT_DIR
                         Output directory. [Default=./]
+  -dg {jaccard,overlap}, --distance_measure {jaccard,overlap}
+                        Distance measure. [Default=jaccard]
   -e, --enriched        Set flag, if only enriched attributes of the reference should be used.
   -c RUNS, --runs RUNS  Number of runs with random target values for p-value calculation.
+  -b {complete,term_pres}, --background_model {complete,term_pres}
+                        Model defining how random values should be picked. See possible options below.
+  -pr REPLACE, --replace REPLACE
+                        Percentage of how many of the original ids should be replaced with random ids. [Default=100]
   -v, --verbose         Set flag, if additional info like ids without assigned attributes should be printed.
+  -p, --plot            Set flag, if plots should be created.
   -h, --help            show this help message and exit
 
 ----------------------------------------------------------------------------
@@ -72,6 +78,10 @@ supported modes
   set-set		Compare target set to reference set. Both either genes or diseases.
   id-set		Compare target set to reference id. Set either genes or diseases, id of disease.
   cluster		Compare cluster quality inside clustering. Either genes or diseases.
+
+supported background models
+  complete		Random ids will be picked completely randomly.
+  term_pres		Random ids will preserve the number of mapped terms for the replaced ids.
  ```
  ### Run in python script
  Check out the [tutorial](https://github.com/digest-env/digest/tree/main/tutorial) to see examples of usage in a script.
