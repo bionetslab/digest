@@ -24,6 +24,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
     :param tar: cluster as type dataframe with columns=["id","cluster"] or set as type set
     :param tar_id: id type of target input
     :param mode: comparison mode [set, id-set, set-set, cluster]
+    :param distance: distance measure used for comparison. [Default=jaccard]
     :param ref: set of reference ids or string with reference id [Default=None]
     :param ref_id: id type of reference input [Default=None]
     :param enriched: bool setting if values of reference set should be filtered for enriched values [Default=False]
@@ -34,6 +35,8 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
     :param verbose: bool if additional info like ids without assigned attributes should be printed [Default=False]
     """
     ru.start_time = time.time()
+    ru.print_current_usage('Check for proper setup ...')
+    mapper.check_for_setup_sources()
     # ===== Comparison with a set =====
     ru.print_current_usage('Starting validation ...')
     if mapper.load:
@@ -87,8 +90,9 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
                                       maximize=False)
         p_values = {'di': p_values_di, 'ss': p_values_ss, 'dbi': p_values_dbi}
         results = {
-            'input_values': {'values': {'di': my_value_di, 'ss': my_value_ss, 'ss_inter': my_value_ss_inter,
+            'input_values': {'values': {'di': my_value_di, 'ss': my_value_ss,
                                         'dbi': my_value_dbi},
+                             'values_inter': my_value_ss_inter,
                              'mapped_ids': mapped}, 'p_values': {'values': p_values}}
     else:
         results = {None}

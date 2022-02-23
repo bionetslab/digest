@@ -2,12 +2,14 @@
 
 import pandas as pd
 import numpy as np
+from pathlib import Path
 from abc import abstractmethod
 from .. import config
 from . import mapping_utils as mu
 import scipy.sparse as sp
 import pickle
 import os
+import sys
 
 
 class Mapper:
@@ -137,6 +139,10 @@ class Mapper:
     def save_file(self, in_object, key: str, in_type: str):
         pass
 
+    @abstractmethod
+    def check_for_setup_sources(self):
+        pass
+
     def drop_mappings(self):
         self.loaded_mappings = {'gene_ids': pd.DataFrame(), 'gene_atts': pd.DataFrame(), 'disorder_ids': pd.DataFrame(),
                                 'disorder_atts': pd.DataFrame()}
@@ -244,3 +250,13 @@ class FileMapper(Mapper):
             if self.loaded_distance_ids[distance_measure][key]:
                 with open(os.path.join(self.files_dir, distance_measure, self.file_names[key]), 'wb+') as f:
                     pickle.dump(in_object, f)
+
+    def check_for_setup_sources(self):
+        for key in ['gene_atts', 'disorder_atts', 'gene_ids', 'disorder_ids']:
+            if not Path(os.path.join(self.files_dir, self.file_names[key])).is_file():
+                sys.exit(self.file_names[key] + "does not exist. Please run setup.")
+        for distance_measure in ['jaccard', 'overlap']:
+            for key in ['gene_mat_ids', 'disease_mat_ids', 'go_BP', 'go_CC', 'go_MF', 'pathway_kegg',
+                        'related_genes', 'related_variants', 'related_pathways']:
+                if not Path(os.path.join(self.files_dir, distance_measure, self.file_names[key])).is_file():
+                    sys.exit(self.file_names[key] + "does not exist. Please run setup.")
