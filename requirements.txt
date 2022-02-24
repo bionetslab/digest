@@ -1,6 +1,6 @@
-pandas==1.4.1
-numpy==1.21.1
-scipy==1.7.1
+pandas>=1.2.0
+numpy>=1.20.0
+scipy>=1.5.4
 seaborn==0.11.2
 biothings_client==0.2.6
 gseapy==0.10.5
