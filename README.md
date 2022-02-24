@@ -85,4 +85,4 @@ supported background models
   term_pres		Random ids will preserve the number of mapped terms for the replaced ids.
  ```
  ### Run in python script
- Check out the [tutorial](https://github.com/digest-env/digest/tree/main/tutorial) to see examples of usage in a script.
+ Check out the [tutorial](https://github.com/bionetslab/digest-tutorial) to see examples of usage in a script.
