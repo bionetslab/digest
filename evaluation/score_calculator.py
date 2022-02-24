@@ -17,17 +17,17 @@ def precalc_distance_dicts(ids_cluster: pd.DataFrame, ids_mapping: pd.DataFrame,
     :return: 4 dictionaries consisting of entity intra, entity inter, overall intra and overall inter distances
     """
     # ===== create empty default dicts =====
-    entity_intra = defaultdict(lambda: {'max': None, 'sum': 0, 'min': None})
-    entity_inter = defaultdict(lambda: defaultdict(lambda: {'max': None, 'sum': 0, 'min': None}))
-    intra = defaultdict(lambda: {'max': None, 'sum': 0, 'min': None})
-    inter = defaultdict(lambda: defaultdict(lambda: {'max': None, 'sum': 0, 'min': None}))
+    entity_intra = defaultdict(lambda: {'max': None, 'sum': 0, 'min': None, 'count': 0})
+    entity_inter = defaultdict(lambda: defaultdict(lambda: {'max': None, 'sum': 0, 'min': None, 'count': 0}))
+    intra = defaultdict(lambda: {'max': None, 'sum': 0, 'min': None, 'count': 0})
+    inter = defaultdict(lambda: defaultdict(lambda: {'max': None, 'sum': 0, 'min': None, 'count': 0}))
     # ===== map ids to cluster =====
     id_to_cluster = ids_cluster.set_index('id').to_dict()['cluster_index']
     # ===== map att ids to ids =====
     if ids['att_id'] != ids['id_type']:
         att_id_to_id = \
-        ids_mapping[[ids['att_id'], ids['id_type']]].groupby(ids['att_id']).agg(lambda g: set(g)).to_dict()[
-            ids['id_type']]
+            ids_mapping[[ids['att_id'], ids['id_type']]].groupby(ids['att_id']).agg(lambda g: set(g)).to_dict()[
+                ids['id_type']]
     else:
         att_id_to_id = None
 
@@ -39,6 +39,7 @@ def precalc_distance_dicts(ids_cluster: pd.DataFrame, ids_mapping: pd.DataFrame,
         if destination['min'] is None or destination['min'] > distance:
             destination['min'] = distance
         destination['sum'] = destination['sum'] + distance
+        destination['count'] = destination['count'] + 1
         return destination
 
     # ===== assign distances > 0.0  to dicts =====
@@ -77,7 +78,7 @@ def calc_linkage(value_dict: dict, size: int, linkage="average"):
     :return: linkage value
     """
     if linkage == "average":
-        return value_dict['sum'] / size
+        return (value_dict['sum'] + (size - value_dict['count'])) / size
     if linkage == "complete":
         return value_dict['max']
     if linkage == "single":
@@ -104,8 +105,11 @@ def silhouette_score(ids_cluster: pd.DataFrame, distances: dict, linkage="averag
     for entity in set(distances['entity_intra'].keys()).union(set(distances['entity_inter'].keys())):
         current_cluster = id_to_cluster[entity]
         # ===== calc intra distance =====
-        entity_intra = calc_linkage(value_dict=distances['entity_intra'][entity], size=cluster_sizes[current_cluster],
-                                    linkage=linkage) if entity in distances['entity_intra'] else 1
+        if entity in distances['entity_intra']:
+            entity_intra = calc_linkage(value_dict=distances['entity_intra'][entity],
+                                        size=cluster_sizes[current_cluster], linkage=linkage)
+        else:
+            entity_intra = 1
         # ===== calc min inter distance =====
         min_entity_inter = None
         if entity in distances['entity_inter'] and len(distances['entity_inter'][entity]) < (len(cluster_sizes) - 1):
@@ -153,25 +157,22 @@ def dunn_index(ids_cluster: pd.DataFrame, distances: dict, linkage="average") ->
         # ===== calc intra distance =====
         if cluster in distances['intra']:
             distance = calc_linkage(value_dict=distances['intra'][cluster],
-                                    size=(cluster_to_size[cluster] * cluster_to_size[cluster]) / 2,
-                                    linkage=linkage)
+                                    size=(cluster_to_size[cluster] * cluster_to_size[cluster]) / 2, linkage=linkage)
         else:  # if no distances saved for intra cluster: all pairwise have distance 1
             distance = 1
         if max_intra_dist is None or max_intra_dist < distance:
             max_intra_dist = distance
         # ===== calc min inter distance =====
         if cluster in distances['inter']:
-            # ===== distance to at least one cluster == 0 -> not in dict =====
+            # ===== distance to at least one cluster == 1 -> not in dict =====
             if len(distances['inter'][cluster]) < (len(cluster_to_size) - 1):
-                min_inter_dist = 0
-            # ===== has distance to all other clusters > 0 =====
-            else:
-                for to_cluster in distances['inter'][cluster]:
-                    distance = calc_linkage(value_dict=distances['inter'][cluster][to_cluster],
-                                            size=cluster_to_size[cluster] * cluster_to_size[to_cluster],
-                                            linkage=linkage)
-                    if min_inter_dist is None or min_inter_dist > distance:
-                        min_inter_dist = distance
+                min_inter_dist = 1
+            # ===== calc distance to all clusters =====
+            for to_cluster in distances['inter'][cluster]:
+                distance = calc_linkage(value_dict=distances['inter'][cluster][to_cluster],
+                                        size=cluster_to_size[cluster] * cluster_to_size[to_cluster], linkage=linkage)
+                if min_inter_dist is None or min_inter_dist > distance:
+                    min_inter_dist = distance
     if max_intra_dist == 0 or min_inter_dist is None:
         return 0.0
     return min_inter_dist / max_intra_dist
