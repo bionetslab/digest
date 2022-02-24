@@ -25,11 +25,15 @@ def precalc_distance_dicts(ids_cluster: pd.DataFrame, ids_mapping: pd.DataFrame,
     id_to_cluster = ids_cluster.set_index('id').to_dict()['cluster_index']
     # ===== map att ids to ids =====
     if ids['att_id'] != ids['id_type']:
-        att_id_to_id = ids_mapping[[ids['att_id'],ids['id_type']]].groupby(ids['att_id']).agg(lambda g: set(g)).to_dict()[ids['id_type']]
+        att_id_to_id = \
+        ids_mapping[[ids['att_id'], ids['id_type']]].groupby(ids['att_id']).agg(lambda g: set(g)).to_dict()[
+            ids['id_type']]
     else:
         att_id_to_id = None
+
     # ===== method to add values =====
     def add_value(destination, distance):
+        distance = 1 - distance
         if destination['max'] is None or destination['max'] < distance:
             destination['max'] = distance
         if destination['min'] is None or destination['min'] > distance:
@@ -101,7 +105,7 @@ def silhouette_score(ids_cluster: pd.DataFrame, distances: dict, linkage="averag
         current_cluster = id_to_cluster[entity]
         # ===== calc intra distance =====
         entity_intra = calc_linkage(value_dict=distances['entity_intra'][entity], size=cluster_sizes[current_cluster],
-                                    linkage=linkage) if entity in distances['entity_intra'] else 0 # todo: not 0
+                                    linkage=linkage) if entity in distances['entity_intra'] else 1
         # ===== calc min inter distance =====
         min_entity_inter = None
         if entity in distances['entity_inter'] and len(distances['entity_inter'][entity]) < (len(cluster_sizes) - 1):
@@ -110,8 +114,8 @@ def silhouette_score(ids_cluster: pd.DataFrame, distances: dict, linkage="averag
                                         size=cluster_sizes[cluster], linkage=linkage)
                 if min_entity_inter is None or min_entity_inter > distance:
                     min_entity_inter = distance
-        else:
-            min_entity_inter = 0 # todo: not 0
+        if min_entity_inter is None:
+            min_entity_inter = 1
 
         if cluster_sizes[current_cluster] > 1 and max(min_entity_inter, entity_intra) > 0.0:
             score = ((min_entity_inter - entity_intra) / max(min_entity_inter, entity_intra))
@@ -148,10 +152,13 @@ def dunn_index(ids_cluster: pd.DataFrame, distances: dict, linkage="average") ->
     for cluster in cluster_to_size:
         # ===== calc intra distance =====
         if cluster in distances['intra']:
-            distance = calc_linkage(value_dict=distances['intra'][cluster], size=cluster_to_size[cluster],
+            distance = calc_linkage(value_dict=distances['intra'][cluster],
+                                    size=(cluster_to_size[cluster] * cluster_to_size[cluster]) / 2,
                                     linkage=linkage)
-            if max_intra_dist is None or max_intra_dist < distance:
-                max_intra_dist = distance
+        else:  # if no distances saved for intra cluster: all pairwise have distance 1
+            distance = 1
+        if max_intra_dist is None or max_intra_dist < distance:
+            max_intra_dist = distance
         # ===== calc min inter distance =====
         if cluster in distances['inter']:
             # ===== distance to at least one cluster == 0 -> not in dict =====
@@ -161,12 +168,11 @@ def dunn_index(ids_cluster: pd.DataFrame, distances: dict, linkage="average") ->
             else:
                 for to_cluster in distances['inter'][cluster]:
                     distance = calc_linkage(value_dict=distances['inter'][cluster][to_cluster],
-                                            size=cluster_to_size[cluster]*cluster_to_size[to_cluster], linkage=linkage)
+                                            size=cluster_to_size[cluster] * cluster_to_size[to_cluster],
+                                            linkage=linkage)
                     if min_inter_dist is None or min_inter_dist > distance:
                         min_inter_dist = distance
-        else:
-            min_inter_dist = 0
-    if max_intra_dist == 0:
+    if max_intra_dist == 0 or min_inter_dist is None:
         return 0.0
     return min_inter_dist / max_intra_dist
 
@@ -188,13 +194,16 @@ def davies_bouldin_index(ids_cluster: pd.DataFrame, distances: dict, linkage="av
         for cluster_j in cluster_to_size:
             if cluster_i != cluster_j:
                 # ===== calc intra distances =====
-                distance_i = calc_linkage(value_dict=distances['intra'][cluster_i], size=cluster_to_size[cluster_i],
-                                          linkage=linkage) if cluster_i in distances['intra'] else 0
-                distance_j = calc_linkage(value_dict=distances['intra'][cluster_j], size=cluster_to_size[cluster_j],
-                                          linkage=linkage) if cluster_j in distances['intra'] else 0
+                distance_i = calc_linkage(value_dict=distances['intra'][cluster_i],
+                                          size=(cluster_to_size[cluster_i] * cluster_to_size[cluster_i]) / 2,
+                                          linkage=linkage) if cluster_i in distances['intra'] else 1
+                distance_j = calc_linkage(value_dict=distances['intra'][cluster_j],
+                                          size=(cluster_to_size[cluster_j] * cluster_to_size[cluster_j]) / 2,
+                                          linkage=linkage) if cluster_j in distances['intra'] else 1
                 # ===== calc inter distance =====
                 distance_ij = calc_linkage(value_dict=distances['inter'][cluster_i][cluster_j],
-                                           size=cluster_to_size[cluster_i]*cluster_to_size[cluster_j], linkage=linkage)
+                                           size=cluster_to_size[cluster_i] * cluster_to_size[cluster_j],
+                                           linkage=linkage)
                 # ===== calc (q(ci)*q(cj))/p(ci,cj) =====
                 value = (distance_i * distance_j) / distance_ij if distance_ij != 0 else 0
                 if value > cur_max:

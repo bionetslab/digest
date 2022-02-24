@@ -64,8 +64,11 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
                                              runs=runs, background_model=background_model, replace=replace)
         ru.print_current_usage('Calculating p-values ...') if verbose else None
-        p_values = {
-            'set_value': eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=True)}
+        if mode == "set":
+            set_value = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=False)
+        else:
+            set_value = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=True)
+        p_values = {'set_value': set_value}
         results = {'input_values': {'values': {'set_value': my_value}, 'mapped_ids': mapped},
                    'p_values': {'values': p_values}}
 

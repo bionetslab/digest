@@ -62,7 +62,9 @@ class SetComparator(Comparator):
                 sub_mat = self.mapper.get_loaded_distances(in_series=ids[self.att_id], id_type=self.sparse_key,
                                                            key=c.DISTANCES[attribute],
                                                            distance_measure=self.distance_measure)
-                result[attribute] = sub_mat.sum() / ((len(self.mapping) * (len(self.mapping) - 1)) / 2)
+                missing_distances = ((len(self.mapping) * (len(self.mapping) - 1)) / 2) - sub_mat.getnnz()
+                result[attribute] = ((sub_mat.getnnz()-sub_mat.sum()) + missing_distances) / \
+                                    ((len(self.mapping) * (len(self.mapping) - 1)) / 2)
                 mapped[attribute] = list(subset_df[c.ID_TYPE_KEY[self.id_type]])
         return result, mapped
 
