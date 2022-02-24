@@ -9,6 +9,9 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 
 plt.rcParams.update({'font.size': 17, 'axes.titlelocation': "left", 'axes.titleweight': "bold", 'axes.labelsize': 21})
+plt.rcParams['figure.dpi'] = 300
+plt.rcParams['savefig.dpi'] = 300
+
 replacements = {"diseases": {"disgenet.genes_related_to_disease": "related\ngenes",
                              "disgenet.variants_related_to_disease": "related\nvariants",
                              "ctd.pathway_related_to_disease": "KEGG"},
