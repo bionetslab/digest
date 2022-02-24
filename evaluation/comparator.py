@@ -80,23 +80,37 @@ class SetSetComparator(Comparator):
         self.enriched = enriched
         self.ref_dict = None
 
-    def load_reference(self, ref, ref_id_type):
+    def load_reference(self, ref, ref_id_type, tar_id_type):
+        # if ref_id_type in c.SUPPORTED_DISEASE_IDS:
+        #     reference_mapping = dg.get_disease_to_attributes(disease_set=ref, id_type=ref_id_type, mapper=self.mapper)
+        # else:  # if ref_id_type in c.SUPPORTED_GENE_IDS:
+        #     if self.enriched:
+        #         reference_mapping = gg.get_enriched_attributes(gene_set=ref, id_type=ref_id_type, mapper=self.mapper)
+        #     else:
+        #         reference_mapping = gg.get_gene_to_attributes(gene_set=ref, id_type=ref_id_type, mapper=self.mapper)
+        # if self.enriched:
+        #     self.ref_dict = eu.create_ref_dict(mapping=reference_mapping, keys=c.ENRICH_KEY.keys(), enriched=True)
+        # else:
+        #     self.ref_dict = eu.create_ref_dict(mapping=reference_mapping, keys=reference_mapping.columns[1:],
+        #                                        enriched=False)
         if ref_id_type in c.SUPPORTED_DISEASE_IDS:
-            reference_mapping = dg.get_disease_to_attributes(disease_set=ref, id_type=ref_id_type, mapper=self.mapper)
-        else:  # if ref_id_type in c.SUPPORTED_GENE_IDS:
-            if self.enriched:
-                reference_mapping = gg.get_enriched_attributes(gene_set=ref, id_type=ref_id_type, mapper=self.mapper)
-            else:
-                reference_mapping = gg.get_gene_to_attributes(gene_set=ref, id_type=ref_id_type, mapper=self.mapper)
-        if self.enriched:
-            self.ref_dict = eu.create_ref_dict(mapping=reference_mapping, keys=c.ENRICH_KEY.keys(), enriched=True)
-        else:
-            self.ref_dict = eu.create_ref_dict(mapping=reference_mapping, keys=reference_mapping.columns[1:],
-                                               enriched=False)
+            id_mapping = dg.get_disease_to_attributes(disease_set=ref, id_type=ref_id_type, mapper=self.mapper)
+            if tar_id_type in c.SUPPORTED_DISEASE_IDS:
+                self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=id_mapping.columns[1:])
+            else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
+                id_mapping = id_mapping.rename(columns={'ctd.pathway_related_to_disease': 'pathway.kegg'})
+                self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys={'pathway.kegg'})
+        else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
+            id_mapping = gg.get_gene_to_attributes(gene_set=ref, id_type=ref_id_type, mapper=self.mapper)
+            if tar_id_type in c.SUPPORTED_DISEASE_IDS:
+                id_mapping = id_mapping.rename(columns={'pathway.kegg': 'ctd.pathway_related_to_disease'})
+                self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys={'ctd.pathway_related_to_disease'})
+            else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
+                self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=id_mapping.columns[1:])
 
     def compare(self, threshold: float = 0.0):
         return eu.evaluate_values(mapping=self.mapping, ref_dict=self.ref_dict, threshold=threshold,
-                                  keys=self.mapping.columns[1:])
+                                  keys=self.ref_dict.keys())
 
 
 class IDSetComparator(Comparator):
