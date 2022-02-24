@@ -33,12 +33,12 @@ def precalc_distance_dicts(ids_cluster: pd.DataFrame, ids_mapping: pd.DataFrame,
 
     # ===== method to add values =====
     def add_value(destination, distance):
-        distance = 1 - distance
-        if destination['max'] is None or destination['max'] < distance:
-            destination['max'] = distance
-        if destination['min'] is None or destination['min'] > distance:
-            destination['min'] = distance
-        destination['sum'] = destination['sum'] + distance
+        dist = 1 - distance
+        if destination['max'] is None or destination['max'] < dist:
+            destination['max'] = dist
+        if destination['min'] is None or destination['min'] > dist:
+            destination['min'] = dist
+        destination['sum'] = destination['sum'] + dist
         destination['count'] = destination['count'] + 1
         return destination
 
