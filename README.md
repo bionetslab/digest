@@ -1,5 +1,7 @@
 # DIGEST
-**Di**sease and **Ge**ne **S**et and Clustering Validation **T**ool
+The source code for [DIGEST](https://digest-validation.net/) (validation of **di**sease and **ge**ne **s**ets or clus**t**erings). It greatly facilitates in silico validation of gene and disease sets or clusterings via fully automated validation pipelines comprising disease and gene ID mapping, enrichment
+analysis, comparisons of shared genes and variants, and background distribution estimation. Moreover, functionality is provided to automatically update the external databases used by the pipelines.
+
 ## Setup
 1. Install git
 ```
