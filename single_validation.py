@@ -123,6 +123,7 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
     :return: comparison
     """
     results = list()
+    limit, counter = int((runs + 1) / 100), 1
     if not mode == "cluster":
         # ===== Get full id mapping =====
         if tar_id in config.SUPPORTED_DISEASE_IDS:
@@ -147,7 +148,6 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
             att_size = atts_to_size(pd_map=att_map)
             att_dict = size_mapping_to_dict(pd_size_map=att_size, id_col=config.ID_TYPE_KEY[tar_id], term_col=term,
                                             threshold=100)
-        limit, counter = int((runs+1) / 100), 1
         for run in range(1, runs+1):
             # ===== Update progress =====
             if run % limit == 0:
@@ -183,6 +183,10 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
         size = len(orig_ids)
         random_size = int((size / 100) * replace)
         for run in range(0, runs):
+            # ===== Update progress =====
+            if run % limit == 0:
+                progress(limit * counter / (runs + 1)) if progress is not None else None
+                counter += 1
             old_sample = set(random.sample(orig_ids, (size - random_size)))
             # ===== Shuffle subset of clusters =====
             subset = orig_clusters[~orig_clusters['id'].isin(old_sample)]
