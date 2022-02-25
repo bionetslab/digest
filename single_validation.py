@@ -15,7 +15,7 @@ from typing import Union
 
 
 def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, distance: str = "jaccard",
-                      ref: Union[str, set] = None, ref_id: str = None, enriched: bool = False,
+                      ref: set = None, ref_id: str = None, enriched: bool = False,
                       mapper: Mapper = FileMapper(), runs: int = config.NUMBER_OF_RANDOM_RUNS,
                       background_model: str = "complete", replace=100, verbose: bool = False):
     """
@@ -25,7 +25,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
     :param tar_id: id type of target input
     :param mode: comparison mode [set, id-set, set-set, cluster]
     :param distance: distance measure used for comparison. [Default=jaccard]
-    :param ref: set of reference ids or string with reference id [Default=None]
+    :param ref: set of reference ids [Default=None]
     :param ref_id: id type of reference input [Default=None]
     :param enriched: bool setting if values of reference set should be filtered for enriched values [Default=False]
     :param mapper: mapper from type Mapper defining where the precalculated information comes from [Default=FileMapper]
@@ -42,13 +42,10 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
     if mapper.load:
         ru.print_current_usage('Load mappings for input into cache ...') if verbose else None
         mapper.load_mappings()
-    if mode in ["set", "set-set", "id-set"]:
+    if mode in ["set", "set-set"]:
         if mode == "set-set":
             comparator = comp.SetSetComparator(mapper=mapper, enriched=enriched, verbose=verbose,
                                                distance_measure=distance)
-            comparator.load_reference(ref=ref, ref_id_type=ref_id, tar_id_type=tar_id)
-        elif mode == "id-set":
-            comparator = comp.IDSetComparator(mapper=mapper, verbose=verbose, distance_measure=distance)
             comparator.load_reference(ref=ref, ref_id_type=ref_id, tar_id_type=tar_id)
         else:  # mode == "set"
             comparator = comp.SetComparator(mapper=mapper, verbose=verbose, distance_measure=distance)
@@ -66,10 +63,11 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         ru.print_current_usage('Calculating p-values ...') if verbose else None
         if mode == "set":
             set_value = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=False)
-        else:
+        else:  # mode == "set-set"
             set_value = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=True)
-        p_values = {'set_value': set_value}
-        results = {'input_values': {'values': {'set_value': my_value}, 'mapped_ids': mapped},
+        measure_short = {"jaccard": "JI-based", "overlap": "OC-based"}
+        p_values = {measure_short[distance]: set_value}
+        results = {'input_values': {'values': {measure_short[distance]: my_value}, 'mapped_ids': mapped},
                    'p_values': {'values': p_values}}
 
     # ===== Special case cluster =====
@@ -91,10 +89,10 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         p_values_ss = eu.calc_pvalue(test_value=my_value_ss, random_values=pd.DataFrame(comp_values[1]), maximize=True)
         p_values_dbi = eu.calc_pvalue(test_value=my_value_dbi, random_values=pd.DataFrame(comp_values[2]),
                                       maximize=False)
-        p_values = {'di': p_values_di, 'ss': p_values_ss, 'dbi': p_values_dbi}
+        p_values = {'DI-based': p_values_di, 'SS-based': p_values_ss, 'DBI-based': p_values_dbi}
         results = {
-            'input_values': {'values': {'di': my_value_di, 'ss': my_value_ss,
-                                        'dbi': my_value_dbi},
+            'input_values': {'values': {'DI-based': my_value_di, 'SS-based': my_value_ss,
+                                        'DBI-based': my_value_dbi},
                              'values_inter': my_value_ss_inter,
                              'mapped_ids': mapped}, 'p_values': {'values': p_values}}
     else:

@@ -137,8 +137,9 @@ def evaluate_values(mapping: pd.DataFrame, ref_dict: dict, threshold: float, key
             evaluated_series = mapping[attribute].apply(jaccard_coefficient, ref_att_set=ref_dict[attribute])
         else:  # == "overlap_coefficient"
             evaluated_series = mapping[attribute].apply(overlap_coefficient, ref_att_set=ref_dict[attribute])
-        evaluation[attribute] = str(len(evaluated_series[evaluated_series > threshold]) / len(evaluated_series))
-        mapped[attribute] = list(mapping[mapping[attribute] != ""][mapping.columns[0]])
+        evaluation[config.replacements[attribute]] = str(len(evaluated_series[evaluated_series > threshold]) /
+                                                         len(evaluated_series))
+        mapped[config.replacements[attribute]] = list(mapping[mapping[attribute] != ""][mapping.columns[0]])
     return evaluation, mapped
 
 

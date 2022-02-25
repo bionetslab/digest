@@ -9,7 +9,6 @@ from . import mapping_utils as mu
 import scipy.sparse as sp
 import pickle
 import os
-import sys
 
 
 class Mapper:
@@ -168,8 +167,6 @@ class FileMapper(Mapper):
         super().__init__(preload=preload)
 
     def load_mappings(self):
-        # for mapping_key in ['gene_ids', 'disorder_ids']:
-        #     self.load_file(key=mapping_key, in_type='mapping')
         if self.load:
             for mapping_key in ['gene_atts', 'disorder_atts', 'gene_ids', 'disorder_ids']:
                 self.load_file(key=mapping_key, in_type='mapping')

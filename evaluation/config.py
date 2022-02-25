@@ -54,6 +54,14 @@ DISTANCES = {  # GENES
              'ctd.pathway_related_to_disease': 'related_pathways'}
 
 # =============================================================================
+# Set naming replacements
+# ============================================================================
+replacements = {"disgenet.genes_related_to_disease": "related_genes",
+                "disgenet.variants_related_to_disease": "related_variants",
+                "ctd.pathway_related_to_disease": "KEGG",
+                "go.BP": "GO.BP", "go.CC": "GO.CC", "go.MF": "GO.MF", "pathway.kegg": "KEGG"}
+
+# =============================================================================
 # Set API paths to digest data
 # ============================================================================
 DIGEST = "https://api.digest-validation.net/files?"
