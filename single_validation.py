@@ -11,13 +11,14 @@ import random
 import json
 import time
 from pathlib import Path
-from typing import Union
+from typing import Union, Callable
 
 
 def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, distance: str = "jaccard",
                       ref: set = None, ref_id: str = None, enriched: bool = False,
                       mapper: Mapper = FileMapper(), runs: int = config.NUMBER_OF_RANDOM_RUNS,
-                      background_model: str = "complete", replace=100, verbose: bool = False):
+                      background_model: str = "complete", replace=100, verbose: bool = False,
+                      progress: Callable[[float], None] = None):
     """
     Single validation of a set, cluster a id versus set and set versus set.
 
@@ -55,6 +56,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         comparator.load_target(id_set=tar, id_type=tar_id)
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...') if verbose else None
+        progress(1/(runs+1)) if progress is not None else None
         my_value, mapped = comparator.compare()
         ru.print_current_usage('Validation of random runs ...') if verbose else None
         comparator.verbose = False
@@ -81,6 +83,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...') if verbose else None
         my_value_di, my_value_ss, my_value_dbi, my_value_ss_inter, mapped = comparator.compare()
+        progress(1 / (runs + 1)) if progress is not None else None
         ru.print_current_usage('Validation of random runs ...') if verbose else None
         comparator.verbose = False
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
@@ -102,7 +105,8 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
 
 
 def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mapper, tar_id: str, runs: int,
-                           background_model: str = "complete", replace=100, term: str = "sum") -> list:
+                           background_model: str = "complete", replace=100, term: str = "sum",
+                           progress: Callable[[float], None] = None) -> list:
     """
     Pick random ids to recreate a target input and run the comparison against reference or itself.
     The random ids are of the same id type of the original target input.
@@ -142,7 +146,12 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
             att_size = atts_to_size(pd_map=att_map)
             att_dict = size_mapping_to_dict(pd_size_map=att_size, id_col=config.ID_TYPE_KEY[tar_id], term_col=term,
                                             threshold=100)
-        for run in range(0, runs):
+        limit, counter = int((runs+1) / 100), 1
+        for run in range(1, runs+1):
+            # ===== Update progress =====
+            if run % limit == 0:
+                progress(limit*counter / (runs + 1)) if progress is not None else None
+                counter += 1
             # ===== Pick new samples =====
             old_sample = set(random.sample(list(orig_ids), (size - random_size)))
             if background_model == "complete":
