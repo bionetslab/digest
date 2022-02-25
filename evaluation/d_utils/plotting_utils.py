@@ -12,10 +12,7 @@ plt.rcParams.update({'font.size': 17, 'axes.titlelocation': "left", 'axes.titlew
 plt.rcParams['figure.dpi'] = 300
 plt.rcParams['savefig.dpi'] = 300
 
-replacements = {"diseases": {"disgenet.genes_related_to_disease": "related\ngenes",
-                             "disgenet.variants_related_to_disease": "related\nvariants",
-                             "ctd.pathway_related_to_disease": "KEGG"},
-                "genes": {"go.BP": "GO.BP", "go.CC": "GO.CC", "go.MF": "GO.MF", "pathway.kegg": "KEGG"}}
+replacements = {"related_genes": "related\ngenes", "related_variants": "related\nvariants"}
 
 
 def create_plots(results, mode, tar, tar_id, out_dir, prefix, file_type: str = "pdf"):
@@ -43,7 +40,7 @@ def cluster_plot(results, user_input, out_dir, prefix, file_type: str = "pdf"):
     in_type = "diseases" if user_input["type"] in c.SUPPORTED_DISEASE_IDS else "genes"
     # ===== Prepare for scatterplot =====
     p_value_df = pd.DataFrame.from_dict(results["p_values"]["values"]).rename_axis('attribute').reset_index()
-    p_value_df = p_value_df.replace(replacements[in_type]).sort_values(['attribute']).reset_index(drop=True)
+    p_value_df = p_value_df.replace(replacements).sort_values(['attribute']).reset_index(drop=True)
     for val in results["p_values"]["values"]:
         p_value_df["log_p-values"] = p_value_df[val].apply(lambda x: -math.log10(x))
         # ===== Plot scatterplot =====
@@ -56,7 +53,7 @@ def cluster_plot(results, user_input, out_dir, prefix, file_type: str = "pdf"):
         mapped_df[att] = [1 if x in results["input_values"]["mapped_ids"][att] else 0 for x in mapped_df['id']]
     mapped_df = mapped_df.groupby('cluster', as_index=False).agg(sum).melt('cluster', var_name='attribute',
                                                                            value_name='count')
-    mapped_df = mapped_df.replace(replacements[in_type]).sort_values(['attribute']).reset_index(drop=True)
+    mapped_df = mapped_df.replace(replacements).sort_values(['attribute']).reset_index(drop=True)
     mapped_df["fraction"] = mapped_df.apply(lambda x: x['count'] / cluster_sizes[x['cluster']], axis=1)
     # ===== Plot mappability plot =====
     mappability_plot(title="Mappability of input", in_type=in_type, mapped_df=mapped_df, out_dir=out_dir,
@@ -66,10 +63,11 @@ def cluster_plot(results, user_input, out_dir, prefix, file_type: str = "pdf"):
 def set_plot(results, user_input, out_dir, prefix, file_type: str = "pdf"):
     in_type = "diseases" if user_input["type"] in c.SUPPORTED_DISEASE_IDS else "genes"
     # ===== Prepare for scatterplot =====
-    p_value_df = pd.DataFrame.from_dict({'p_values': results["p_values"]["values"]['set_value']}).rename_axis(
+    p_value_df = pd.DataFrame.from_dict(
+        {'p_values': results["p_values"]["values"][next(iter(results["p_values"]["values"]))]}).rename_axis(
         'attribute').reset_index()
     p_value_df["log_p-values"] = p_value_df["p_values"].apply(lambda x: -math.log10(x))
-    p_value_df = p_value_df.replace(replacements[in_type]).sort_values(['attribute']).reset_index(drop=True)
+    p_value_df = p_value_df.replace(replacements).sort_values(['attribute']).reset_index(drop=True)
     # ===== Plot scatterplot =====
     p_value_plot(title="Empirical P-value", p_value_df=p_value_df, out_dir=out_dir, prefix=prefix, file_type=file_type)
     # ===== Prepare for mappability plot =====
@@ -80,9 +78,9 @@ def set_plot(results, user_input, out_dir, prefix, file_type: str = "pdf"):
     mapped_df["count"] = mapped_df.sum(axis=1)
     mapped_df["fraction"] = mapped_df['count'].apply(lambda x: x / len(user_input["set"]))
     mapped_df = mapped_df.rename_axis('attribute').reset_index()
-    mapped_df = mapped_df.replace(replacements[in_type]).sort_values(['attribute']).reset_index(drop=True)
+    mapped_df = mapped_df.replace(replacements).sort_values(['attribute']).reset_index(drop=True)
     # ===== Plot mappability plot =====
-    mappability_plot(title="Mappability of input", in_type="diseases", mapped_df=mapped_df, out_dir=out_dir,
+    mappability_plot(title="Mappability of input", in_type=in_type, mapped_df=mapped_df, out_dir=out_dir,
                      prefix=prefix, cluster=False, file_type=file_type)
 
 
