@@ -61,7 +61,8 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         ru.print_current_usage('Validation of random runs ...') if verbose else None
         comparator.verbose = False
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
-                                             runs=runs, background_model=background_model, replace=replace)
+                                             runs=runs, background_model=background_model, replace=replace,
+                                             progress=progress)
         ru.print_current_usage('Calculating p-values ...') if verbose else None
         if mode == "set":
             set_value = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=False)
@@ -87,7 +88,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         ru.print_current_usage('Validation of random runs ...') if verbose else None
         comparator.verbose = False
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
-                                             runs=runs)
+                                             runs=runs, progress=progress)
         p_values_di = eu.calc_pvalue(test_value=my_value_di, random_values=pd.DataFrame(comp_values[0]), maximize=False)
         p_values_ss = eu.calc_pvalue(test_value=my_value_ss, random_values=pd.DataFrame(comp_values[1]), maximize=True)
         p_values_dbi = eu.calc_pvalue(test_value=my_value_dbi, random_values=pd.DataFrame(comp_values[2]),
