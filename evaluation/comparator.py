@@ -89,16 +89,31 @@ class SetSetComparator(Comparator):
                 id_mapping = id_mapping.rename(columns={'ctd.pathway_related_to_disease': 'pathway.kegg'})
                 self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys={'pathway.kegg'})
         else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
-            id_mapping = gg.get_gene_to_attributes(gene_set=ref, id_type=ref_id_type, mapper=self.mapper)
+            if self.enriched:
+                id_mapping = gg.get_enriched_attributes(gene_set=ref, id_type=ref_id_type, mapper=self.mapper)
+            else:
+                id_mapping = gg.get_gene_to_attributes(gene_set=ref, id_type=ref_id_type, mapper=self.mapper)
             if tar_id_type in c.SUPPORTED_DISEASE_IDS:
-                id_mapping = id_mapping.rename(columns={'pathway.kegg': 'ctd.pathway_related_to_disease'})
+                col_name = 'KEGG_2016' if self.enriched else 'pathway.kegg'
+                id_mapping = id_mapping.rename(columns={col_name: 'ctd.pathway_related_to_disease'})
                 self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys={'ctd.pathway_related_to_disease'})
             else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
-                self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=id_mapping.columns[1:])
+                self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=c.ENRICH_KEY.keys(), enriched=True)
 
     def compare(self, threshold: float = 0.0):
-        return eu.evaluate_values(mapping=self.mapping, ref_dict=self.ref_dict, threshold=threshold,
-                                  keys=self.ref_dict.keys())
+        evaluation, mapped = dict(), dict()
+        for attribute in self.ref_dict.keys():
+            if self.distance_measure == "jaccard":
+                evaluated_series = self.mapping[attribute].apply(eu.jaccard_coefficient,
+                                                                 ref_att_set=self.ref_dict[attribute])
+            else:  # == "overlap_coefficient"
+                evaluated_series = self.mapping[attribute].apply(eu.overlap_coefficient,
+                                                                 ref_att_set=self.ref_dict[attribute])
+            evaluation[c.replacements[attribute]] = str(len(evaluated_series[evaluated_series > threshold]) /
+                                                        len(evaluated_series))
+            mapped[c.replacements[attribute]] = list(
+                self.mapping[self.mapping[attribute] != ""][self.mapping.columns[0]])
+        return evaluation, mapped
 
 
 class ClusterComparator(Comparator):
