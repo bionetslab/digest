@@ -119,6 +119,28 @@ def jaccard_coefficient(tar_att_set: set, ref_att_set: set):
     return intersection / len(tar_att_set.union(ref_att_set))
 
 
+def evaluate_values(mapping: pd.DataFrame, ref_dict: dict, threshold: float, keys, coefficient: str = "jaccard"):
+    """
+    Evaluate mapped attribute values of target set with the unified
+    attribute values of the reference based on a threshold.
+    :param mapping: mapping of target set to attributes
+    :param ref_dict: reference dictionary with unified values
+    :param threshold: minimum similarity of each element in tar to reference set [0,1]
+    :param keys: attribute names
+    :param coefficient: type of coefficient to validate two sets [Default="jaccard"]
+    :return:
+    """
+    evaluation, mapped = dict(), dict()
+    for attribute in keys:
+        if coefficient == "jaccard":
+            evaluated_series = mapping[attribute].apply(jaccard_coefficient, ref_att_set=ref_dict[attribute])
+        else:  # == "overlap_coefficient"
+            evaluated_series = mapping[attribute].apply(overlap_coefficient, ref_att_set=ref_dict[attribute])
+        evaluation[attribute] = str(len(evaluated_series[evaluated_series > threshold]) / len(evaluated_series))
+        mapped[attribute] = list(mapping[mapping[attribute] != ""][mapping.columns[0]])
+    return evaluation, mapped
+
+
 def calc_pvalue(test_value: dict, random_values: pd.DataFrame, maximize=True):
     """
     Calculate pvalue based on the values of the original input and the values of random runs.

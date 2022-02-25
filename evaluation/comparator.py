@@ -97,19 +97,8 @@ class SetSetComparator(Comparator):
                 self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=id_mapping.columns[1:])
 
     def compare(self, threshold: float = 0.0):
-        evaluation, mapped = dict(), dict()
-        for attribute in self.ref_dict.keys():
-            if self.distance_measure == "jaccard":
-                evaluated_series = self.mapping[attribute].apply(eu.jaccard_coefficient,
-                                                                 ref_att_set=self.ref_dict[attribute])
-            else:  # == "overlap_coefficient"
-                evaluated_series = self.mapping[attribute].apply(eu.overlap_coefficient,
-                                                                 ref_att_set=self.ref_dict[attribute])
-            evaluation[c.replacements[attribute]] = str(len(evaluated_series[evaluated_series > threshold]) /
-                                                        len(evaluated_series))
-            mapped[c.replacements[attribute]] = list(
-                self.mapping[self.mapping[attribute] != ""][self.mapping.columns[0]])
-        return evaluation, mapped
+        return eu.evaluate_values(mapping=self.mapping, ref_dict=self.ref_dict, threshold=threshold,
+                                  keys=self.ref_dict.keys())
 
 
 class ClusterComparator(Comparator):
