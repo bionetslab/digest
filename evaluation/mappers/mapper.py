@@ -254,9 +254,9 @@ class FileMapper(Mapper):
     def check_for_setup_sources(self):
         for key in ['gene_atts', 'disorder_atts', 'gene_ids', 'disorder_ids']:
             if not Path(os.path.join(self.files_dir, self.file_names[key])).is_file():
-                sys.exit(self.file_names[key] + "does not exist. Please run setup.")
+                raise Exception(self.file_names[key] + "does not exist. Please run setup.")
         for distance_measure in ['jaccard', 'overlap']:
             for key in ['gene_mat_ids', 'disease_mat_ids', 'go_BP', 'go_CC', 'go_MF', 'pathway_kegg',
                         'related_genes', 'related_variants', 'related_pathways']:
                 if not Path(os.path.join(self.files_dir, distance_measure, self.file_names[key])).is_file():
-                    sys.exit(self.file_names[key] + "does not exist. Please run setup.")
+                    raise Exception(self.file_names[key] + "does not exist. Please run setup.")

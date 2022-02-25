@@ -46,7 +46,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         if mode == "set-set":
             comparator = comp.SetSetComparator(mapper=mapper, enriched=enriched, verbose=verbose,
                                                distance_measure=distance)
-            comparator.load_reference(ref=ref, ref_id_type=ref_id)
+            comparator.load_reference(ref=ref, ref_id_type=ref_id, tar_id_type=tar_id)
         elif mode == "id-set":
             comparator = comp.IDSetComparator(mapper=mapper, verbose=verbose, distance_measure=distance)
             comparator.load_reference(ref=ref, ref_id_type=ref_id, tar_id_type=tar_id)
