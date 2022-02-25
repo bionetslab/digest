@@ -55,7 +55,7 @@ class SetComparator(Comparator):
                 self.mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type=self.sparse_key,
                                              distance_measure=self.distance_measure)
             if subset_df.empty:
-                result[attribute] = 0
+                result[c.replacements[attribute]] = 0
             else:
                 ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
                                                          id_type=self.id_type)
@@ -63,9 +63,9 @@ class SetComparator(Comparator):
                                                            key=c.DISTANCES[attribute],
                                                            distance_measure=self.distance_measure)
                 missing_distances = ((len(self.mapping) * (len(self.mapping) - 1)) / 2) - sub_mat.getnnz()
-                result[attribute] = ((sub_mat.getnnz()-sub_mat.sum()) + missing_distances) / \
-                                    ((len(self.mapping) * (len(self.mapping) - 1)) / 2)
-                mapped[attribute] = list(subset_df[c.ID_TYPE_KEY[self.id_type]])
+                result[c.replacements[attribute]] = ((sub_mat.getnnz() - sub_mat.sum()) + missing_distances) / \
+                                                    ((len(self.mapping) * (len(self.mapping) - 1)) / 2)
+                mapped[c.replacements[attribute]] = list(subset_df[c.ID_TYPE_KEY[self.id_type]])
         return result, mapped
 
 
@@ -97,8 +97,19 @@ class SetSetComparator(Comparator):
                 self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=id_mapping.columns[1:])
 
     def compare(self, threshold: float = 0.0):
-        return eu.evaluate_values(mapping=self.mapping, ref_dict=self.ref_dict, threshold=threshold,
-                                  keys=self.ref_dict.keys())
+        evaluation, mapped = dict(), dict()
+        for attribute in self.ref_dict.keys():
+            if self.distance_measure == "jaccard":
+                evaluated_series = self.mapping[attribute].apply(eu.jaccard_coefficient,
+                                                                 ref_att_set=self.ref_dict[attribute])
+            else:  # == "overlap_coefficient"
+                evaluated_series = self.mapping[attribute].apply(eu.overlap_coefficient,
+                                                                 ref_att_set=self.ref_dict[attribute])
+            evaluation[c.replacements[attribute]] = str(len(evaluated_series[evaluated_series > threshold]) /
+                                                        len(evaluated_series))
+            mapped[c.replacements[attribute]] = list(
+                self.mapping[self.mapping[attribute] != ""][self.mapping.columns[0]])
+        return evaluation, mapped
 
 
 class ClusterComparator(Comparator):
@@ -140,8 +151,9 @@ class ClusterComparator(Comparator):
                                              distance_measure=self.distance_measure)
 
             if subset_df.empty:
-                result_di[attribute], result_ss[attribute], result_ss_intermediate[attribute] = None, None, None
-                result_dbi[attribute], mapped[attribute] = None, []
+                result_di[c.replacements[attribute]], result_ss[c.replacements[attribute]] = None, None
+                result_ss_intermediate[c.replacements[attribute]] = None
+                result_dbi[c.replacements[attribute]], mapped[c.replacements[attribute]] = None, []
             else:
                 ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
                                                          id_type=self.id_type)
@@ -160,9 +172,9 @@ class ClusterComparator(Comparator):
                 di_score = sc.dunn_index(ids_cluster=subset_clusters, distances=precalc_dist, linkage="average")
                 dbi_score = sc.davies_bouldin_index(ids_cluster=subset_clusters, distances=precalc_dist,
                                                     linkage="average")
-                result_di[attribute] = di_score
-                result_ss[attribute] = ss_score[0]
-                result_ss_intermediate[attribute] = ss_score[1]
-                result_dbi[attribute] = dbi_score
-                mapped[attribute] = list(subset_df[c.ID_TYPE_KEY[self.id_type]])
+                result_di[c.replacements[attribute]] = di_score
+                result_ss[c.replacements[attribute]] = ss_score[0]
+                result_ss_intermediate[c.replacements[attribute]] = ss_score[1]
+                result_dbi[c.replacements[attribute]] = dbi_score
+                mapped[c.replacements[attribute]] = list(subset_df[c.ID_TYPE_KEY[self.id_type]])
         return result_di, result_ss, result_dbi, result_ss_intermediate, mapped
