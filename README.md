@@ -33,7 +33,7 @@ conda activate digest
 pip install pandas numpy scipy seaborn biothings_client gseapy
 python -m pip install psutil
 ```
-## Setup Files
+## Setup files
 To make sure, that all mappings are up to date, run the setup script. This will retrieve the mappings from the api. Runtime: ~1 Minute. This is recommended as the files on the api will be kept updated.
 ```
 python3 setup.py
