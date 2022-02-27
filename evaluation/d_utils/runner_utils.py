@@ -18,7 +18,7 @@ def save_parameters(script_desc: str, arguments):
     :return: values assigned to input arguments
     """
     descr = "\n############################################################################\n"
-    descr += "###################### DiGeSt - %(prog)s ########################\n"
+    descr += "###################### DIGEST - %(prog)s ########################\n"
     descr += script_desc
     descr += "\n############################################################################\n"
     descr += "\nusage: python3 %(prog)s [required arguments] [optional arguments]\n"
