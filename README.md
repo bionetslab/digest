@@ -88,9 +88,6 @@ supported modes
 supported background models
   complete		Random ids will be picked fully randomized.
   term-pres		Random ids will preserve the number of mapped terms for the replaced ids.
-
-############################################################################
-
  ```
  ### Run in python script
  Check out the [tutorial](https://github.com/bionetslab/digest-tutorial) to see examples of usage in a script.
