@@ -1,3 +1,7 @@
+<p align="center">
+  <img alt="DIGEST Logo" src="https://github.com/bionetslab/digest/blob/main/digest_logo.png?raw=true" width="500" />
+</p>
+
 # DIGEST
 The source code for [DIGEST](https://digest-validation.net/) (validation of **di**sease and **ge**ne **s**ets or clus**t**erings). It greatly facilitates in silico validation of gene and disease sets or clusterings via fully automated validation pipelines comprising disease and gene ID mapping, enrichment
 analysis, comparisons of shared genes and variants, and background distribution estimation. Moreover, functionality is provided to automatically update the external databases used by the pipelines.
