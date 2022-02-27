@@ -18,7 +18,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
                       ref: set = None, ref_id: str = None, enriched: bool = False,
                       mapper: Mapper = FileMapper(), runs: int = config.NUMBER_OF_RANDOM_RUNS,
                       background_model: str = "complete", replace=100, verbose: bool = False,
-                      progress: Callable[[float], None] = None):
+                      progress: Callable[[float, str], None] = None):
     """
     Single validation of a set, cluster a id versus set and set versus set.
 
@@ -34,35 +34,49 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
     :param background_model: which background model to use for random picks [Default="complete"]
     :param replace: how many % of target input should be replaced by random picks [Default=100]
     :param verbose: bool if additional info like ids without assigned attributes should be printed [Default=False]
+    :param progress: method that will get a float [0,1] and message indicating the current progress
     """
     ru.start_time = time.time()
     ru.print_current_usage('Check for proper setup ...')
     mapper.check_for_setup_sources()
     # ===== Comparison with a set =====
     ru.print_current_usage('Starting validation ...')
+    progress(0.01, "Load mappings...") if progress is not None else None
     if mapper.load:
         ru.print_current_usage('Load mappings for input into cache ...') if verbose else None
         mapper.load_mappings()
     if mode in ["set", "set-set"]:
+        error_mappings = []
         if mode == "set-set":
             comparator = comp.SetSetComparator(mapper=mapper, enriched=enriched, verbose=verbose,
                                                distance_measure=distance)
             comparator.load_reference(ref=ref, ref_id_type=ref_id, tar_id_type=tar_id)
+            if not comparator.ref_dict:
+                error_mappings.append("reference")
         else:  # mode == "set"
             comparator = comp.SetComparator(mapper=mapper, verbose=verbose, distance_measure=distance)
             if mapper.load:
                 ru.print_current_usage('Load distances for input into cache ...')
+                progress(0.05, "Load distances...") if progress is not None else None
                 mapper.load_distances(set_type=tar_id, distance_measure=distance)
         comparator.load_target(id_set=tar, id_type=tar_id)
+        # ===== Check if mappings possible =====
+        if comparator.mapping.empty:
+            error_mappings.append("target set")
+        if len(error_mappings) > 0:
+            return {'status': 'No mapping found for '+' and '.join(error_mappings),
+                    'input_values': {'values': None, 'mapped_ids': []}, 'p_values': {'values': None}}
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...') if verbose else None
-        progress(1/(runs+1)) if progress is not None else None
+        progress(0.1, "Validation of input...") if progress is not None else None
         my_value, mapped = comparator.compare()
         ru.print_current_usage('Validation of random runs ...') if verbose else None
+        progress(0.1+(0.9/(runs+1)),"Validation with background model...") if progress is not None else None
         comparator.verbose = False
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
                                              runs=runs, background_model=background_model, replace=replace,
                                              progress=progress)
+        # ===== Statistical analysis =====
         ru.print_current_usage('Calculating p-values ...') if verbose else None
         if mode == "set":
             set_value = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=False)
@@ -70,35 +84,45 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
             set_value = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=True)
         measure_short = {"jaccard": "JI-based", "overlap": "OC-based"}
         p_values = {measure_short[distance]: set_value}
-        results = {'input_values': {'values': {measure_short[distance]: my_value}, 'mapped_ids': mapped},
+        results = {'status':'ok',
+                   'input_values': {'values': {measure_short[distance]: my_value}, 'mapped_ids': mapped},
                    'p_values': {'values': p_values}}
 
     # ===== Special case cluster =====
     elif mode == "cluster":
         if mapper.load:
             ru.print_current_usage('Load distances for input into cache ...') if verbose else None
+            progress(0.05, "Load distances...") if progress is not None else None
             mapper.load_distances(set_type=tar_id, distance_measure=distance)
         ru.print_current_usage('Load input data ...') if verbose else None
         comparator = comp.ClusterComparator(mapper=mapper, verbose=verbose, distance_measure=distance)
         comparator.load_target(id_set=tar, id_type=tar_id)
+        # ===== Check if mappings possible =====
+        if comparator.mapping.empty:
+            return {'status': 'No mapping found for target cluster',
+                    'input_values': {'values': None, 'mapped_ids': []}, 'p_values': {'values': None}}
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...') if verbose else None
+        progress(0.1, "Validation of input...") if progress is not None else None
         my_value_di, my_value_ss, my_value_dbi, my_value_ss_inter, mapped = comparator.compare()
-        progress(1 / (runs + 1)) if progress is not None else None
         ru.print_current_usage('Validation of random runs ...') if verbose else None
+        progress(0.1+(0.9/(runs+1)),"Validation with background model...") if progress is not None else None
         comparator.verbose = False
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
                                              runs=runs, progress=progress)
+        # ===== Statistical analysis =====
+        ru.print_current_usage('Calculating p-values ...') if verbose else None
         p_values_di = eu.calc_pvalue(test_value=my_value_di, random_values=pd.DataFrame(comp_values[0]), maximize=False)
         p_values_ss = eu.calc_pvalue(test_value=my_value_ss, random_values=pd.DataFrame(comp_values[1]), maximize=True)
         p_values_dbi = eu.calc_pvalue(test_value=my_value_dbi, random_values=pd.DataFrame(comp_values[2]),
                                       maximize=False)
         p_values = {'DI-based': p_values_di, 'SS-based': p_values_ss, 'DBI-based': p_values_dbi}
-        results = {
-            'input_values': {'values': {'DI-based': my_value_di, 'SS-based': my_value_ss,
-                                        'DBI-based': my_value_dbi},
-                             'values_inter': my_value_ss_inter,
-                             'mapped_ids': mapped}, 'p_values': {'values': p_values}}
+        results = {'status':'ok',
+                   'input_values': {'values': {'DI-based': my_value_di, 'SS-based': my_value_ss,
+                                               'DBI-based': my_value_dbi},
+                                    'values_inter': my_value_ss_inter,
+                                    'mapped_ids': mapped},
+                   'p_values': {'values': p_values}}
     else:
         results = {None}
     ru.print_current_usage('Finished validation')
@@ -107,7 +131,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
 
 def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mapper, tar_id: str, runs: int,
                            background_model: str = "complete", replace=100, term: str = "sum",
-                           progress: Callable[[float], None] = None) -> list:
+                           progress: Callable[[float, str], None] = None) -> list:
     """
     Pick random ids to recreate a target input and run the comparison against reference or itself.
     The random ids are of the same id type of the original target input.
@@ -120,10 +144,12 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
     :param background_model: which background model to use for random picks [Default="complete"]
     :param replace: how many % of target input should be replaced by random picks [Default=100]
     :param term: on what term the term preserving background model should calculate [Default="sum"]
+    :param progress: method that will get a float [0,1] and message indicating the current progress
     :return: comparison
     """
     results = list()
-    limit, counter = int((runs + 1) / 100), 1
+    threshold = min(runs+1, 100)
+    limit, counter = int((runs + 1) / threshold), 1
     if not mode == "cluster":
         # ===== Get full id mapping =====
         if tar_id in config.SUPPORTED_DISEASE_IDS:
@@ -151,7 +177,8 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
         for run in range(1, runs+1):
             # ===== Update progress =====
             if run % limit == 0:
-                progress(limit*counter / (runs + 1)) if progress is not None else None
+                progress(0.1 + ((limit*counter) * (0.9/ threshold)),
+                         str(limit*counter)+ " run(s) with background model finished...") if progress is not None else None
                 counter += 1
             # ===== Pick new samples =====
             old_sample = set(random.sample(list(orig_ids), (size - random_size)))
@@ -185,7 +212,8 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
         for run in range(0, runs):
             # ===== Update progress =====
             if run % limit == 0:
-                progress(limit * counter / (runs + 1)) if progress is not None else None
+                progress(0.1 + ((limit*counter) * (0.9/ threshold)),
+                         str(limit*counter)+ " run(s) with background model finished...") if progress is not None else None
                 counter += 1
             old_sample = set(random.sample(orig_ids, (size - random_size)))
             # ===== Shuffle subset of clusters =====
@@ -235,8 +263,9 @@ def save_results(results: dict, prefix: str, out_dir):
     with open(os.path.join(out_dir, prefix + "_result.json"), "w") as outfile:
         json.dump(results, outfile)
     # ===== Save output to tables =====
-    pd.DataFrame(results["input_values"]['values']).to_csv(os.path.join(out_dir, prefix + "_input_validation.csv"))
-    pd.DataFrame(results["p_values"]['values']).to_csv(os.path.join(out_dir, prefix + "_p-value_validation.csv"))
+    if results["status"] == "ok":
+        pd.DataFrame(results["input_values"]['values']).to_csv(os.path.join(out_dir, prefix + "_input_validation.csv"))
+        pd.DataFrame(results["p_values"]['values']).to_csv(os.path.join(out_dir, prefix + "_p-value_validation.csv"))
 
 
 if __name__ == "__main__":
@@ -252,6 +281,6 @@ if __name__ == "__main__":
     Path(args.out_dir).mkdir(parents=True, exist_ok=True)  # make sure output dir exists
     pref = "_".join([args.mode, args.target_id_type, args.background_model])
     save_results(results=result, prefix=pref, out_dir=args.out_dir)
-    if args.plot:
+    if args.plot and result["status"] == "ok":
         pu.create_plots(results=result, mode=args.mode, tar=args.target, tar_id=args.target_id_type,
                         out_dir=args.out_dir, prefix=pref)

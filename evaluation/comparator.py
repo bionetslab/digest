@@ -78,27 +78,29 @@ class SetSetComparator(Comparator):
     def __init__(self, mapper: Mapper, distance_measure: str, enriched: bool = False, verbose: bool = False):
         super().__init__(mapper=mapper, verbose=verbose, distance_measure=distance_measure)
         self.enriched = enriched
-        self.ref_dict = None
+        self.ref_dict = dict()
 
     def load_reference(self, ref, ref_id_type, tar_id_type):
         if ref_id_type in c.SUPPORTED_DISEASE_IDS:
             id_mapping = dg.get_disease_to_attributes(disease_set=ref, id_type=ref_id_type, mapper=self.mapper)
-            if tar_id_type in c.SUPPORTED_DISEASE_IDS:
-                self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=id_mapping.columns[1:])
-            else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
-                id_mapping = id_mapping.rename(columns={'ctd.pathway_related_to_disease': 'pathway.kegg'})
-                self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys={'pathway.kegg'})
+            if not id_mapping.empty:  # Only if id mapping is not empty
+                if tar_id_type in c.SUPPORTED_DISEASE_IDS:
+                    self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=id_mapping.columns[1:])
+                else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
+                    id_mapping = id_mapping.rename(columns={'ctd.pathway_related_to_disease': 'pathway.kegg'})
+                    self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys={'pathway.kegg'})
         else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
             if self.enriched:
                 id_mapping = gg.get_enriched_attributes(gene_set=ref, id_type=ref_id_type, mapper=self.mapper)
             else:
                 id_mapping = gg.get_gene_to_attributes(gene_set=ref, id_type=ref_id_type, mapper=self.mapper)
-            if tar_id_type in c.SUPPORTED_DISEASE_IDS:
-                col_name = 'KEGG_2016' if self.enriched else 'pathway.kegg'
-                id_mapping = id_mapping.rename(columns={col_name: 'ctd.pathway_related_to_disease'})
-                self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys={'ctd.pathway_related_to_disease'})
-            else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
-                self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=c.ENRICH_KEY.keys(), enriched=True)
+            if not id_mapping.empty:  # Only if id mapping is not empty
+                if tar_id_type in c.SUPPORTED_DISEASE_IDS:
+                    col_name = 'KEGG_2016' if self.enriched else 'pathway.kegg'
+                    id_mapping = id_mapping.rename(columns={col_name: 'ctd.pathway_related_to_disease'})
+                    self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys={'ctd.pathway_related_to_disease'})
+                else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
+                    self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=c.ENRICH_KEY.keys(), enriched=True)
 
     def compare(self, threshold: float = 0.0):
         evaluation, mapped = dict(), dict()

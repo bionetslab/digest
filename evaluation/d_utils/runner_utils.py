@@ -87,7 +87,7 @@ def save_parameters(script_desc: str, arguments):
         if args.mode == "set-set":
             args.reference = pd.read_csv(args.reference, header=None, sep="\t", dtype=str)[0]
             args.reference = set(args.reference)
-        if args.mode == "clutser":
+        if args.mode == "cluster":
             args.target = pd.read_csv(args.target, header=None, sep="\t", dtype=str, names=["id", "cluster", "desc"])
         else:
             args.target = pd.read_csv(args.target, header=None, sep="\t", dtype=str)[0]

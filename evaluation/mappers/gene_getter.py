@@ -27,20 +27,24 @@ def get_gene_mapping(gene_set: set, id_type: str, mapper: Mapper):
         mg = get_client("gene")
         mapping = mg.querymany(missing_hits, scopes=config.ID_TYPE_KEY[id_type], fields=','.join(config.GENE_IDS),
                                species='human', returnall=False, as_dataframe=True, df_index=False)
-        mapping = mapping.drop(columns=[config.ID_TYPE_KEY[id_type]])
-        mapping.rename(columns={'query': config.ID_TYPE_KEY[id_type]}, inplace=True)
-        # ===== Split if there are multiple ensembl ids =====
-        if 'ensembl' in mapping:
-            mapping = mu.preprocess_results(mapping=mapping, multicol='ensembl', singlecol='ensembl.gene', key='gene')
-            mapping.rename(columns={'ensembl': 'ensembl.gene'}, inplace=True)
-        mapping['uniprot.Swiss-Prot'] = mapping['uniprot.Swiss-Prot'].fillna("").apply(mu.list_to_string)
-        drop_cols = ['_id', '_score', 'notfound'] if 'notfound' in mapping.columns else ['_id', '_score']
-        mapping = mapping.drop(columns=drop_cols)
-        mapping = mapping.fillna('').groupby(['entrezgene','symbol'], as_index=False).agg(
-            {x: mu.combine_rows_to_string for x in config.GENE_IDS[2:]})
-        # ===== Add results from missing values =====
-        mapper.update_mappings(in_df=mapping, key='gene_ids')
-        hit_mapping = pd.concat([hit_mapping, mapping])
+        if 'notfound' in mapping:
+            mapping = mapping[mapping['notfound']!=True]
+        # ===== Only when missing values found a mapping =====
+        if not mapping.empty:
+            mapping = mapping.drop(columns=[config.ID_TYPE_KEY[id_type]])
+            mapping.rename(columns={'query': config.ID_TYPE_KEY[id_type]}, inplace=True)
+            # ===== Split if there are multiple ensembl ids =====
+            if 'ensembl' in mapping:
+                mapping = mu.preprocess_results(mapping=mapping, multicol='ensembl', singlecol='ensembl.gene', key='gene')
+                mapping.rename(columns={'ensembl': 'ensembl.gene'}, inplace=True)
+            mapping['uniprot.Swiss-Prot'] = mapping['uniprot.Swiss-Prot'].fillna("").apply(mu.list_to_string)
+            drop_cols = ['_id', '_score', 'notfound'] if 'notfound' in mapping.columns else ['_id', '_score']
+            mapping = mapping.drop(columns=drop_cols)
+            mapping = mapping.fillna('').groupby(['entrezgene','symbol'], as_index=False).agg(
+                {x: mu.combine_rows_to_string for x in config.GENE_IDS[2:]})
+            # ===== Add results from missing values =====
+            mapper.update_mappings(in_df=mapping, key='gene_ids')
+            hit_mapping = pd.concat([hit_mapping, mapping])
     return hit_mapping
 
 
@@ -58,6 +62,9 @@ def get_gene_to_attributes(gene_set: set, id_type: str, mapper: Mapper):
     """
     # ===== Get gene ID mappings =====
     gene_mapping = get_gene_mapping(gene_set=gene_set, id_type=id_type, mapper=mapper)
+    # ===== Return empty Dataframe if IDs were not mappable =====
+    if gene_mapping.empty:
+        return gene_mapping
     hit_mapping, missing_hits = mapper.get_loaded_mapping(in_set=set(gene_mapping['entrezgene']), id_type='entrezgene',
                                                           key='gene_atts')
     # ===== Get mapping for missing values =====
@@ -67,16 +74,19 @@ def get_gene_to_attributes(gene_set: set, id_type: str, mapper: Mapper):
                                fields=','.join(config.GENE_ATTRIBUTES),
                                species='human', returnall=False, as_dataframe=True, df_index=False)
         mapping.rename(columns={'query': 'entrezgene'}, inplace=True)
-        for attribute in config.GENE_ATTRIBUTES_KEY:
-            mapping = mu.preprocess_results(mapping=mapping, multicol=attribute,
-                                            singlecol=attribute + '.' + config.GENE_ATTRIBUTES_KEY[attribute],
-                                            key=config.GENE_ATTRIBUTES_KEY[attribute])
-        drop_cols = ['_id', '_score', 'notfound'] if 'notfound' in mapping.columns else ['_id', '_score']
-        mapping = mapping.drop(columns=drop_cols)
-        mapping[mapping.columns[1:]] = mapping[mapping.columns[1:]].fillna('').applymap(mu.combine_rows_to_set)
-        # ===== Add results from missing values =====
-        mapper.update_mappings(in_df=mapping, key='gene_atts')
-        hit_mapping = pd.concat([hit_mapping, mapping])
+        if 'notfound' in mapping:
+            mapping = mapping[mapping['notfound']!=True]
+        if not mapping.empty:
+            for attribute in config.GENE_ATTRIBUTES_KEY:
+                mapping = mu.preprocess_results(mapping=mapping, multicol=attribute,
+                                                singlecol=attribute + '.' + config.GENE_ATTRIBUTES_KEY[attribute],
+                                                key=config.GENE_ATTRIBUTES_KEY[attribute])
+            drop_cols = ['_id', '_score', 'notfound'] if 'notfound' in mapping.columns else ['_id', '_score']
+            mapping = mapping.drop(columns=drop_cols)
+            mapping[mapping.columns[1:]] = mapping[mapping.columns[1:]].fillna('').applymap(mu.combine_rows_to_set)
+            # ===== Add results from missing values =====
+            mapper.update_mappings(in_df=mapping, key='gene_atts')
+            hit_mapping = pd.concat([hit_mapping, mapping])
     # ===== work with not unique values =====
     hit_mapping = mu.map_to_prev_id(main_id_type="entrezgene", id_type=config.ID_TYPE_KEY[id_type],
                                     id_mapping=gene_mapping, att_mapping=hit_mapping)
@@ -93,6 +103,9 @@ def get_enriched_attributes(gene_set: set, id_type: str, mapper: Mapper):
     :return: enriched attributes as dataframe
     """
     gene_mapping = get_gene_mapping(gene_set=gene_set, id_type=id_type, mapper=mapper)
+    # ===== Return empty Dataframe if IDs were not mappable =====
+    if gene_mapping.empty:
+        return gene_mapping
     enrich_df = gseapy.enrichr(
         gene_list=list(mu.combine_rows_to_set(gene_mapping['symbol'])),
         description='atts',

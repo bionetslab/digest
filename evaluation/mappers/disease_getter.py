@@ -21,6 +21,9 @@ def get_disease_to_attributes(disease_set, id_type, mapper: Mapper):
     """
     # ==== Get Mondo IDs ====
     disorder_mapping, _ = mapper.get_loaded_mapping(in_set=disease_set, id_type=id_type, key='disorder_ids')
+    # ===== Return empty Dataframe if IDs were not mappable =====
+    if disorder_mapping.empty:
+        return disorder_mapping
     # ===== Get mapping from previous mappings =====
     hit_mapping, missing_hits = mapper.get_loaded_mapping(in_set=set(disorder_mapping['mondo']), id_type='mondo',
                                                           key='disorder_atts')
@@ -51,14 +54,17 @@ def get_attributes_from_database(missing: list, attributes: list = config.DISEAS
     mapping = md.getdiseases(missing, fields=','.join(attributes),
                              species='human', returnall=False, as_dataframe=True, df_index=False)
     mapping.rename(columns={'query': 'mondo'}, inplace=True)
-    # ===== transform dataframe to combine single and multiple results =====
-    for attribute in attributes:
-        mapping = mu.preprocess_results(mapping=mapping, multicol=attribute,
-                                        singlecol=attribute + '.' + config.DISEASE_ATTRIBUTES_KEY[attribute],
-                                        key=config.DISEASE_ATTRIBUTES_KEY[attribute])
-    mapping.drop(columns=list(set(mapping.columns[1:]) - set(attributes)), inplace=True)
-    mapping = mapping.fillna('')
-    mapping = mapping.astype(str)
-    mapping["mondo"] = mapping["mondo"].str.replace('MONDO:', '')
-    mapping[mapping.columns[1:]] = mapping[mapping.columns[1:]].fillna('').applymap(mu.string_to_set)
+    if 'notfound' in mapping:
+        mapping = mapping[mapping['notfound'] != True]
+    if not mapping.empty:
+        # ===== transform dataframe to combine single and multiple results =====
+        for attribute in attributes:
+            mapping = mu.preprocess_results(mapping=mapping, multicol=attribute,
+                                            singlecol=attribute + '.' + config.DISEASE_ATTRIBUTES_KEY[attribute],
+                                            key=config.DISEASE_ATTRIBUTES_KEY[attribute])
+        mapping.drop(columns=list(set(mapping.columns[1:]) - set(attributes)), inplace=True)
+        mapping = mapping.fillna('')
+        mapping = mapping.astype(str)
+        mapping["mondo"] = mapping["mondo"].str.replace('MONDO:', '')
+        mapping[mapping.columns[1:]] = mapping[mapping.columns[1:]].fillna('').applymap(mu.string_to_set)
     return mapping
