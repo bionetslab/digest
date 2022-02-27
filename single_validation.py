@@ -64,6 +64,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         if comparator.mapping.empty:
             error_mappings.append("target set")
         if len(error_mappings) > 0:
+            ru.print_current_usage('Exit validation: No mapping found for '+' and '.join(error_mappings)) if verbose else None
             return {'status': 'No mapping found for '+' and '.join(error_mappings),
                     'input_values': {'values': None, 'mapped_ids': []}, 'p_values': {'values': None}}
         # ===== Get validation values of input =====
@@ -99,6 +100,8 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         comparator.load_target(id_set=tar, id_type=tar_id)
         # ===== Check if mappings possible =====
         if comparator.mapping.empty:
+            ru.print_current_usage(
+                'Exit validation: No mapping found for target cluster') if verbose else None
             return {'status': 'No mapping found for target cluster',
                     'input_values': {'values': None, 'mapped_ids': []}, 'p_values': {'values': None}}
         # ===== Get validation values of input =====
