@@ -89,5 +89,23 @@ supported background models
   complete		Random ids will be picked fully randomized.
   term-pres		Random ids will preserve the number of mapped terms for the replaced ids.
  ```
- ### Run in python script
- Check out the [tutorial](https://github.com/bionetslab/digest-tutorial) to see examples of usage in a script.
+### Result
+The validation returns the complete result in a json file
+```python
+{'status': 'Status text',
+ 'input_values': {'values': dict(), 'mapped_ids': list()}, 
+ 'p_values': {'values': dict()}}
+```
+- **status**: contains either an error message if a mapping failed or "ok" if IDs could be mapped
+- **input_values**:
+  - **values**: table in dict format with the functional or genetic relevance score(s) determined for solely their input
+  - **mapped_ids**: list containing the IDs with non empty annotations per functional or genetic annotation type
+- **p_values**: table in dict format with the calculated empirical P-values using the selected background model and other parameters that indicate the significance of the calculated relevance scores derived from the input
+
+As well as separate table files in .csv format for **p_values** and the **relevance score(s)** saved in **input_values**.
+
+If you set the flag `-p` you will also get plots for each type in **p_value** and a 
+visualization of the mappability information saved under **mapped_ids**.
+### Run with python package
+We also offer a [python package](https://pypi.org/project/biodigest).
+Check out the [tutorial](https://github.com/bionetslab/digest-tutorial) to see examples of usage in a script.
