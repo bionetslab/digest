@@ -49,14 +49,14 @@ usage: python3 single_validation.py [required arguments] [optional arguments]
 
 required arguments:
   -r REFERENCE, --reference REFERENCE
-                        [Only for mode id-set and set-set] Reference file or id. 
+                        [Only for mode set-set] Reference file or id. 
   -ri REFERENCE_ID_TYPE, --reference_id_type REFERENCE_ID_TYPE
-                        [Only for mode id-set and set-set] Reference id type. See possible options below.
+                        [Only for mode set-set] Reference id type. See possible options below.
   -t TARGET, --target TARGET
                         Target file with set or clusters.
   -ti TARGET_ID_TYPE, --target_id_type TARGET_ID_TYPE
                         Target id type. See possible options below.
-  -m {set,set-set,id-set,cluster}, --mode {set,set-set,id-set,cluster}
+  -m {set,set-set,cluster}, --mode {set,set-set,cluster}
                         Desired mode. See possible options below.
 
 optional arguments:
@@ -66,7 +66,7 @@ optional arguments:
                         Distance measure. [Default=jaccard]
   -e, --enriched        Set flag, if only enriched attributes of the reference should be used.
   -c RUNS, --runs RUNS  Number of runs with random target values for p-value calculation.
-  -b {complete,term_pres}, --background_model {complete,term_pres}
+  -b {complete,term-pres}, --background_model {complete,term-pres}
                         Model defining how random values should be picked. See possible options below.
   -pr REPLACE, --replace REPLACE
                         Percentage of how many of the original ids should be replaced with random ids. [Default=100]
@@ -83,12 +83,14 @@ supported id types
 supported modes
   set			Compare similarity inside the set. Either genes or diseases.
   set-set		Compare target set to reference set. Both either genes or diseases.
-  id-set		Compare target set to reference id. Set either genes or diseases, id of disease.
   cluster		Compare cluster quality inside clustering. Either genes or diseases.
 
 supported background models
-  complete		Random ids will be picked completely randomly.
-  term_pres		Random ids will preserve the number of mapped terms for the replaced ids.
+  complete		Random ids will be picked fully randomized.
+  term-pres		Random ids will preserve the number of mapped terms for the replaced ids.
+
+############################################################################
+
  ```
  ### Run in python script
  Check out the [tutorial](https://github.com/bionetslab/digest-tutorial) to see examples of usage in a script.
