@@ -180,7 +180,7 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
         for run in range(1, runs+1):
             # ===== Update progress =====
             if run % limit == 0:
-                progress(0.1 + ((limit*counter) * (0.9/ threshold)),
+                progress(0.1 + (counter * (0.9/ threshold)),
                          str(limit*counter)+ " run(s) with background model finished...") if progress is not None else None
                 counter += 1
             # ===== Pick new samples =====
@@ -215,7 +215,7 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
         for run in range(0, runs):
             # ===== Update progress =====
             if run % limit == 0:
-                progress(0.1 + ((limit*counter) * (0.9/ threshold)),
+                progress(0.1 + (counter * (0.9/ threshold)),
                          str(limit*counter)+ " run(s) with background model finished...") if progress is not None else None
                 counter += 1
             old_sample = set(random.sample(orig_ids, (size - random_size)))
@@ -275,15 +275,15 @@ if __name__ == "__main__":
     desc = "            Evaluation of disease and gene sets and clusters."
     args = ru.save_parameters(script_desc=desc,
                               arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v', 'b', 'pr', 'p', 'dg'))
-    result = single_validation(tar=args.target, tar_id=args.target_id_type, verbose=args.verbose,
-                               mode=args.mode, ref=args.reference, ref_id=args.reference_id_type,
-                               enriched=args.enriched, runs=args.runs, distance=args.distance_measure,
-                               background_model=args.background_model, replace=args.replace)
+    res = single_validation(tar=args.target, tar_id=args.target_id_type, verbose=args.verbose,
+                            mode=args.mode, ref=args.reference, ref_id=args.reference_id_type,
+                            enriched=args.enriched, runs=args.runs, distance=args.distance_measure,
+                            background_model=args.background_model, replace=args.replace)
     # ===== Saving final files and results =====
     ru.print_current_usage('Save files') if args.verbose else None
     Path(args.out_dir).mkdir(parents=True, exist_ok=True)  # make sure output dir exists
     pref = "_".join([args.mode, args.target_id_type, args.background_model])
-    save_results(results=result, prefix=pref, out_dir=args.out_dir)
-    if args.plot and result["status"] == "ok":
-        pu.create_plots(results=result, mode=args.mode, tar=args.target, tar_id=args.target_id_type,
+    save_results(results=res, prefix=pref, out_dir=args.out_dir)
+    if args.plot and res["status"] == "ok":
+        pu.create_plots(results=res, mode=args.mode, tar=args.target, tar_id=args.target_id_type,
                         out_dir=args.out_dir, prefix=pref)
