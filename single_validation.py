@@ -72,7 +72,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         progress(0.1, "Validation of input...") if progress is not None else None
         my_value, mapped = comparator.compare()
         ru.print_current_usage('Validation of random runs ...') if verbose else None
-        progress(0.1+(0.9/(runs+1)),"Validation with background model...") if progress is not None else None
+        progress(0.1+(0.9/min(runs+1, 100)),"Validation with background model...") if progress is not None else None
         comparator.verbose = False
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
                                              runs=runs, background_model=background_model, replace=replace,
@@ -109,7 +109,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         progress(0.1, "Validation of input...") if progress is not None else None
         my_value_di, my_value_ss, my_value_dbi, my_value_ss_inter, mapped = comparator.compare()
         ru.print_current_usage('Validation of random runs ...') if verbose else None
-        progress(0.1+(0.9/(runs+1)),"Validation with background model...") if progress is not None else None
+        progress(0.1+(0.9/min(runs+1, 100)),"Validation with background model...") if progress is not None else None
         comparator.verbose = False
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
                                              runs=runs, progress=progress)
