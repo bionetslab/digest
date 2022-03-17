@@ -33,6 +33,10 @@ def get_gene_mapping(gene_set: set, id_type: str, mapper: Mapper):
         if not mapping.empty:
             mapping = mapping.drop(columns=[config.ID_TYPE_KEY[id_type]])
             mapping.rename(columns={'query': config.ID_TYPE_KEY[id_type]}, inplace=True)
+            # ===== Fill if ID types are missing =====
+            for id_col in config.GENE_IDS:
+                if id_col not in mapping:
+                    mapping[id_col] = ""
             # ===== Split if there are multiple ensembl ids =====
             if 'ensembl' in mapping:
                 mapping = mu.preprocess_results(mapping=mapping, multicol='ensembl', singlecol='ensembl.gene', key='gene')

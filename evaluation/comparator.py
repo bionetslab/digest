@@ -50,7 +50,7 @@ class SetComparator(Comparator):
             if len(new_ids) > 0:
                 comp_mat = eu.get_distance_matrix(full_att_series=self.mapper.loaded_mappings[self.att_key][attribute],
                                                   from_ids=self.mapper.loaded_mappings[self.att_key][self.att_id],
-                                                  id_to_index=self.mapper.loaded_distance_ids[self.sparse_key],
+                                                  id_to_index=self.mapper.loaded_distance_ids[self.distance_measure][self.sparse_key],
                                                   to_ids=new_ids)
                 self.mapper.update_distances(in_mat=comp_mat, key=c.DISTANCES[attribute], id_type=self.sparse_key,
                                              distance_measure=self.distance_measure)
