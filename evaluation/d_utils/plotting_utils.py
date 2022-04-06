@@ -8,6 +8,8 @@ import seaborn as sns
 from pathlib import Path
 from matplotlib import pyplot as plt
 
+sns.set_palette("colorblind")
+
 plt.rcParams.update({'font.size': 17, 'axes.titlelocation': "left", 'axes.titleweight': "bold", 'axes.labelsize': 21})
 plt.rcParams['figure.dpi'] = 300
 plt.rcParams['savefig.dpi'] = 300
@@ -105,3 +107,17 @@ def mappability_plot(title, in_type, mapped_df, out_dir, prefix, cluster=False, 
         ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), title="Cluster")
     fig.tight_layout()
     fig.savefig(os.path.join(out_dir, prefix + '_mappability.' + file_type), bbox_inches='tight')
+
+
+def distribution_plots(results, out_dir, prefix, file_type: str = "pdf"):
+    for eval_term in results["input_values"]['values']:
+        df = pd.melt(pd.DataFrame(results['random_values'][eval_term]))
+        for term_index, term in enumerate(results["input_values"]['values'][eval_term]):
+            fig = plt.figure(figsize=(7, 6), dpi=80)
+            sns.histplot(df, x="value", kde=True, color=sns.color_palette()[term_index])
+            plt.title("Distribution of " + term + " values for " + eval_term)
+            plt.xlabel(term + " values")
+            plt.axvline(results["input_values"]['values'][eval_term][term], 0, 100000, color='r')
+            fig.tight_layout()
+            fig.savefig(os.path.join(out_dir, prefix + '_' + eval_term + '-' + term + '-distribution.' + file_type),
+                        bbox_inches='tight')
