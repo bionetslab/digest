@@ -119,5 +119,5 @@ def distribution_plots(results, out_dir, prefix, file_type: str = "pdf"):
             plt.xlabel(term + " values")
             plt.axvline(results["input_values"]['values'][eval_term][term], 0, 100000, color='r')
             fig.tight_layout()
-            fig.savefig(os.path.join(out_dir, prefix + '_' + eval_term + '-' + term + '-distribution.' + file_type),
+            fig.savefig(os.path.join(out_dir, prefix + '_' + eval_term + '_' + term + '_distribution.' + file_type),
                         bbox_inches='tight')

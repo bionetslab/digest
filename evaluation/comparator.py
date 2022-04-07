@@ -182,5 +182,6 @@ class ClusterComparator(Comparator):
                 result_ss[c.replacements[attribute]] = ss_score[0]
                 result_ss_intermediate[c.replacements[attribute]] = ss_score[1]
                 result_dbi[c.replacements[attribute]] = dbi_score
-                mapped[c.replacements[attribute]] = list(subset_df[c.ID_TYPE_KEY[self.id_type]])
+                mapped[c.replacements[attribute]] = subset_df.set_index(c.ID_TYPE_KEY[self.id_type])[attribute].to_dict()
+                #mapped[c.replacements[attribute]] = list(subset_df[c.ID_TYPE_KEY[self.id_type]])
         return result_di, result_ss, result_dbi, result_ss_intermediate, mapped
