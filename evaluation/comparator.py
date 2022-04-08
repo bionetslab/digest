@@ -65,7 +65,9 @@ class SetComparator(Comparator):
                 missing_distances = ((len(self.mapping) * (len(self.mapping) - 1)) / 2) - sub_mat.getnnz()
                 result[c.replacements[attribute]] = ((sub_mat.getnnz() - sub_mat.sum()) + missing_distances) / \
                                                     ((len(self.mapping) * (len(self.mapping) - 1)) / 2)
-                mapped[c.replacements[attribute]] = list(subset_df[c.ID_TYPE_KEY[self.id_type]])
+                mapped[c.replacements[attribute]] = subset_df.set_index(c.ID_TYPE_KEY[self.id_type])[
+                    attribute].to_dict()
+                # mapped[c.replacements[attribute]] = list(subset_df[c.ID_TYPE_KEY[self.id_type]])
         return result, mapped
 
 
@@ -113,8 +115,9 @@ class SetSetComparator(Comparator):
                                                                  ref_att_set=self.ref_dict[attribute])
             evaluation[c.replacements[attribute]] = str(len(evaluated_series[evaluated_series > threshold]) /
                                                         len(evaluated_series))
-            mapped[c.replacements[attribute]] = list(
-                self.mapping[self.mapping[attribute] != ""][self.mapping.columns[0]])
+            #mapped[c.replacements[attribute]] = list(
+            #    self.mapping[self.mapping[attribute] != ""][self.mapping.columns[0]])
+            mapped[c.replacements[attribute]] = self.mapping[self.mapping[attribute] != ""].set_index(c.ID_TYPE_KEY[self.id_type])[attribute].to_dict()
         return evaluation, mapped
 
 

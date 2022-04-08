@@ -109,7 +109,7 @@ def mappability_plot(title, in_type, mapped_df, out_dir, prefix, cluster=False, 
     fig.savefig(os.path.join(out_dir, prefix + '_mappability.' + file_type), bbox_inches='tight')
 
 
-def distribution_plots(results, out_dir, prefix, file_type: str = "pdf"):
+def value_distribution_plots(results, out_dir, prefix, file_type: str = "pdf"):
     for eval_term in results["input_values"]['values']:
         df = pd.melt(pd.DataFrame(results['random_values'][eval_term]))
         for term_index, term in enumerate(results["input_values"]['values'][eval_term]):
@@ -121,3 +121,16 @@ def distribution_plots(results, out_dir, prefix, file_type: str = "pdf"):
             fig.tight_layout()
             fig.savefig(os.path.join(out_dir, prefix + '_' + eval_term + '_' + term + '_distribution.' + file_type),
                         bbox_inches='tight')
+
+
+def term_annotation_plots(results, out_dir, prefix, file_type: str = "pdf"):
+    df = pd.DataFrame(results["input_values"]["mapped_ids"]).fillna("").applymap(len)
+    for term_index, term in enumerate(df.columns):
+        fig = plt.figure(figsize=(7, 6), dpi=80)
+        sns.histplot(df, x=term, kde=True, color=sns.color_palette()[term_index])
+        plt.title(term + " annotation distribution")
+        plt.xlabel("number of associated terms")
+        plt.ylabel("number of IDs contained in query")
+        fig.tight_layout()
+        fig.savefig(os.path.join(out_dir, prefix + '_' + term + '_annotation_distribution.' + file_type),
+                    bbox_inches='tight')
