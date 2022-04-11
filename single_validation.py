@@ -75,6 +75,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         ru.print_current_usage('Validation of random runs ...') if verbose else None
         progress(0.1+(0.9/min(runs+1, 100)),"Validation with background model...") if progress is not None else None
         comparator.verbose = False
+        comparator.input_run = False
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
                                              runs=runs, background_model=background_model, replace=replace,
                                              progress=progress)
@@ -114,6 +115,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         ru.print_current_usage('Validation of random runs ...') if verbose else None
         progress(0.1+(0.9/min(runs+1, 100)),"Validation with background model...") if progress is not None else None
         comparator.verbose = False
+        comparator.input_run = False
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
                                              runs=runs, progress=progress)
         # ===== Statistical analysis =====

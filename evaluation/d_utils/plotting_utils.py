@@ -8,6 +8,7 @@ from .. import config as c
 import seaborn as sns
 from pathlib import Path
 from matplotlib import pyplot as plt
+from matplotlib.offsetbox import AnchoredText
 from collections import defaultdict
 
 sns.set_palette("colorblind")
@@ -17,6 +18,11 @@ plt.rcParams['figure.dpi'] = 300
 plt.rcParams['savefig.dpi'] = 300
 
 replacements = {"related_genes": "related\ngenes", "related_variants": "related\nvariants"}
+eval_terms = {"DI-based": {"single": "Dunn index", "multi": "Dunn indices"},
+              "SS-based": {"single": "Sillhouette score", "multi": "Sillhouette scores"},
+              "DBI-based": {"single": "Davis-Bouldin index", "multi": "Davis-Bouldin indices"},
+              "JI-based": {"single": "Jaccard index", "multi": "Jaccard indices"},
+              "OC-based": {"single": "Overlap coefficient", "multi": "Overlap coefficients"}}
 
 
 def create_plots(results, mode, tar, tar_id, out_dir, prefix, file_type: str = "pdf"):
@@ -126,18 +132,24 @@ def create_extended_plots(results, mode, tar, out_dir, prefix, file_type: str = 
     Path(out_dir).mkdir(parents=True, exist_ok=True)  # make sure output dir exists
     value_distribution_plots(results=results, out_dir=out_dir, prefix=prefix, file_type=file_type)
     term_annotation_plots(results=results, out_dir=out_dir, prefix=prefix, file_type=file_type)
-    sankey_plot(results=results, mode=mode, out_dir=out_dir, prefix=prefix, file_type=file_type, tar_cluster = tar)
+    sankey_plot(results=results, mode=mode, out_dir=out_dir, prefix=prefix, file_type=file_type, tar_cluster=tar)
 
 
 def value_distribution_plots(results, out_dir, prefix, file_type: str = "pdf"):
     for eval_term in results["input_values"]['values']:
         df = pd.melt(pd.DataFrame(results['random_values'][eval_term]))
+        df['value'] = df['value'].astype(float)
         for term_index, term in enumerate(results["input_values"]['values'][eval_term]):
             fig = plt.figure(figsize=(7, 6), dpi=80)
-            sns.histplot(df, x="value", kde=True, color=sns.color_palette()[term_index])
-            plt.title("Distribution of " + term + " values for " + eval_term)
-            plt.xlabel(term + " values")
+            ax = sns.histplot(df[df["variable"] == term], x="value", kde=True, color=sns.color_palette()[term_index],
+                              bins=10)
+            plt.title("Distribution of " + term + "-based " + eval_term)
+            plt.xlabel(term + "-based " + eval_terms[eval_term]["single"])
+            plt.ylabel("Number of runs\non randomized data")
             plt.axvline(results["input_values"]['values'][eval_term][term], 0, 100000, color='r')
+            anchored_text = AnchoredText("Empirical\nP-value:\n%.2f" % results["p_values"]['values'][eval_term][term],
+                                         loc=2, prop={'size': 12})
+            ax.add_artist(anchored_text)
             fig.tight_layout()
             fig.savefig(os.path.join(out_dir, prefix + '_' + eval_term + '_' + term + '_distribution.' + file_type),
                         bbox_inches='tight')
@@ -147,23 +159,26 @@ def term_annotation_plots(results, out_dir, prefix, file_type: str = "pdf"):
     df = pd.DataFrame(results["input_values"]["mapped_ids"]).fillna("").applymap(len)
     for term_index, term in enumerate(df.columns):
         fig = plt.figure(figsize=(7, 6), dpi=80)
-        sns.histplot(df, x=term, kde=True, color=sns.color_palette()[term_index])
-        plt.title(term + " annotation distribution")
-        plt.xlabel("number of associated terms")
-        plt.ylabel("number of IDs contained in query")
+        sns.histplot(df, x=term, kde=True, color=sns.color_palette()[term_index], bins=10)
+        plt.title("Distribution of\n" + term + " annotations")
+        if term in replacements:
+            plt.xlabel("Number of associated " + term)
+        else:
+            plt.xlabel("Number of associated " + term + " terms")
+        plt.ylabel("Number of IDs\ncontained in query")
         fig.tight_layout()
         fig.savefig(os.path.join(out_dir, prefix + '_' + term + '_annotation_distribution.' + file_type),
                     bbox_inches='tight')
 
 
-def sankey_plot(results, mode, out_dir, prefix, file_type: str = "pdf", tar_cluster=None):
+def sankey_plot(results, mode, out_dir, prefix, file_type: str = "pdf", tar_cluster=None, include_others=False):
     full_df = pd.DataFrame(results["input_values"]["mapped_ids"])
     for term_index, term in enumerate(full_df.columns):
 
-        def count_and_sort(df, colname, hierarchy):
+        def col_sort(df, colname, hierarchy):
             df[colname] = df[colname].astype("category")
             df[colname].cat.set_categories(hierarchy, inplace=True)
-            df = df.sort_values([colname], ascending=False)
+            df = df.sort_values([colname], ascending=True)
             return df
 
         d = full_df[[term]].dropna().rename_axis('left').reset_index().explode(term)
@@ -174,15 +189,22 @@ def sankey_plot(results, mode, out_dir, prefix, file_type: str = "pdf", tar_clus
                 ids.extend(d[d["left"] == cluster][term].value_counts().nlargest(10).index)
         else:
             ids = d[term].value_counts().nlargest(10).index
-        d = d[d[term].isin(ids)].reset_index(drop=True).drop_duplicates()
-        d = count_and_sort(df=d, colname="left", hierarchy=d["left"].value_counts().index.tolist())
-        d = count_and_sort(df=d, colname=term, hierarchy=d[term].value_counts().index.tolist())
+        if include_others:
+            d.loc[~d[term].isin(ids), term] = "other"
+        else:
+            d = d[d[term].isin(ids)]
+        # ===== Save hierarchy =====
+        hierarchy_left = d["left"].value_counts().index.tolist()
+        hierarchy_right = d[term].value_counts().index.tolist()
+        # ===== Sort =====
+        d = d.reset_index(drop=True).value_counts().reset_index()
+        d = col_sort(df=d, colname="left", hierarchy=hierarchy_left)
+        d = col_sort(df=d, colname=term, hierarchy=hierarchy_right)
+        # ===== Assign colors =====
         z = {**dict(zip(d["left"].unique(), ["#808080"] * len(d.index.unique()))),
              **dict(zip(d[term].unique(), sns.color_palette() * 10))}
-        # ===== Fill weights =====
-        d["leftWeight"] = 1
-        d["rightWeight"] = 1
-        d.rename(columns={term: 'right'}, inplace=True)
+
+        d.rename(columns={term: 'right', 0: 'weight'}, inplace=True)
         # ===== Plot =====
         sankey(data=d, aspect=20, right_color=True, color_dict=z, term=term,
                out_dir=out_dir, prefix=prefix, file_type=file_type)
@@ -221,8 +243,8 @@ def sankey(data, out_dir, prefix, file_type: str = "pdf", color_dict=None, aspec
         left_dict = {}
         right_dict = {}
         for right_label in right_labels:
-            left_dict[right_label] = data[(data.left == left_label) & (data.right == right_label)].leftWeight.sum()
-            right_dict[right_label] = data[(data.left == left_label) & (data.right == right_label)].rightWeight.sum()
+            left_dict[right_label] = data[(data.left == left_label) & (data.right == right_label)].weight.sum()
+            right_dict[right_label] = data[(data.left == left_label) & (data.right == right_label)].weight.sum()
         ns_l[left_label] = left_dict
         ns_r[left_label] = right_dict
 
@@ -230,12 +252,12 @@ def sankey(data, out_dir, prefix, file_type: str = "pdf", color_dict=None, aspec
     left_widths = defaultdict()
     for i, left_label in enumerate(left_labels):
         myD = {}
-        myD['left'] = data[data.left == left_label].leftWeight.sum()
+        myD['left'] = data[data.left == left_label].weight.sum()
         if i == 0:
             myD['bottom'] = 0
             myD['top'] = myD['left']
         else:
-            myD['bottom'] = left_widths[left_labels[i - 1]]['top'] + 0.02 * data.leftWeight.sum()
+            myD['bottom'] = left_widths[left_labels[i - 1]]['top'] + 0.02 * data.weight.sum()
             myD['top'] = myD['bottom'] + myD['left']
             top_edge = myD['top']
         left_widths[left_label] = myD
@@ -244,12 +266,12 @@ def sankey(data, out_dir, prefix, file_type: str = "pdf", color_dict=None, aspec
     right_widths = defaultdict()
     for i, right_label in enumerate(right_labels):
         myD = {}
-        myD['right'] = data[data.right == right_label].rightWeight.sum()
+        myD['right'] = data[data.right == right_label].weight.sum()
         if i == 0:
             myD['bottom'] = 0
             myD['top'] = myD['right']
         else:
-            myD['bottom'] = right_widths[right_labels[i - 1]]['top'] + 0.02 * data.rightWeight.sum()
+            myD['bottom'] = right_widths[right_labels[i - 1]]['top'] + 0.02 * data.weight.sum()
             myD['top'] = myD['bottom'] + myD['right']
             top_edge = myD['top']
         right_widths[right_label] = myD
@@ -272,7 +294,7 @@ def sankey(data, out_dir, prefix, file_type: str = "pdf", color_dict=None, aspec
             left_widths[left_label]['bottom'] + 0.5 * left_widths[left_label]['left'],
             left_label,
             {'ha': 'right', 'va': 'center'},
-            fontsize=left_widths[left_label]['left'] + 5
+            fontsize=min(left_widths[left_label]['left'] + 9, 14)
         )
     for right_label in right_labels:
         plt.fill_between(
@@ -286,7 +308,7 @@ def sankey(data, out_dir, prefix, file_type: str = "pdf", color_dict=None, aspec
             right_widths[right_label]['bottom'] + 0.5 * right_widths[right_label]['right'],
             right_label,
             {'ha': 'left', 'va': 'center'},
-            fontsize=min(right_widths[right_label]['right'] + 5, 14)
+            fontsize=min(right_widths[right_label]['right'] + 9, 14)
         )
 
     # ===== Plot strips =====

@@ -13,6 +13,7 @@ class Comparator:
         self.mapper = mapper
         self.verbose = verbose
         self.distance_measure = distance_measure
+        self.input_run = True
         self.mapping = None
         self.id_set, self.id_type = None, None
         self.att_id, self.att_key, self.sparse_key = None, None, None
@@ -65,9 +66,11 @@ class SetComparator(Comparator):
                 missing_distances = ((len(self.mapping) * (len(self.mapping) - 1)) / 2) - sub_mat.getnnz()
                 result[c.replacements[attribute]] = ((sub_mat.getnnz() - sub_mat.sum()) + missing_distances) / \
                                                     ((len(self.mapping) * (len(self.mapping) - 1)) / 2)
-                mapped[c.replacements[attribute]] = subset_df.set_index(c.ID_TYPE_KEY[self.id_type])[
-                    attribute].to_dict()
-                # mapped[c.replacements[attribute]] = list(subset_df[c.ID_TYPE_KEY[self.id_type]])
+                if self.input_run:
+                    save_mapping = subset_df.copy()
+                    save_mapping[attribute] = save_mapping[attribute].apply(lambda x: list(x))
+                    mapped[c.replacements[attribute]] = save_mapping.set_index(c.ID_TYPE_KEY[self.id_type])[
+                        attribute].to_dict()
         return result, mapped
 
 
@@ -115,9 +118,11 @@ class SetSetComparator(Comparator):
                                                                  ref_att_set=self.ref_dict[attribute])
             evaluation[c.replacements[attribute]] = str(len(evaluated_series[evaluated_series > threshold]) /
                                                         len(evaluated_series))
-            #mapped[c.replacements[attribute]] = list(
-            #    self.mapping[self.mapping[attribute] != ""][self.mapping.columns[0]])
-            mapped[c.replacements[attribute]] = self.mapping[self.mapping[attribute] != ""].set_index(c.ID_TYPE_KEY[self.id_type])[attribute].to_dict()
+            if self.input_run:
+                save_mapping = self.mapping[self.mapping[attribute] != ""].copy()
+                save_mapping[attribute] = save_mapping[attribute].apply(lambda x: list(x))
+                mapped[c.replacements[attribute]] = save_mapping.set_index(c.ID_TYPE_KEY[self.id_type])[
+                    attribute].to_dict()
         return evaluation, mapped
 
 
@@ -185,6 +190,9 @@ class ClusterComparator(Comparator):
                 result_ss[c.replacements[attribute]] = ss_score[0]
                 result_ss_intermediate[c.replacements[attribute]] = ss_score[1]
                 result_dbi[c.replacements[attribute]] = dbi_score
-                mapped[c.replacements[attribute]] = subset_df.set_index(c.ID_TYPE_KEY[self.id_type])[attribute].to_dict()
-                #mapped[c.replacements[attribute]] = list(subset_df[c.ID_TYPE_KEY[self.id_type]])
+                if self.input_run:
+                    save_mapping = subset_df.copy()
+                    save_mapping[attribute] = save_mapping[attribute].apply(lambda x: list(x))
+                    mapped[c.replacements[attribute]] = save_mapping.set_index(c.ID_TYPE_KEY[self.id_type])[
+                        attribute].to_dict()
         return result_di, result_ss, result_dbi, result_ss_intermediate, mapped
