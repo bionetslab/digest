@@ -23,7 +23,8 @@ eval_terms = {"DI-based": {"single": "Dunn index", "multi": "Dunn indices"},
               "DBI-based": {"single": "Davis-Bouldin index", "multi": "Davis-Bouldin indices"},
               "JI-based": {"single": "Jaccard index", "multi": "Jaccard indices"},
               "OC-based": {"single": "Overlap coefficient", "multi": "Overlap coefficients"}}
-
+annot_terms = {'GO.BP': 'GO.BP-based', 'GO.CC':'GO.CC-based', 'GO.MF':'GO.MF-based',
+               'KEGG': 'KEGG-based', "related_genes": "shared genes", "related_variants": "shared variants"}
 
 def create_plots(results, mode, tar, tar_id, out_dir, prefix, file_type: str = "pdf"):
     """
@@ -54,7 +55,7 @@ def cluster_plot(results, user_input, out_dir, prefix, file_type: str = "pdf"):
     for val in results["p_values"]["values"]:
         p_value_df["log_p-values"] = p_value_df[val].apply(lambda x: -math.log10(x))
         # ===== Plot scatterplot =====
-        p_value_plot(title="Empirical P-value (" + val + ")", p_value_df=p_value_df, out_dir=out_dir,
+        p_value_plot(title="(a) Empirical P-value\nbased on " +eval_terms[val]["single"], p_value_df=p_value_df, out_dir=out_dir,
                      prefix=prefix + "_" + val, file_type=file_type)
     # ===== Prepare for mappability plot =====
     mapped_df = user_input["clustering"][['id', 'cluster']]
@@ -66,7 +67,7 @@ def cluster_plot(results, user_input, out_dir, prefix, file_type: str = "pdf"):
     mapped_df = mapped_df.replace(replacements).sort_values(['attribute']).reset_index(drop=True)
     mapped_df["fraction"] = mapped_df.apply(lambda x: x['count'] / cluster_sizes[x['cluster']], axis=1)
     # ===== Plot mappability plot =====
-    mappability_plot(title="Mappability of input", in_type=in_type, mapped_df=mapped_df, out_dir=out_dir,
+    mappability_plot(title="(b) Mappability of input", in_type=in_type, mapped_df=mapped_df, out_dir=out_dir,
                      prefix=prefix, cluster=True, file_type=file_type)
 
 
@@ -79,7 +80,7 @@ def set_plot(results, user_input, out_dir, prefix, file_type: str = "pdf"):
     p_value_df["log_p-values"] = p_value_df["p_values"].apply(lambda x: -math.log10(x))
     p_value_df = p_value_df.replace(replacements).sort_values(['attribute']).reset_index(drop=True)
     # ===== Plot scatterplot =====
-    p_value_plot(title="Empirical P-value", p_value_df=p_value_df, out_dir=out_dir, prefix=prefix, file_type=file_type)
+    p_value_plot(title="(a) Empirical P-value", p_value_df=p_value_df, out_dir=out_dir, prefix=prefix, file_type=file_type)
     # ===== Prepare for mappability plot =====
     mapped_df = pd.DataFrame()
     for att in results["input_values"]["mapped_ids"]:
@@ -90,7 +91,7 @@ def set_plot(results, user_input, out_dir, prefix, file_type: str = "pdf"):
     mapped_df = mapped_df.rename_axis('attribute').reset_index()
     mapped_df = mapped_df.replace(replacements).sort_values(['attribute']).reset_index(drop=True)
     # ===== Plot mappability plot =====
-    mappability_plot(title="Mappability of input", in_type=in_type, mapped_df=mapped_df, out_dir=out_dir,
+    mappability_plot(title="(b) Mappability of input", in_type=in_type, mapped_df=mapped_df, out_dir=out_dir,
                      prefix=prefix, cluster=False, file_type=file_type)
 
 
@@ -141,15 +142,20 @@ def value_distribution_plots(results, out_dir, prefix, file_type: str = "pdf"):
         df['value'] = df['value'].astype(float)
         for term_index, term in enumerate(results["input_values"]['values'][eval_term]):
             fig = plt.figure(figsize=(7, 6), dpi=80)
+            plt.axvline(results["input_values"]['values'][eval_term][term], color='darkred', lw=10)
             ax = sns.histplot(df[df["variable"] == term], x="value", kde=True, color=sns.color_palette()[term_index],
                               bins=10)
-            plt.title("Distribution of " + term + "-based " + eval_term)
-            plt.xlabel(term + "-based " + eval_terms[eval_term]["single"])
+            plt.title("(b) Distribution of\n" + annot_terms[term] + " " + eval_terms[eval_term]["multi"])
+            plt.xlabel(annot_terms[term] + " " + eval_terms[eval_term]["single"])
             plt.ylabel("Number of runs\non randomized data")
-            plt.axvline(results["input_values"]['values'][eval_term][term], 0, 100000, color='r')
-            anchored_text = AnchoredText("Empirical\nP-value:\n%.2f" % results["p_values"]['values'][eval_term][term],
-                                         loc=2, prop={'size': 12})
-            ax.add_artist(anchored_text)
+            #anchored_text = AnchoredText("Empirical\nP-value:\n%.2f" % results["p_values"]['values'][eval_term][term],
+            #                             loc=2, prop={'size': 16})
+            props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+            ax.text(0.05, 0.95, "Empirical\nP-value:\n%.2f" % results["p_values"]['values'][eval_term][term],
+                    transform=ax.transAxes, fontsize=14,
+                    verticalalignment='top', bbox=props)
+            #ax.add_artist(anchored_text)
+            #plt.setp(ax.get_xticklabels(), visible=False)
             fig.tight_layout()
             fig.savefig(os.path.join(out_dir, prefix + '_' + eval_term + '_' + term + '_distribution.' + file_type),
                         bbox_inches='tight')
@@ -160,7 +166,7 @@ def term_annotation_plots(results, out_dir, prefix, file_type: str = "pdf"):
     for term_index, term in enumerate(df.columns):
         fig = plt.figure(figsize=(7, 6), dpi=80)
         sns.histplot(df, x=term, kde=True, color=sns.color_palette()[term_index], bins=10)
-        plt.title("Distribution of\n" + term + " annotations")
+        plt.title("(b) Distribution of\n" + term + " annotations")
         if term in replacements:
             plt.xlabel("Number of associated " + term)
         else:

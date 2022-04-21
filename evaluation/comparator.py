@@ -60,12 +60,13 @@ class SetComparator(Comparator):
             else:
                 ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
                                                          id_type=self.id_type)
-                if self.att_id != self.id_type:
-                    ids = ids[[self.att_id, self.id_type]].drop_duplicates()
+
+                if self.att_id != c.ID_TYPE_KEY[self.id_type]:
+                    ids = ids[[self.att_id, c.ID_TYPE_KEY[self.id_type]]].drop_duplicates()
                 sub_mat = self.mapper.get_loaded_distances(in_series=ids[self.att_id],  id_type=self.sparse_key,
                                                            key=c.DISTANCES[attribute],
                                                            distance_measure=self.distance_measure)
-                axis = (len(self.mapping)-len(ids[self.id_type].unique())) + len(ids)
+                axis = (len(self.mapping)-len(ids[c.ID_TYPE_KEY[self.id_type]].unique())) + len(ids)
                 #missing_distances = ((axis * (axis-1) ) / 2) - sub_mat.getnnz()
                 #result[c.replacements[attribute]] = ((sub_mat.getnnz() - sub_mat.sum()) + missing_distances) / \
                 #                                      ((axis * (axis - 1)) / 2)

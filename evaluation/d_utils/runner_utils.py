@@ -60,8 +60,11 @@ def save_parameters(script_desc: str, arguments):
                                    help="Number of runs with random target values for p-value calculation.")
     if 'b' in arguments:
         optional_args.add_argument("-b", "--background_model", type=str, default="complete",
-                                   choices=['complete', 'term-pres'],
+                                   choices=['complete', 'term-pres', 'network'],
                                    help="Model defining how random values should be picked. See possible options below.")
+    if 'n' in arguments:
+        optional_args.add_argument("-n", "--network", type=str, default=None,
+                                   help="Network file as sif, graphml or gt.")
     if 'pr' in arguments:
         optional_args.add_argument("-pr", "--replace", type=int, default=100,
                                    help="Percentage of how many of the original ids should be replaced with random ids."
@@ -110,6 +113,7 @@ def _get_epilog(script_name):
         epilog += "\nsupported background models\n"
         epilog += "  complete\t\tRandom ids will be picked fully randomized.\n"
         epilog += "  term-pres\t\tRandom ids will preserve the number of mapped terms for the replaced ids.\n"
+        epilog += "  network\t\tRandom ids will preserve the number of connected components in given network.\n"
     epilog += "\n############################################################################\n"
     return epilog
 

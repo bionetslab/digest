@@ -18,6 +18,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
                       ref: set = None, ref_id: str = None, enriched: bool = False,
                       mapper: Mapper = FileMapper(), runs: int = config.NUMBER_OF_RANDOM_RUNS,
                       background_model: str = "complete", replace=100, verbose: bool = False,
+                      network_file:str = None,
                       progress: Callable[[float, str], None] = None):
     """
     Single validation of a set, cluster a id versus set and set versus set.
@@ -80,7 +81,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         comparator.input_run = False
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
                                              runs=runs, background_model=background_model, replace=replace,
-                                             progress=progress)
+                                             network_file=network_file, progress=progress)
         # ===== Statistical analysis =====
         ru.print_current_usage('Calculating p-values ...') if verbose else None
         # if mode == "set":
@@ -145,6 +146,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
 
 def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mapper, tar_id: str, runs: int,
                            background_model: str = "complete", replace=100, term: str = "sum",
+                           network_file: str = None,
                            progress: Callable[[float, str], None] = None) -> list:
     """
     Pick random ids to recreate a target input and run the comparison against reference or itself.
@@ -177,21 +179,15 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
         orig_ids = set(comparator.id_set)
         size = len(orig_ids)
         random_size = int((size / 100) * replace)
+
         if background_model == "complete":
             background = bm.CompleteModel(prev_id_type=tar_id, full_id_map=full_id_map)
-            # full_id_set = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]] != ""][
-            #     config.ID_TYPE_KEY[tar_id]].tolist()
-        # ===== Precalculate attribute sizes for term-pres =====
         elif background_model == "term-pres":
             background = bm.TermPresModel(mapper=mapper, prev_id_type=tar_id, new_id_type=new_id_type,
                                           map_id_type=map_id_type, map_att_type=map_att_type, term=term)
-            # att_map = mu.map_to_prev_id(main_id_type=config.ID_TYPE_KEY[new_id_type],
-            #                             id_type=config.ID_TYPE_KEY[tar_id],
-            #                             id_mapping=mapper.loaded_mappings[map_id_type],
-            #                             att_mapping=mapper.loaded_mappings[map_att_type])
-            # att_size = atts_to_size(pd_map=att_map)
-            # att_dict = size_mapping_to_dict(pd_size_map=att_size, id_col=config.ID_TYPE_KEY[tar_id], term_col=term,
-            #                                 threshold=100)
+        elif background_model == "network":
+            background = bm.NetworkModel(network_file=network_file, to_replace=orig_ids, N=runs)
+
         else:
             return list()
         for run in range(1, runs + 1):
@@ -202,21 +198,19 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
                              limit * counter) + " run(s) with background model finished...") if progress is not None else None
                 counter += 1
             # ===== Pick new samples =====
-            old_sample = set(random.sample(list(orig_ids), (size - random_size)))
+            old_sample = set(random.sample(list(orig_ids), (size - random_size))) # ignore when network model
             to_replace = orig_ids.difference(old_sample)
+
             if background_model == "complete":
                 random_sample = background.get_module(to_replace=to_replace)
-                #random_sample = set(random.sample(full_id_set, random_size))
             elif background_model == "term-pres":
                 random_sample = background.get_module(to_replace=to_replace, term=term, prev_id_type=tar_id)
-                # random_sample = set()
-                # for replace_id in to_replace:
-                #     if replace_id in att_dict:  # only if id is mappable to other ids
-                #         random_sample.add(
-                #             att_size[att_size[term].isin(att_dict[replace_id])][config.ID_TYPE_KEY[tar_id]].sample(
-                #                 n=1).values[0])
+            elif background_model == "network":
+                random_sample = background.get_module(index=run-1)
+                old_sample = set()
             else:
                 return list()
+
             # ===== Get corresponding id set =====
             id_set = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(random_sample.union(old_sample))][
                 comparator.att_id]
@@ -256,36 +250,6 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
     for result in results:
         final_results.append(pd.DataFrame(result))
     return final_results
-
-
-def atts_to_size(pd_map: pd.DataFrame) -> pd.DataFrame:
-    att_len = pd_map.copy()
-    att_len[att_len.columns[1:]] = att_len[att_len.columns[1:]].applymap(mu.set_to_len)
-    att_len['sum'] = att_len[att_len.columns[1:]].sum(axis=1)
-    return att_len
-
-
-def size_mapping_to_dict(pd_size_map: pd.DataFrame, id_col: str, term_col: str, threshold: int = 100):
-    size_to_occ = pd.DataFrame(pd_size_map[term_col].value_counts()).sort_index().to_dict()[term_col]
-    pd_size_map = pd_size_map.sort_values(by=[id_col]).reset_index(drop=True)
-    new_dict = dict()
-    term_sizes = pd_size_map[term_col].unique().tolist()
-    for index, key in enumerate(term_sizes):
-        curr_keys = [key]
-        if size_to_occ[key] < threshold:
-            sum_tmp, add_top, add_bottom = size_to_occ[key], index, index
-            while sum_tmp < threshold:
-                if add_top - 1 >= 0:
-                    add_top = add_top - 1
-                    sum_tmp = sum_tmp + size_to_occ[term_sizes[add_top]]
-                    curr_keys.append(term_sizes[add_top])
-                if add_bottom + 1 < len(term_sizes):
-                    add_bottom = add_bottom + 1
-                    sum_tmp = sum_tmp + size_to_occ[term_sizes[add_bottom]]
-                    curr_keys.append(term_sizes[add_bottom])
-        for cur_id in pd_size_map[pd_size_map[term_col] == key][id_col]:
-            new_dict[cur_id] = curr_keys
-    return new_dict
 
 
 def save_results(results: dict, prefix: str, out_dir):
