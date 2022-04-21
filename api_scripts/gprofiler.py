@@ -14,7 +14,7 @@ if geneset is None:
     exit(1)
 
 time_start = round(time.time()*1000)
-resp = requests.post("https://biit.cs.ut.ee/gprofiler/api/gost/profile", json={"query": ["22802", "6337", "7132", "2212", "2022", "6340", "6804", "1080", "51164", "7040", "6338"],"organism":organism})
+resp = requests.post("https://biit.cs.ut.ee/gprofiler/api/gost/profile", json={"query": list(geneset),"organism":organism})
 if resp.status_code != 200:
     print("Error "+str(resp.status_code)+ " on request")
     exit(1)
