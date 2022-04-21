@@ -17,11 +17,13 @@ if geneset is None:
     exit(1)
 
 time_start = round(time.time()*1000)
-resp = requests.post("http://pantherdb.org/services/oai/pantherdb/enrich/overrep?organism=9606&annotDataSet="+mf+"&geneInputList="+",".join(geneset)+"&enrichmentTestType="+testType+"&correction"+correction)
+url="http://pantherdb.org/services/oai/pantherdb/enrich/overrep?organism=9606&annotDataSet="+mf+"&geneInputList="+",".join(geneset)+"&enrichmentTestType="+testType+"&correction"+correction
+resp = requests.post(url)
+print("Took: "+str(round(time.time()*1000)-time_start)+"ms")
 if resp.status_code != 200:
     print("Error "+str(resp.status_code)+ " on request")
     exit(1)
 if "search" in resp.text and '\"error\"' in resp.text:
     print("Error on request: "+resp.text)
     exit(1)
-print("Took: "+str(round(time.time()*1000)-time_start)+"ms")
+
