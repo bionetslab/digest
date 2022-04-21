@@ -60,12 +60,16 @@ class SetComparator(Comparator):
             else:
                 ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
                                                          id_type=self.id_type)
-                sub_mat = self.mapper.get_loaded_distances(in_series=ids[self.att_id], id_type=self.sparse_key,
+                if self.att_id != self.id_type:
+                    ids = ids[[self.att_id, self.id_type]].drop_duplicates()
+                sub_mat = self.mapper.get_loaded_distances(in_series=ids[self.att_id],  id_type=self.sparse_key,
                                                            key=c.DISTANCES[attribute],
                                                            distance_measure=self.distance_measure)
-                missing_distances = ((len(self.mapping) * (len(self.mapping) - 1)) / 2) - sub_mat.getnnz()
-                result[c.replacements[attribute]] = ((sub_mat.getnnz() - sub_mat.sum()) + missing_distances) / \
-                                                    ((len(self.mapping) * (len(self.mapping) - 1)) / 2)
+                axis = (len(self.mapping)-len(ids[self.id_type].unique())) + len(ids)
+                #missing_distances = ((axis * (axis-1) ) / 2) - sub_mat.getnnz()
+                #result[c.replacements[attribute]] = ((sub_mat.getnnz() - sub_mat.sum()) + missing_distances) / \
+                #                                      ((axis * (axis - 1)) / 2)
+                result[c.replacements[attribute]] = sub_mat.sum() / ((axis * (axis - 1)) / 2)
                 if self.input_run:
                     save_mapping = subset_df.copy()
                     save_mapping[attribute] = save_mapping[attribute].apply(lambda x: list(x))
@@ -171,7 +175,8 @@ class ClusterComparator(Comparator):
             else:
                 ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
                                                          id_type=self.id_type)
-                distances = self.mapper.get_loaded_distances(in_series=ids[self.att_id], id_type=self.sparse_key,
+                distances = self.mapper.get_loaded_distances(in_series=ids[self.att_id].drop_duplicates(),
+                                                             id_type=self.sparse_key,
                                                              key=c.DISTANCES[attribute],
                                                              distance_measure=self.distance_measure)
                 distances = dict(distances.todok().items())

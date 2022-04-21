@@ -81,10 +81,10 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
                                              progress=progress)
         # ===== Statistical analysis =====
         ru.print_current_usage('Calculating p-values ...') if verbose else None
-        if mode == "set":
-            set_value = eu.calc_pvalue(test_value=my_value, random_values=comp_values[0], maximize=False)
-        else:  # mode == "set-set"
-            set_value = eu.calc_pvalue(test_value=my_value, random_values=comp_values[0], maximize=True)
+        #if mode == "set":
+        #    set_value = eu.calc_pvalue(test_value=my_value, random_values=comp_values[0], maximize=False)
+        #else:  # mode == "set-set"
+        set_value = eu.calc_pvalue(test_value=my_value, random_values=comp_values[0], maximize=True)
         measure_short = {"jaccard": "JI-based", "overlap": "OC-based"}
         p_values = {measure_short[distance]: set_value}
         results = {'status':'ok',
