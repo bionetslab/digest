@@ -66,7 +66,8 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         if len(error_mappings) > 0:
             ru.print_current_usage('Exit validation: No mapping found for '+' and '.join(error_mappings)) if verbose else None
             return {'status': 'No mapping found for '+' and '.join(error_mappings),
-                    'input_values': {'values': None, 'mapped_ids': []}, 'p_values': {'values': None}}
+                    'input_values': {'values': None, 'mapped_ids': []}, 'random_values': None,
+                    'p_values': {'values': None}}
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...') if verbose else None
         progress(0.1, "Validation of input...") if progress is not None else None
@@ -74,19 +75,21 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         ru.print_current_usage('Validation of random runs ...') if verbose else None
         progress(0.1+(0.9/min(runs+1, 100)),"Validation with background model...") if progress is not None else None
         comparator.verbose = False
+        comparator.input_run = False
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
                                              runs=runs, background_model=background_model, replace=replace,
                                              progress=progress)
         # ===== Statistical analysis =====
         ru.print_current_usage('Calculating p-values ...') if verbose else None
-        if mode == "set":
-            set_value = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=False)
-        else:  # mode == "set-set"
-            set_value = eu.calc_pvalue(test_value=my_value, random_values=pd.DataFrame(comp_values), maximize=True)
+        #if mode == "set":
+        #    set_value = eu.calc_pvalue(test_value=my_value, random_values=comp_values[0], maximize=False)
+        #else:  # mode == "set-set"
+        set_value = eu.calc_pvalue(test_value=my_value, random_values=comp_values[0], maximize=True)
         measure_short = {"jaccard": "JI-based", "overlap": "OC-based"}
         p_values = {measure_short[distance]: set_value}
         results = {'status':'ok',
                    'input_values': {'values': {measure_short[distance]: my_value}, 'mapped_ids': mapped},
+                   'random_values': {measure_short[distance]: comp_values[0].to_dict('list')},
                    'p_values': {'values': p_values}}
 
     # ===== Special case cluster =====
@@ -103,7 +106,8 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
             ru.print_current_usage(
                 'Exit validation: No mapping found for target cluster') if verbose else None
             return {'status': 'No mapping found for target cluster',
-                    'input_values': {'values': None, 'mapped_ids': []}, 'p_values': {'values': None}}
+                    'input_values': {'values': None, 'mapped_ids': []},
+                    'random_values': None, 'p_values': {'values': None}}
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...') if verbose else None
         progress(0.1, "Validation of input...") if progress is not None else None
@@ -111,20 +115,24 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         ru.print_current_usage('Validation of random runs ...') if verbose else None
         progress(0.1+(0.9/min(runs+1, 100)),"Validation with background model...") if progress is not None else None
         comparator.verbose = False
+        comparator.input_run = False
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
                                              runs=runs, progress=progress)
         # ===== Statistical analysis =====
         ru.print_current_usage('Calculating p-values ...') if verbose else None
-        p_values_di = eu.calc_pvalue(test_value=my_value_di, random_values=pd.DataFrame(comp_values[0]), maximize=False)
-        p_values_ss = eu.calc_pvalue(test_value=my_value_ss, random_values=pd.DataFrame(comp_values[1]), maximize=True)
-        p_values_dbi = eu.calc_pvalue(test_value=my_value_dbi, random_values=pd.DataFrame(comp_values[2]),
+        p_values_di = eu.calc_pvalue(test_value=my_value_di, random_values=comp_values[0], maximize=False)
+        p_values_ss = eu.calc_pvalue(test_value=my_value_ss, random_values=comp_values[1], maximize=True)
+        p_values_dbi = eu.calc_pvalue(test_value=my_value_dbi, random_values=comp_values[2],
                                       maximize=False)
         p_values = {'DI-based': p_values_di, 'SS-based': p_values_ss, 'DBI-based': p_values_dbi}
-        results = {'status':'ok',
+        results = {'status': 'ok',
                    'input_values': {'values': {'DI-based': my_value_di, 'SS-based': my_value_ss,
                                                'DBI-based': my_value_dbi},
                                     'values_inter': my_value_ss_inter,
                                     'mapped_ids': mapped},
+                   'random_values': {'DI-based': comp_values[0].to_dict('list'),
+                                     'SS-based': comp_values[1].to_dict('list'),
+                                     'DBI-based': comp_values[2].to_dict('list')},
                    'p_values': {'values': p_values}}
     else:
         results = {None}
@@ -154,6 +162,7 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
     threshold = min(runs+1, 100)
     limit, counter = int((runs + 1) / threshold), 1
     if not mode == "cluster":
+        results.extend([list()])
         # ===== Get full id mapping =====
         if tar_id in config.SUPPORTED_DISEASE_IDS:
             full_id_map = mapper.get_full_set(id_type=tar_id, mapping_name='disorder_ids')
@@ -201,7 +210,7 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
             # ===== Calculate values =====
             comparator.load_target(id_set=set(id_set), id_type=new_id_type)
             result, _ = comparator.compare()
-            results.append(result)
+            results[0].append(result)
 
     # ===== Special case cluster =====
     else:
@@ -228,7 +237,11 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
             results[0].append(value_di)
             results[1].append(value_ss)
             results[2].append(value_dbi)
-    return results
+    # convert to dataframes
+    final_results = list()
+    for result in results:
+        final_results.append(pd.DataFrame(result))
+    return final_results
 
 
 def atts_to_size(pd_map: pd.DataFrame) -> pd.DataFrame:

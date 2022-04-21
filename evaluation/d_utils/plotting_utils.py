@@ -2,17 +2,27 @@
 
 import os
 import math
+import numpy as np
 import pandas as pd
 from .. import config as c
 import seaborn as sns
 from pathlib import Path
 from matplotlib import pyplot as plt
+from matplotlib.offsetbox import AnchoredText
+from collections import defaultdict
+
+sns.set_palette("colorblind")
 
 plt.rcParams.update({'font.size': 17, 'axes.titlelocation': "left", 'axes.titleweight': "bold", 'axes.labelsize': 21})
 plt.rcParams['figure.dpi'] = 300
 plt.rcParams['savefig.dpi'] = 300
 
 replacements = {"related_genes": "related\ngenes", "related_variants": "related\nvariants"}
+eval_terms = {"DI-based": {"single": "Dunn index", "multi": "Dunn indices"},
+              "SS-based": {"single": "Sillhouette score", "multi": "Sillhouette scores"},
+              "DBI-based": {"single": "Davis-Bouldin index", "multi": "Davis-Bouldin indices"},
+              "JI-based": {"single": "Jaccard index", "multi": "Jaccard indices"},
+              "OC-based": {"single": "Overlap coefficient", "multi": "Overlap coefficients"}}
 
 
 def create_plots(results, mode, tar, tar_id, out_dir, prefix, file_type: str = "pdf"):
@@ -105,3 +115,229 @@ def mappability_plot(title, in_type, mapped_df, out_dir, prefix, cluster=False, 
         ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), title="Cluster")
     fig.tight_layout()
     fig.savefig(os.path.join(out_dir, prefix + '_mappability.' + file_type), bbox_inches='tight')
+
+
+def create_extended_plots(results, mode, tar, out_dir, prefix, file_type: str = "pdf"):
+    """
+
+    :param results: results generated from single_validation method
+    :param mode: comparison mode [set, id-set, set-set, cluster]
+    :param tar: path to the file with the target input
+    :param tar_id: id type of target input
+    :param out_dir: output directory for results
+    :param prefix: prefix for the file name
+    :param file_type: file ending the plots should have [Default=pdf]
+    :return:
+    """
+    Path(out_dir).mkdir(parents=True, exist_ok=True)  # make sure output dir exists
+    value_distribution_plots(results=results, out_dir=out_dir, prefix=prefix, file_type=file_type)
+    term_annotation_plots(results=results, out_dir=out_dir, prefix=prefix, file_type=file_type)
+    sankey_plot(results=results, mode=mode, out_dir=out_dir, prefix=prefix, file_type=file_type, tar_cluster=tar)
+
+
+def value_distribution_plots(results, out_dir, prefix, file_type: str = "pdf"):
+    for eval_term in results["input_values"]['values']:
+        df = pd.melt(pd.DataFrame(results['random_values'][eval_term]))
+        df['value'] = df['value'].astype(float)
+        for term_index, term in enumerate(results["input_values"]['values'][eval_term]):
+            fig = plt.figure(figsize=(7, 6), dpi=80)
+            ax = sns.histplot(df[df["variable"] == term], x="value", kde=True, color=sns.color_palette()[term_index],
+                              bins=10)
+            plt.title("Distribution of " + term + "-based " + eval_term)
+            plt.xlabel(term + "-based " + eval_terms[eval_term]["single"])
+            plt.ylabel("Number of runs\non randomized data")
+            plt.axvline(results["input_values"]['values'][eval_term][term], 0, 100000, color='r')
+            anchored_text = AnchoredText("Empirical\nP-value:\n%.2f" % results["p_values"]['values'][eval_term][term],
+                                         loc=2, prop={'size': 12})
+            ax.add_artist(anchored_text)
+            fig.tight_layout()
+            fig.savefig(os.path.join(out_dir, prefix + '_' + eval_term + '_' + term + '_distribution.' + file_type),
+                        bbox_inches='tight')
+
+
+def term_annotation_plots(results, out_dir, prefix, file_type: str = "pdf"):
+    df = pd.DataFrame(results["input_values"]["mapped_ids"]).fillna("").applymap(len)
+    for term_index, term in enumerate(df.columns):
+        fig = plt.figure(figsize=(7, 6), dpi=80)
+        sns.histplot(df, x=term, kde=True, color=sns.color_palette()[term_index], bins=10)
+        plt.title("Distribution of\n" + term + " annotations")
+        if term in replacements:
+            plt.xlabel("Number of associated " + term)
+        else:
+            plt.xlabel("Number of associated " + term + " terms")
+        plt.ylabel("Number of IDs\ncontained in query")
+        fig.tight_layout()
+        fig.savefig(os.path.join(out_dir, prefix + '_' + term + '_annotation_distribution.' + file_type),
+                    bbox_inches='tight')
+
+
+def sankey_plot(results, mode, out_dir, prefix, file_type: str = "pdf", tar_cluster=None, include_others=False):
+    full_df = pd.DataFrame(results["input_values"]["mapped_ids"])
+    for term_index, term in enumerate(full_df.columns):
+
+        def col_sort(df, colname, hierarchy):
+            df[colname] = df[colname].astype("category")
+            df[colname].cat.set_categories(hierarchy, inplace=True)
+            df = df.sort_values([colname], ascending=True)
+            return df
+
+        d = full_df[[term]].dropna().rename_axis('left').reset_index().explode(term)
+        if mode == "cluster":
+            d = d.replace({"left": tar_cluster.set_index('id')["cluster"].to_dict()})
+            ids = list()
+            for cluster in d['left'].unique():
+                ids.extend(d[d["left"] == cluster][term].value_counts().nlargest(10).index)
+        else:
+            ids = d[term].value_counts().nlargest(10).index
+        if include_others:
+            d.loc[~d[term].isin(ids), term] = "other"
+        else:
+            d = d[d[term].isin(ids)]
+        # ===== Save hierarchy =====
+        hierarchy_left = d["left"].value_counts().index.tolist()
+        hierarchy_right = d[term].value_counts().index.tolist()
+        # ===== Sort =====
+        d = d.reset_index(drop=True).value_counts().reset_index()
+        d = col_sort(df=d, colname="left", hierarchy=hierarchy_left)
+        d = col_sort(df=d, colname=term, hierarchy=hierarchy_right)
+        # ===== Assign colors =====
+        z = {**dict(zip(d["left"].unique(), ["#808080"] * len(d.index.unique()))),
+             **dict(zip(d[term].unique(), sns.color_palette() * 10))}
+
+        d.rename(columns={term: 'right', 0: 'weight'}, inplace=True)
+        # ===== Plot =====
+        sankey(data=d, aspect=20, right_color=True, color_dict=z, term=term,
+               out_dir=out_dir, prefix=prefix, file_type=file_type)
+
+
+def sankey(data, out_dir, prefix, file_type: str = "pdf", color_dict=None, aspect=4, right_color=False, term=None):
+    """
+    Make Sankey Diagram showing flow from left-->right
+
+    :param color_dict: dictionary of colors to use for each label {'label':'color'}
+    :param aspect: vertical extent of the diagram in units of horizontal extent
+    :param right_color: if true, each strip in the diagram will be be colored according to its left label
+
+    original: https://github.com/anazalea/pySankey
+    """
+
+    # ===== Identify all labels that appear 'left' or 'right' =====
+    all_labels = pd.Series(np.r_[data.left.unique(), data.right.unique()]).unique()
+
+    # ===== Identify left and right labels =====
+    left_labels = data.left.unique()
+    right_labels = data.right.unique()
+
+    # ===== If no color_dict given, make one =====
+    if color_dict is None:
+        color_dict = {}
+        palette = "hls"
+        color_palette = sns.color_palette(palette, len(all_labels))
+        for i, label in enumerate(all_labels):
+            color_dict[label] = color_palette[i]
+
+    # ===== Determine widths of individual strips =====
+    ns_l = defaultdict()
+    ns_r = defaultdict()
+    for left_label in left_labels:
+        left_dict = {}
+        right_dict = {}
+        for right_label in right_labels:
+            left_dict[right_label] = data[(data.left == left_label) & (data.right == right_label)].weight.sum()
+            right_dict[right_label] = data[(data.left == left_label) & (data.right == right_label)].weight.sum()
+        ns_l[left_label] = left_dict
+        ns_r[left_label] = right_dict
+
+    # ===== Determine positions of left label patches and total widths =====
+    left_widths = defaultdict()
+    for i, left_label in enumerate(left_labels):
+        myD = {}
+        myD['left'] = data[data.left == left_label].weight.sum()
+        if i == 0:
+            myD['bottom'] = 0
+            myD['top'] = myD['left']
+        else:
+            myD['bottom'] = left_widths[left_labels[i - 1]]['top'] + 0.02 * data.weight.sum()
+            myD['top'] = myD['bottom'] + myD['left']
+            top_edge = myD['top']
+        left_widths[left_label] = myD
+
+    # ===== Determine positions of right label patches and total widths =====
+    right_widths = defaultdict()
+    for i, right_label in enumerate(right_labels):
+        myD = {}
+        myD['right'] = data[data.right == right_label].weight.sum()
+        if i == 0:
+            myD['bottom'] = 0
+            myD['top'] = myD['right']
+        else:
+            myD['bottom'] = right_widths[right_labels[i - 1]]['top'] + 0.02 * data.weight.sum()
+            myD['top'] = myD['bottom'] + myD['right']
+            top_edge = myD['top']
+        right_widths[right_label] = myD
+
+    # ===== Total vertical extent of diagram =====
+    xMax = top_edge / aspect
+
+    # ===== Draw vertical bars on left and right of each  label's section & print label =====
+    fig = plt.figure(dpi=80)
+    for left_label in left_labels:
+        plt.fill_between(
+            [-0.02 * xMax, 0],
+            2 * [left_widths[left_label]['bottom']],
+            2 * [left_widths[left_label]['bottom'] + left_widths[left_label]['left']],
+            color=color_dict[left_label],
+            alpha=0.99
+        )
+        plt.text(
+            -0.05 * xMax,
+            left_widths[left_label]['bottom'] + 0.5 * left_widths[left_label]['left'],
+            left_label,
+            {'ha': 'right', 'va': 'center'},
+            fontsize=min(left_widths[left_label]['left'] + 9, 14)
+        )
+    for right_label in right_labels:
+        plt.fill_between(
+            [xMax, 1.02 * xMax], 2 * [right_widths[right_label]['bottom']],
+                                 2 * [right_widths[right_label]['bottom'] + right_widths[right_label]['right']],
+            color=color_dict[right_label],
+            alpha=0.99
+        )
+        plt.text(
+            1.05 * xMax,
+            right_widths[right_label]['bottom'] + 0.5 * right_widths[right_label]['right'],
+            right_label,
+            {'ha': 'left', 'va': 'center'},
+            fontsize=min(right_widths[right_label]['right'] + 9, 14)
+        )
+
+    # ===== Plot strips =====
+    for left_label in left_labels:
+        for right_label in right_labels:
+            label_color = left_label
+            if right_color:
+                label_color = right_label
+            if len(data[(data.left == left_label) & (data.right == right_label)]) > 0:
+                # Create array of y values for each strip, half at left value,
+                # half at right, convolve
+                ys_d = np.array(50 * [left_widths[left_label]['bottom']] + 50 * [right_widths[right_label]['bottom']])
+                ys_d = np.convolve(ys_d, 0.05 * np.ones(20), mode='valid')
+                ys_d = np.convolve(ys_d, 0.05 * np.ones(20), mode='valid')
+                ys_u = np.array(50 * [left_widths[left_label]['bottom'] + ns_l[left_label][right_label]] + 50 * [
+                    right_widths[right_label]['bottom'] + ns_r[left_label][right_label]])
+                ys_u = np.convolve(ys_u, 0.05 * np.ones(20), mode='valid')
+                ys_u = np.convolve(ys_u, 0.05 * np.ones(20), mode='valid')
+
+                # Update bottom edges at each label so next strip starts at the right place
+                left_widths[left_label]['bottom'] += ns_l[left_label][right_label]
+                right_widths[right_label]['bottom'] += ns_r[left_label][right_label]
+                plt.fill_between(
+                    np.linspace(0, xMax, len(ys_d)), ys_d, ys_u, alpha=0.65,
+                    color=color_dict[label_color]
+                )
+    plt.gca().axis('off')
+    plt.gcf().set_size_inches(6, 6)
+    plt.title(term + " top 10 annotations")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out_dir, prefix + '_' + term + '_sankey.' + file_type),
+                bbox_inches='tight')
