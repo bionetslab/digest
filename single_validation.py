@@ -6,7 +6,7 @@ import pandas as pd
 from evaluation.d_utils import runner_utils as ru, eval_utils as eu, plotting_utils as pu
 from evaluation.mappers.mapper import Mapper, FileMapper
 from evaluation.mappers import mapping_utils as mu
-from evaluation import config, comparator as comp
+from evaluation import config, comparator as comp, background_models as bm
 import random
 import json
 import time
@@ -64,8 +64,9 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         if comparator.mapping.empty:
             error_mappings.append("target set")
         if len(error_mappings) > 0:
-            ru.print_current_usage('Exit validation: No mapping found for '+' and '.join(error_mappings)) if verbose else None
-            return {'status': 'No mapping found for '+' and '.join(error_mappings),
+            ru.print_current_usage(
+                'Exit validation: No mapping found for ' + ' and '.join(error_mappings)) if verbose else None
+            return {'status': 'No mapping found for ' + ' and '.join(error_mappings),
                     'input_values': {'values': None, 'mapped_ids': []}, 'random_values': None,
                     'p_values': {'values': None}}
         # ===== Get validation values of input =====
@@ -73,7 +74,8 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         progress(0.1, "Validation of input...") if progress is not None else None
         my_value, mapped = comparator.compare()
         ru.print_current_usage('Validation of random runs ...') if verbose else None
-        progress(0.1+(0.9/min(runs+1, 100)),"Validation with background model...") if progress is not None else None
+        progress(0.1 + (0.9 / min(runs + 1, 100)),
+                 "Validation with background model...") if progress is not None else None
         comparator.verbose = False
         comparator.input_run = False
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
@@ -81,13 +83,13 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
                                              progress=progress)
         # ===== Statistical analysis =====
         ru.print_current_usage('Calculating p-values ...') if verbose else None
-        #if mode == "set":
+        # if mode == "set":
         #    set_value = eu.calc_pvalue(test_value=my_value, random_values=comp_values[0], maximize=False)
-        #else:  # mode == "set-set"
+        # else:  # mode == "set-set"
         set_value = eu.calc_pvalue(test_value=my_value, random_values=comp_values[0], maximize=True)
         measure_short = {"jaccard": "JI-based", "overlap": "OC-based"}
         p_values = {measure_short[distance]: set_value}
-        results = {'status':'ok',
+        results = {'status': 'ok',
                    'input_values': {'values': {measure_short[distance]: my_value}, 'mapped_ids': mapped},
                    'random_values': {measure_short[distance]: comp_values[0].to_dict('list')},
                    'p_values': {'values': p_values}}
@@ -113,7 +115,8 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         progress(0.1, "Validation of input...") if progress is not None else None
         my_value_di, my_value_ss, my_value_dbi, my_value_ss_inter, mapped = comparator.compare()
         ru.print_current_usage('Validation of random runs ...') if verbose else None
-        progress(0.1+(0.9/min(runs+1, 100)),"Validation with background model...") if progress is not None else None
+        progress(0.1 + (0.9 / min(runs + 1, 100)),
+                 "Validation with background model...") if progress is not None else None
         comparator.verbose = False
         comparator.input_run = False
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
@@ -159,7 +162,7 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
     :return: comparison
     """
     results = list()
-    threshold = min(runs+1, 100)
+    threshold = min(runs + 1, 100)
     limit, counter = int((runs + 1) / threshold), 1
     if not mode == "cluster":
         results.extend([list()])
@@ -175,35 +178,45 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
         size = len(orig_ids)
         random_size = int((size / 100) * replace)
         if background_model == "complete":
-            full_id_set = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]] != ""][
-                config.ID_TYPE_KEY[tar_id]].tolist()
+            background = bm.CompleteModel(prev_id_type=tar_id, full_id_map=full_id_map)
+            # full_id_set = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]] != ""][
+            #     config.ID_TYPE_KEY[tar_id]].tolist()
         # ===== Precalculate attribute sizes for term-pres =====
-        if background_model == "term-pres":
-            att_map = mu.map_to_prev_id(main_id_type=config.ID_TYPE_KEY[new_id_type],
-                                        id_type=config.ID_TYPE_KEY[tar_id],
-                                        id_mapping=mapper.loaded_mappings[map_id_type],
-                                        att_mapping=mapper.loaded_mappings[map_att_type])
-            att_size = atts_to_size(pd_map=att_map)
-            att_dict = size_mapping_to_dict(pd_size_map=att_size, id_col=config.ID_TYPE_KEY[tar_id], term_col=term,
-                                            threshold=100)
-        for run in range(1, runs+1):
+        elif background_model == "term-pres":
+            background = bm.TermPresModel(mapper=mapper, prev_id_type=tar_id, new_id_type=new_id_type,
+                                          map_id_type=map_id_type, map_att_type=map_att_type, term=term)
+            # att_map = mu.map_to_prev_id(main_id_type=config.ID_TYPE_KEY[new_id_type],
+            #                             id_type=config.ID_TYPE_KEY[tar_id],
+            #                             id_mapping=mapper.loaded_mappings[map_id_type],
+            #                             att_mapping=mapper.loaded_mappings[map_att_type])
+            # att_size = atts_to_size(pd_map=att_map)
+            # att_dict = size_mapping_to_dict(pd_size_map=att_size, id_col=config.ID_TYPE_KEY[tar_id], term_col=term,
+            #                                 threshold=100)
+        else:
+            return list()
+        for run in range(1, runs + 1):
             # ===== Update progress =====
             if run % limit == 0:
-                progress(0.1 + (counter * (0.9/ threshold)),
-                         str(limit*counter)+ " run(s) with background model finished...") if progress is not None else None
+                progress(0.1 + (counter * (0.9 / threshold)),
+                         str(
+                             limit * counter) + " run(s) with background model finished...") if progress is not None else None
                 counter += 1
             # ===== Pick new samples =====
             old_sample = set(random.sample(list(orig_ids), (size - random_size)))
+            to_replace = orig_ids.difference(old_sample)
             if background_model == "complete":
-                random_sample = set(random.sample(full_id_set, random_size))
+                random_sample = background.get_module(to_replace=to_replace)
+                #random_sample = set(random.sample(full_id_set, random_size))
             elif background_model == "term-pres":
-                to_replace = orig_ids.difference(old_sample)
-                random_sample = set()
-                for replace_id in to_replace:
-                    if replace_id in att_dict:  # only if id is mappable to other ids
-                        random_sample.add(
-                            att_size[att_size[term].isin(att_dict[replace_id])][config.ID_TYPE_KEY[tar_id]].sample(
-                                n=1).values[0])
+                random_sample = background.get_module(to_replace=to_replace, term=term, prev_id_type=tar_id)
+                # random_sample = set()
+                # for replace_id in to_replace:
+                #     if replace_id in att_dict:  # only if id is mappable to other ids
+                #         random_sample.add(
+                #             att_size[att_size[term].isin(att_dict[replace_id])][config.ID_TYPE_KEY[tar_id]].sample(
+                #                 n=1).values[0])
+            else:
+                return list()
             # ===== Get corresponding id set =====
             id_set = full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(random_sample.union(old_sample))][
                 comparator.att_id]
@@ -224,8 +237,9 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
         for run in range(0, runs):
             # ===== Update progress =====
             if run % limit == 0:
-                progress(0.1 + (counter * (0.9/ threshold)),
-                         str(limit*counter)+ " run(s) with background model finished...") if progress is not None else None
+                progress(0.1 + (counter * (0.9 / threshold)),
+                         str(
+                             limit * counter) + " run(s) with background model finished...") if progress is not None else None
                 counter += 1
             old_sample = set(random.sample(orig_ids, (size - random_size)))
             # ===== Shuffle subset of clusters =====
