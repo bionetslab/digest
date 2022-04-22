@@ -19,6 +19,7 @@ for size in [10,50,100]:
         results.append(round(time.time()*1000)-time_start)
     final_results_mean.append(['DIGEST',size,'1', statistics.mean(results)])
 
+    results = []
     for i in range(10):
         time_start = round(time.time()*1000)
         single_validation(tar=tar_set, tar_id="entrez", mode="set",  runs=1000, background_model="complete", verbose=False,
@@ -32,6 +33,7 @@ for size in [10,50,100]:
     # gprofiler
     results = []
     for i in range(10):
+        time_start = round(time.time() * 1000)
         data ={"query": list(tar_set),"organism":"hsapiens"}
         resp = requests.post("https://biit.cs.ut.ee/gprofiler/api/gost/profile", json=data)
         #print("Took: "+str(round(time.time()*1000)-time_start)+"ms")
