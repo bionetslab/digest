@@ -82,28 +82,29 @@ class TermPresModel(BackgroundModel):
 
 class NetworkModel(BackgroundModel):
 
-    def __init__(self, network_file: str, to_replace, N):
-        if network_file.endswith(".sif"):
-            df = pd.read_csv(network_file, sep="\t", header=None)
+    def __init__(self, network_data: dict, to_replace, N):
+        self.network_type = network_data['id_type']
+        if network_data["network_file"].endswith(".sif"):
+            df = pd.read_csv(network_data["network_file"], sep="\t", header=None)
             G = gt.Graph(directed=False)
             v_ids = G.add_edge_list(df[[0, 2]].values, hashed=True)
-            G.vertex_properties['primaryDomainId'] = v_ids
+            G.vertex_properties['id'] = v_ids
         else:
-            G = gt.load_graph(network_file)
-            G.vertex_properties['primaryDomainId'] = G.vertex_properties['name']
+            G = gt.load_graph(network_data["network_file"])
+            G.vertex_properties['id'] = G.vertex_properties[network_data['prop_name']]
             #G.list_properties()
         # Find number of CCs for the input module
         ccs_num = self.find_num_ccs(G, to_replace)
         # Generate random modules of matched number of connected components
         self.generate_rand_modules(G, N, ccs_num, len(to_replace))
-        self.node_ids = {node: G.vertex_properties["primaryDomainId"][node] for node in range(G.num_vertices())}
+        self.node_ids = {node: G.vertex_properties["id"][node] for node in range(G.num_vertices())}
 
     def get_module(self, index):
         return set([self.node_ids[node] for node in self.rand_module_nodes_list[index]])
 
     def find_num_ccs(self, G, module_nodes):
         G.set_directed(False)
-        module_nodes_ids = [int(gtu.find_vertex(G, prop=G.vertex_properties['primaryDomainId'], match=node)[0]) for node
+        module_nodes_ids = [int(gtu.find_vertex(G, prop=G.vertex_properties['id'], match=node)[0]) for node
                             in module_nodes]
         v_modul_filt = G.new_vertex_property('bool')
         for i in module_nodes_ids:
@@ -114,11 +115,11 @@ class NetworkModel(BackgroundModel):
         induced_module = gt.Graph(directed=False)
         node_id_to_node = {node_id: induced_module.add_vertex() for node_id in module_nodes}
         node_id_property = induced_module.new_vp('string', vals=module_nodes)
-        induced_module.vertex_properties['primaryDomainId'] = node_id_property
+        induced_module.vertex_properties['id'] = node_id_property
         edges = []
         for e in ees:
-            source = node_id_to_node[G.vertex_properties['primaryDomainId'][e[0]]]
-            target = node_id_to_node[G.vertex_properties['primaryDomainId'][e[1]]]
+            source = node_id_to_node[G.vertex_properties['id'][e[0]]]
+            target = node_id_to_node[G.vertex_properties['id'][e[1]]]
             edges.append((source, target))
         induced_module.add_edge_list(edges)
 

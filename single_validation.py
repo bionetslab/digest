@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 from evaluation.d_utils import runner_utils as ru, eval_utils as eu, plotting_utils as pu
 from evaluation.mappers.mapper import Mapper, FileMapper
-from evaluation.mappers import mapping_utils as mu
 from evaluation import config, comparator as comp, background_models as bm
 import random
 import json
@@ -18,7 +17,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
                       ref: set = None, ref_id: str = None, enriched: bool = False,
                       mapper: Mapper = FileMapper(), runs: int = config.NUMBER_OF_RANDOM_RUNS,
                       background_model: str = "complete", replace=100, verbose: bool = False,
-                      network_file:str = None,
+                      network_data: dict = None,
                       progress: Callable[[float, str], None] = None):
     """
     Single validation of a set, cluster a id versus set and set versus set.
@@ -81,12 +80,9 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         comparator.input_run = False
         comp_values = get_random_runs_values(comparator=comparator, mode=mode, mapper=mapper, tar_id=tar_id,
                                              runs=runs, background_model=background_model, replace=replace,
-                                             network_file=network_file, progress=progress)
+                                             network_data=network_data, progress=progress)
         # ===== Statistical analysis =====
         ru.print_current_usage('Calculating p-values ...') if verbose else None
-        # if mode == "set":
-        #    set_value = eu.calc_pvalue(test_value=my_value, random_values=comp_values[0], maximize=False)
-        # else:  # mode == "set-set"
         set_value = eu.calc_pvalue(test_value=my_value, random_values=comp_values[0], maximize=True)
         measure_short = {"jaccard": "JI-based", "overlap": "OC-based"}
         p_values = {measure_short[distance]: set_value}
@@ -146,8 +142,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
 
 def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mapper, tar_id: str, runs: int,
                            background_model: str = "complete", replace=100, term: str = "sum",
-                           network_file: str = None,
-                           progress: Callable[[float, str], None] = None) -> list:
+                           network_data: dict = None, progress: Callable[[float, str], None] = None) -> list:
     """
     Pick random ids to recreate a target input and run the comparison against reference or itself.
     The random ids are of the same id type of the original target input.
@@ -160,6 +155,7 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
     :param background_model: which background model to use for random picks [Default="complete"]
     :param replace: how many % of target input should be replaced by random picks [Default=100]
     :param term: on what term the term preserving background model should calculate [Default="sum"]
+    :param network_data: ={"network_file": network_file, "prop_name": "name", "id_type": "symbol"},
     :param progress: method that will get a float [0,1] and message indicating the current progress
     :return: comparison
     """
@@ -186,7 +182,14 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
             background = bm.TermPresModel(mapper=mapper, prev_id_type=tar_id, new_id_type=new_id_type,
                                           map_id_type=map_id_type, map_att_type=map_att_type, term=term)
         elif background_model == "network":
-            background = bm.NetworkModel(network_file=network_file, to_replace=orig_ids, N=runs)
+            if network_data is None:  # load default network from config
+                print("load default network from config")
+            if network_data["id_type"] != tar_id:  # remap ids
+                input_ids = set(full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(orig_ids)][
+                    config.ID_TYPE_KEY[network_data["id_type"]]])
+                background = bm.NetworkModel(network_data=network_data, to_replace=input_ids, N=runs)
+            else:
+                background = bm.NetworkModel(network_data=network_data, to_replace=orig_ids, N=runs)
 
         else:
             return list()
@@ -198,7 +201,7 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
                              limit * counter) + " run(s) with background model finished...") if progress is not None else None
                 counter += 1
             # ===== Pick new samples =====
-            old_sample = set(random.sample(list(orig_ids), (size - random_size))) # ignore when network model
+            old_sample = set(random.sample(list(orig_ids), (size - random_size)))  # ignore when network model
             to_replace = orig_ids.difference(old_sample)
 
             if background_model == "complete":
@@ -206,8 +209,11 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
             elif background_model == "term-pres":
                 random_sample = background.get_module(to_replace=to_replace, term=term, prev_id_type=tar_id)
             elif background_model == "network":
-                random_sample = background.get_module(index=run-1)
-                old_sample = set()
+                random_sample = background.get_module(index=run - 1)
+                if network_data["id_type"] != tar_id:  # remap ids
+                    random_sample = \
+                    set(full_id_map[full_id_map[config.ID_TYPE_KEY[network_data["id_type"]]].isin(random_sample)][
+                        config.ID_TYPE_KEY[tar_id]])
             else:
                 return list()
 
