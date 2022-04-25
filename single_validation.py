@@ -162,7 +162,7 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
     results = list()
     threshold = min(runs + 1, 100)
     limit, counter = int((runs + 1) / threshold), 1
-    if not mode == "cluster":
+    if not mode == "clustering":
         results.extend([list()])
         # ===== Get full id mapping =====
         if tar_id in config.SUPPORTED_DISEASE_IDS:
