@@ -114,7 +114,10 @@ class SetSetComparator(Comparator):
                     id_mapping = id_mapping.rename(columns={col_name: 'ctd.pathway_related_to_disease'})
                     self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys={'ctd.pathway_related_to_disease'})
                 else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
-                    self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=c.ENRICH_KEY.keys(), enriched=True)
+                    if self.enriched:
+                        self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=c.ENRICH_KEY.keys(), enriched=True)
+                    else:
+                        self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=c.ENRICH_KEY.values(), enriched=False)
 
     def compare(self, threshold: float = 0.0):
         evaluation, mapped = dict(), dict()

@@ -39,7 +39,7 @@ def create_plots(results, mode, tar, tar_id, out_dir, prefix, file_type: str = "
     :return:
     """
     Path(out_dir).mkdir(parents=True, exist_ok=True)  # make sure output dir exists
-    if mode == "cluster":
+    if mode == "clustering":
         cluster_plot(results=results, user_input={"clustering": tar, "type": tar_id},
                      out_dir=out_dir, prefix=prefix, file_type=file_type)
     else:
@@ -191,7 +191,7 @@ def sankey_plot(results, mode, out_dir, prefix, file_type: str = "pdf", tar_clus
             return df
 
         d = full_df[[term]].dropna().rename_axis('left').reset_index().explode(term)
-        if mode == "cluster":
+        if mode == "clustering":
             d = d.replace({"left": tar_cluster.set_index('id')["cluster"].to_dict()})
             df = pd.DataFrame(columns=["id", term])
             for cluster in d['left'].unique():
