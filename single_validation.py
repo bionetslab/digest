@@ -24,7 +24,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
 
     :param tar: cluster as type dataframe with columns=["id","cluster"] or set as type set
     :param tar_id: id type of target input
-    :param mode: comparison mode [set, id-set, set-set, cluster]
+    :param mode: comparison mode [set, set-set, clustering, subnetwork, subnetwork-set]
     :param distance: distance measure used for comparison. [Default=jaccard]
     :param ref: set of reference ids [Default=None]
     :param ref_id: id type of reference input [Default=None]
@@ -45,9 +45,9 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
     if mapper.load:
         ru.print_current_usage('Load mappings for input into cache ...') if verbose else None
         mapper.load_mappings()
-    if mode in ["set", "set-set"]:
+    if mode in ["set", "set-set", "subnetwork", "subnetwork-set"]:
         error_mappings = []
-        if mode == "set-set":
+        if mode in ["set-set", "subnetwork-set"]:
             comparator = comp.SetSetComparator(mapper=mapper, enriched=enriched, verbose=verbose,
                                                distance_measure=distance)
             comparator.load_reference(ref=ref, ref_id_type=ref_id, tar_id_type=tar_id)
@@ -92,7 +92,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
                    'p_values': {'values': p_values}}
 
     # ===== Special case cluster =====
-    elif mode == "cluster":
+    elif mode == "clustering":
         if mapper.load:
             ru.print_current_usage('Load distances for input into cache ...') if verbose else None
             progress(0.05, "Load distances...") if progress is not None else None

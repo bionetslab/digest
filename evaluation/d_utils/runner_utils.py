@@ -42,7 +42,7 @@ def save_parameters(script_desc: str, arguments):
                                    help='Target id type. See possible options below.')
     if 'm' in arguments:
         required_args.add_argument('-m', '--mode', type=str, required=True,
-                                   choices=['set', 'set-set', 'cluster'],
+                                   choices=['set', 'set-set', 'clustering', 'subnetwork', 'subnetwork-set'],
                                    help='Desired mode. See possible options below.')
 
     optional_args = parser.add_argument_group("optional arguments")
