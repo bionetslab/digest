@@ -6,6 +6,7 @@ from .mappers import gene_getter as gg, disease_getter as dg
 from .mappers.mapper import Mapper
 from . import score_calculator as sc
 from abc import abstractmethod
+import math
 
 
 class Comparator:
@@ -70,7 +71,10 @@ class SetComparator(Comparator):
                 #missing_distances = ((axis * (axis-1) ) / 2) - sub_mat.getnnz()
                 #result[c.replacements[attribute]] = ((sub_mat.getnnz() - sub_mat.sum()) + missing_distances) / \
                 #                                      ((axis * (axis - 1)) / 2)
-                result[c.replacements[attribute]] = sub_mat.sum() / ((axis * (axis - 1)) / 2)
+                if sub_mat.sum() == 0 or axis == 0:
+                    result[c.replacements[attribute]] = 0.0
+                else:
+                    result[c.replacements[attribute]] = sub_mat.sum() / ((axis * (axis - 1)) / 2)
                 if self.input_run:
                     save_mapping = subset_df.copy()
                     save_mapping[attribute] = save_mapping[attribute].apply(lambda x: list(x))
