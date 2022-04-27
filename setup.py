@@ -156,14 +156,15 @@ def create_files(mapper: Mapper):
     ru.print_current_usage('Finished Setup ...')
 
 
-def main(setup_type: str):
+def main(setup_type: str, replace: bool=True):
     os.system("mkdir -p " + c.FILES_DIR + "tmp/")
     if setup_type == "create":
         create_files(mapper=FileMapper(files_dir=os.path.join(c.FILES_DIR, "tmp", "")))
     elif setup_type == "api":
         load_files(mapper=FileMapper(files_dir=os.path.join(c.FILES_DIR, "tmp", "")))
-    os.system("cp -r " + os.path.join(c.FILES_DIR, "tmp", "") + "* " + c.FILES_DIR)
-    os.system("rm -rf " + os.path.join(c.FILES_DIR, "tmp", ""))
+    if replace:
+        os.system("cp -r " + os.path.join(c.FILES_DIR, "tmp", "") + "* " + c.FILES_DIR)
+        os.system("rm -rf " + os.path.join(c.FILES_DIR, "tmp", ""))
 
 
 if __name__ == "__main__":

@@ -34,6 +34,9 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
     :param background_model: which background model to use for random picks [Default="complete"]
     :param replace: how many % of target input should be replaced by random picks [Default=100]
     :param verbose: bool if additional info like ids without assigned attributes should be printed [Default=False]
+    :param network_data: dict consisting of {"network_file": path to network file,
+    "prop_name": name of vertex property with ids if network file of type graphml or gt,
+    "id_type": id type of network ids}
     :param progress: method that will get a float [0,1] and message indicating the current progress
     """
     ru.start_time = time.time()
@@ -155,7 +158,9 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
     :param background_model: which background model to use for random picks [Default="complete"]
     :param replace: how many % of target input should be replaced by random picks [Default=100]
     :param term: on what term the term preserving background model should calculate [Default="sum"]
-    :param network_data: ={"network_file": network_file, "prop_name": "name", "id_type": "symbol"},
+    :param network_data: dict consisting of {"network_file": path to network file,
+    "prop_name": name of vertex property with ids if network file of type graphml or gt,
+    "id_type": id type of network ids}
     :param progress: method that will get a float [0,1] and message indicating the current progress
     :return: comparison
     """
@@ -223,7 +228,9 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
             # ===== Calculate values =====
             comparator.load_target(id_set=set(id_set), id_type=new_id_type)
             result, _ = comparator.compare()
-            results[0].append(result)
+            if result:
+                results[0].append(result)
+
 
     # ===== Special case cluster =====
     else:
@@ -269,13 +276,16 @@ def save_results(results: dict, prefix: str, out_dir):
 
 
 if __name__ == "__main__":
-    desc = "            Evaluation of disease and gene sets and clusters."
+    desc = "            Evaluation of disease and gene sets, clusterings or subnetworks."
     args = ru.save_parameters(script_desc=desc,
-                              arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v', 'b', 'pr', 'p', 'dg'))
+                              arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v', 'b', 'pr', 'p', 'dg',
+                                         'n', 'ni', 'np'))
     res = single_validation(tar=args.target, tar_id=args.target_id_type, verbose=args.verbose,
                             mode=args.mode, ref=args.reference, ref_id=args.reference_id_type,
                             enriched=args.enriched, runs=args.runs, distance=args.distance_measure,
-                            background_model=args.background_model, replace=args.replace)
+                            background_model=args.background_model, replace=args.replace,
+                            network_data={"network_file":args.network, "prop_name":args.network_property_name,
+                                          "id_type":args.network_id_type})
     # ===== Saving final files and results =====
     ru.print_current_usage('Save files') if args.verbose else None
     Path(args.out_dir).mkdir(parents=True, exist_ok=True)  # make sure output dir exists
@@ -284,3 +294,5 @@ if __name__ == "__main__":
     if args.plot and res["status"] == "ok":
         pu.create_plots(results=res, mode=args.mode, tar=args.target, tar_id=args.target_id_type,
                         out_dir=args.out_dir, prefix=pref)
+        pu.create_extended_plots(results=res, mode=args.mode, tar=args.target,
+                                 out_dir=args.out_dir, prefix=pref)

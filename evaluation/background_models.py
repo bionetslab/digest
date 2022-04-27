@@ -140,6 +140,8 @@ class NetworkModel(BackgroundModel):
                 random_cc_module, rand_module_nodes, iterr = self._rand_module(G, ccs_num, MS)
                 random_cc_modules_list.append(random_cc_module)
                 rand_module_nodes_list.append(rand_module_nodes)
+            if len(rand_module_nodes) == 0:
+                print("tja...")
         self.rand_module_nodes_list = rand_module_nodes_list
 
 

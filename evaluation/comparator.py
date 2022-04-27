@@ -6,7 +6,6 @@ from .mappers import gene_getter as gg, disease_getter as dg
 from .mappers.mapper import Mapper
 from . import score_calculator as sc
 from abc import abstractmethod
-import math
 
 
 class Comparator:
@@ -58,6 +57,7 @@ class SetComparator(Comparator):
                                              distance_measure=self.distance_measure)
             if subset_df.empty:
                 result[c.replacements[attribute]] = 0
+
             else:
                 ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
                                                          id_type=self.id_type)
@@ -71,7 +71,7 @@ class SetComparator(Comparator):
                 #missing_distances = ((axis * (axis-1) ) / 2) - sub_mat.getnnz()
                 #result[c.replacements[attribute]] = ((sub_mat.getnnz() - sub_mat.sum()) + missing_distances) / \
                 #                                      ((axis * (axis - 1)) / 2)
-                if sub_mat.sum() == 0 or axis == 0:
+                if sub_mat.sum() == 0 or axis <= 1:
                     result[c.replacements[attribute]] = 0.0
                 else:
                     result[c.replacements[attribute]] = sub_mat.sum() / ((axis * (axis - 1)) / 2)
