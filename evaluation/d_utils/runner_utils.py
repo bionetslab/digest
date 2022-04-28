@@ -42,7 +42,7 @@ def save_parameters(script_desc: str, arguments):
                                    help='Target id type. See possible options below.')
     if 'm' in arguments:
         required_args.add_argument('-m', '--mode', type=str, required=True,
-                                   choices=['set', 'set-set', 'cluster'],
+                                   choices=['set', 'set-set', 'clustering', 'subnetwork', 'subnetwork-set'],
                                    help='Desired mode. See possible options below.')
 
     optional_args = parser.add_argument_group("optional arguments")
@@ -60,8 +60,17 @@ def save_parameters(script_desc: str, arguments):
                                    help="Number of runs with random target values for p-value calculation.")
     if 'b' in arguments:
         optional_args.add_argument("-b", "--background_model", type=str, default="complete",
-                                   choices=['complete', 'term-pres'],
+                                   choices=['complete', 'term-pres', 'network'],
                                    help="Model defining how random values should be picked. See possible options below.")
+    if 'n' in arguments:
+        optional_args.add_argument("-n", "--network", type=str, default=None,
+                                   help="Network file as sif, graphml or gt.")
+    if 'ni' in arguments:
+        optional_args.add_argument("-ni", "--network_id_type", type=str, default=None,
+                                   help="Type of node IDs inside given network.")
+    if 'np' in arguments:
+        optional_args.add_argument("-np", "--network_property_name", type=str, default=None,
+                                   help="If network is of graphml or gt type, enter name of vertex property with IDs.")
     if 'pr' in arguments:
         optional_args.add_argument("-pr", "--replace", type=int, default=100,
                                    help="Percentage of how many of the original ids should be replaced with random ids."
@@ -84,10 +93,10 @@ def save_parameters(script_desc: str, arguments):
     # prepare input
     # ============================================================================
     if 'm' in arguments:
-        if args.mode == "set-set":
+        if args.mode in ["set-set", "network-set"]:
             args.reference = pd.read_csv(args.reference, header=None, sep="\t", dtype=str)[0]
             args.reference = set(args.reference)
-        if args.mode == "cluster":
+        if args.mode == "clustering":
             args.target = pd.read_csv(args.target, header=None, sep="\t", dtype=str, names=["id", "cluster", "desc"])
         else:
             args.target = pd.read_csv(args.target, header=None, sep="\t", dtype=str)[0]
@@ -106,10 +115,13 @@ def _get_epilog(script_name):
         epilog += "\nsupported modes\n"
         epilog += "  set\t\t\tCompare similarity inside the set. Either genes or diseases.\n"
         epilog += "  set-set\t\tCompare target set to reference set. Both either genes or diseases.\n"
-        epilog += "  cluster\t\tCompare cluster quality inside clustering. Either genes or diseases.\n"
+        epilog += "  clustering\t\tCompare cluster quality inside clustering. Either genes or diseases.\n"
+        epilog += "  subnetwork\t\t\tCompare similarity inside the subnetwork nodes. Either genes or diseases.\n"
+        epilog += "  subnetwork-set\t\tCompare target subnetwork to reference set. Both either genes or diseases.\n"
         epilog += "\nsupported background models\n"
         epilog += "  complete\t\tRandom ids will be picked fully randomized.\n"
         epilog += "  term-pres\t\tRandom ids will preserve the number of mapped terms for the replaced ids.\n"
+        epilog += "  network\t\tRandom ids will preserve the number of connected components in given network.\n"
     epilog += "\n############################################################################\n"
     return epilog
 
