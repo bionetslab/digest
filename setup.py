@@ -9,11 +9,6 @@ from evaluation import config as c
 from evaluation.mappers import mapping_transformer as mt, gene_getter as gm, mapping_utils as mu
 from evaluation.mappers import disease_getter as dm
 from evaluation.mappers.mapper import Mapper, FileMapper
-# only in full biodigest
-import graph_tool as gt
-import graph_tool.util as gtu
-import graph_tool.topology as gtt
-from graph_tool import GraphView
 
 
 def load_files(mapper: Mapper):
@@ -55,10 +50,6 @@ def create_files(mapper: Mapper):
     :param mapper: object of type Mapper defining where and how to save the generated data
     """
     ru.print_current_usage('Starting Setup ...')
-
-    # ===== Start graph builder =====
-    ggi = requests.post(url=c.NEDREX_GRAPH_BUILDER, json=c.NEDREX_GGI_POST)
-    ddi = requests.post(url=c.NEDREX_GRAPH_BUILDER, json=c.NEDREX_DDI_POST)
 
     # ===== Load disorder ids =====
     ru.print_current_usage('Load NeDrEx disorder ids ...')
@@ -163,48 +154,6 @@ def create_files(mapper: Mapper):
 
     mapper.save_distances()
 
-    # ===== Calculate pairwise comparisons =====
-    ru.print_current_usage('Create default networks ...')
-
-    def recreate_network(graph_id, id_type, file_name, edges_num):
-        response = requests.get(c.NEDREX_GRAPH_DOWNLOADER + graph_id.json() + ".graphml")
-        open(os.path.join(mapper.files_dir, graph_id.json() + ".graphml"), "wb").write(response.content)
-        graph = gt.load_graph(os.path.join(mapper.files_dir, graph_id.json() + ".graphml"))
-
-        vertices = list()
-        for v in graph.iter_vertices():
-            if graph.vp['primaryDomainId'][v].startswith(id_type):
-                vertices.append(graph.vertex(v))
-
-        edges = list()
-        for v in vertices:
-            res = gtt.shortest_distance(graph, source=graph.vertex(v), max_dist=edges_num, target=vertices, directed=False)
-            for index in range(len(res)):
-                if res[index] == edges_num:
-                    edges.append([graph.vp['primaryDomainId'][v],
-                                  graph.vp['primaryDomainId'][vertices[index]]])
-
-        edges = pd.DataFrame(edges, columns=["from", "to"])
-        edges["from"] = edges["from"].str[len(id_type)+1:]
-        edges["to"] = edges["to"].str[len(id_type)+1:]
-
-        G = gt.Graph(directed=False)
-        v_ids = G.add_edge_list(edges[["from", "to"]].values, hashed=True)
-        G.vertex_properties['id'] = v_ids
-        gt.stats.remove_parallel_edges(G)
-        v_ids_set = set(v_ids)
-        for v in vertices:
-            cur_v = graph.vp['primaryDomainId'][v][len(id_type)+1:]
-            if cur_v not in v_ids_set:
-                new_v = G.add_vertex()
-                G.vertex_properties['id'][new_v] = cur_v
-
-        G.save(os.path.join(mapper.files_dir, file_name), fmt="graphml")
-        os.system("rm " + os.path.join(mapper.files_dir, graph_id.json() + ".graphml"))
-
-    recreate_network(graph_id=ggi, id_type="entrez", file_name="ggi_graph.graphml", edges_num=3)
-    recreate_network(graph_id=ddi, id_type="mondo", file_name="ddi_graph.graphml", edges_num=2)
-
     ru.print_current_usage('Finished Setup ...')
 
 
@@ -214,9 +163,8 @@ def main(setup_type: str, replace: bool=True):
         create_files(mapper=FileMapper(files_dir=os.path.join(c.FILES_DIR, "tmp", "")))
     elif setup_type == "api":
         load_files(mapper=FileMapper(files_dir=os.path.join(c.FILES_DIR, "tmp", "")))
-    if replace:
-        os.system("cp -r " + os.path.join(c.FILES_DIR, "tmp", "") + "* " + c.FILES_DIR)
-        os.system("rm -rf " + os.path.join(c.FILES_DIR, "tmp", ""))
+    os.system("cp -r " + os.path.join(c.FILES_DIR, "tmp", "") + "* " + c.FILES_DIR)
+    os.system("rm -rf " + os.path.join(c.FILES_DIR, "tmp", ""))
 
 
 if __name__ == "__main__":

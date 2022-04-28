@@ -17,7 +17,6 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
                       ref: set = None, ref_id: str = None, enriched: bool = False,
                       mapper: Mapper = FileMapper(), runs: int = config.NUMBER_OF_RANDOM_RUNS,
                       background_model: str = "complete", replace=100, verbose: bool = False,
-                      network_data: dict = None,
                       progress: Callable[[float, str], None] = None):
     """
     Single validation of a set, cluster a id versus set and set versus set.
@@ -48,9 +47,9 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
     if mapper.load:
         ru.print_current_usage('Load mappings for input into cache ...') if verbose else None
         mapper.load_mappings()
-    if mode in ["set", "set-set", "subnetwork", "subnetwork-set"]:
+    if mode in ["set", "set-set"]:
         error_mappings = []
-        if mode in ["set-set", "subnetwork-set"]:
+        if mode in ["set-set"]:
             comparator = comp.SetSetComparator(mapper=mapper, enriched=enriched, verbose=verbose,
                                                distance_measure=distance)
             comparator.load_reference(ref=ref, ref_id_type=ref_id, tar_id_type=tar_id)
@@ -186,21 +185,6 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
         elif background_model == "term-pres":
             background = bm.TermPresModel(mapper=mapper, prev_id_type=tar_id, new_id_type=new_id_type,
                                           map_id_type=map_id_type, map_att_type=map_att_type, term=term)
-        elif background_model == "network":
-            if network_data is None:  # load default network from config
-                if new_id_type == "mondo":
-                    network_data = {"network_file": config.FILES_DIR + "ddi_graph.graphml",
-                                    "id_type": new_id_type, "prop_name": "id"}
-                else:
-                    network_data = {"network_file": config.FILES_DIR + "ggi_graph.graphml",
-                                    "id_type": new_id_type, "prop_name": "id"}
-            if network_data["id_type"] != tar_id:  # remap ids
-                input_ids = set(full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(orig_ids)][
-                    config.ID_TYPE_KEY[network_data["id_type"]]])
-                background = bm.NetworkModel(network_data=network_data, to_replace=input_ids, N=runs)
-            else:
-                background = bm.NetworkModel(network_data=network_data, to_replace=orig_ids, N=runs)
-
         else:
             return list()
         for run in range(1, runs + 1):
@@ -218,14 +202,6 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
                 random_sample = background.get_module(to_replace=to_replace)
             elif background_model == "term-pres":
                 random_sample = background.get_module(to_replace=to_replace, term=term, prev_id_type=tar_id)
-            elif background_model == "network":
-                random_sample = background.get_module(index=run - 1)
-                if network_data["id_type"] != tar_id:  # remap ids
-                    #random_sample = \
-                    #set(full_id_map[full_id_map[config.ID_TYPE_KEY[network_data["id_type"]]].isin(random_sample)][
-                    #    config.ID_TYPE_KEY[tar_id]])
-                    tar_id = network_data["id_type"]
-                    old_sample = set()
             else:
                 return list()
 
@@ -285,14 +261,11 @@ def save_results(results: dict, prefix: str, out_dir):
 if __name__ == "__main__":
     desc = "            Evaluation of disease and gene sets, clusterings or subnetworks."
     args = ru.save_parameters(script_desc=desc,
-                              arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v', 'b', 'pr', 'p', 'dg',
-                                         'n', 'ni', 'np'))
+                              arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v', 'b', 'pr', 'p', 'dg'))
     res = single_validation(tar=args.target, tar_id=args.target_id_type, verbose=args.verbose,
                             mode=args.mode, ref=args.reference, ref_id=args.reference_id_type,
                             enriched=args.enriched, runs=args.runs, distance=args.distance_measure,
-                            background_model=args.background_model, replace=args.replace,
-                            network_data={"network_file":args.network, "prop_name":args.network_property_name,
-                                          "id_type":args.network_id_type})
+                            background_model=args.background_model, replace=args.replace)
     # ===== Saving final files and results =====
     ru.print_current_usage('Save files') if args.verbose else None
     Path(args.out_dir).mkdir(parents=True, exist_ok=True)  # make sure output dir exists

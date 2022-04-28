@@ -73,14 +73,6 @@ NEDREX_DISORDER_IDS = "https://api.nedrex.net/disorder/attributes/domainIds/tsv"
 NEDREX_ICD10_IDS = "https://api.nedrex.net/disorder/attributes/icd10/tsv"
 NEDREX_GENE_IDS = "https://api.nedrex.net/gene/attributes/primaryDomainId/tsv"
 
-NEDREX_GGI_POST = {"nodes":["gene","protein"],
-                   "edges":["protein_encoded_by", "protein_interacts_with_protein"],
-                   "ppi_self_loops":False}
-NEDREX_DDI_POST = {"nodes":["gene","disorder"],
-                   "edges":["gene_associated_with_disorder"]}
-NEDREX_GRAPH_BUILDER = "http://api.nedrex.net/graph_builder"
-NEDREX_GRAPH_DOWNLOADER = "https://api.nedrex.net/graph_download/"
-
 # =============================================================================
 # Set API paths to DisGeNET data
 # ============================================================================
