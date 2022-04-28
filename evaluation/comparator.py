@@ -57,19 +57,24 @@ class SetComparator(Comparator):
                                              distance_measure=self.distance_measure)
             if subset_df.empty:
                 result[c.replacements[attribute]] = 0
+
             else:
                 ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
                                                          id_type=self.id_type)
-                if self.att_id != self.id_type:
-                    ids = ids[[self.att_id, self.id_type]].drop_duplicates()
+
+                if self.att_id != c.ID_TYPE_KEY[self.id_type]:
+                    ids = ids[[self.att_id, c.ID_TYPE_KEY[self.id_type]]].drop_duplicates()
                 sub_mat = self.mapper.get_loaded_distances(in_series=ids[self.att_id],  id_type=self.sparse_key,
                                                            key=c.DISTANCES[attribute],
                                                            distance_measure=self.distance_measure)
-                axis = (len(self.mapping)-len(ids[self.id_type].unique())) + len(ids)
+                axis = (len(self.mapping)-len(ids[c.ID_TYPE_KEY[self.id_type]].unique())) + len(ids)
                 #missing_distances = ((axis * (axis-1) ) / 2) - sub_mat.getnnz()
                 #result[c.replacements[attribute]] = ((sub_mat.getnnz() - sub_mat.sum()) + missing_distances) / \
                 #                                      ((axis * (axis - 1)) / 2)
-                result[c.replacements[attribute]] = sub_mat.sum() / ((axis * (axis - 1)) / 2)
+                if sub_mat.sum() == 0 or axis <= 1:
+                    result[c.replacements[attribute]] = 0.0
+                else:
+                    result[c.replacements[attribute]] = sub_mat.sum() / ((axis * (axis - 1)) / 2)
                 if self.input_run:
                     save_mapping = subset_df.copy()
                     save_mapping[attribute] = save_mapping[attribute].apply(lambda x: list(x))
@@ -109,7 +114,10 @@ class SetSetComparator(Comparator):
                     id_mapping = id_mapping.rename(columns={col_name: 'ctd.pathway_related_to_disease'})
                     self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys={'ctd.pathway_related_to_disease'})
                 else:  # if targets_id_type in c.SUPPORTED_GENE_IDS:
-                    self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=c.ENRICH_KEY.keys(), enriched=True)
+                    if self.enriched:
+                        self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=c.ENRICH_KEY.keys(), enriched=True)
+                    else:
+                        self.ref_dict = eu.create_ref_dict(mapping=id_mapping, keys=c.ENRICH_KEY.values(), enriched=False)
 
     def compare(self, threshold: float = 0.0):
         evaluation, mapped = dict(), dict()
