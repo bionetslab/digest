@@ -11,9 +11,7 @@ from evaluation.mappers import disease_getter as dm
 from evaluation.mappers.mapper import Mapper, FileMapper
 # only in full biodigest
 import graph_tool as gt
-import graph_tool.util as gtu
 import graph_tool.topology as gtt
-from graph_tool import GraphView
 
 
 def load_files(mapper: Mapper):

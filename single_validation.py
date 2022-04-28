@@ -189,10 +189,10 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
         elif background_model == "network":
             if network_data is None:  # load default network from config
                 if new_id_type == "mondo":
-                    network_data = {"network_file": config.FILES_DIR + "ddi_graph.graphml",
+                    network_data = {"network_file": os.path.join(mapper.files_dir, "ddi_graph.graphml"),
                                     "id_type": new_id_type, "prop_name": "id"}
                 else:
-                    network_data = {"network_file": config.FILES_DIR + "ggi_graph.graphml",
+                    network_data = {"network_file": os.path.join(mapper.files_dir, "ggi_graph.graphml"),
                                     "id_type": new_id_type, "prop_name": "id"}
             if network_data["id_type"] != tar_id:  # remap ids
                 input_ids = set(full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(orig_ids)][
