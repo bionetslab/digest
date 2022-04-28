@@ -206,18 +206,18 @@ def create_files(mapper: Mapper):
     ru.print_current_usage('Finished Setup ...')
 
 
-def main(setup_type: str, replace: bool=True):
-    os.system("mkdir -p " + c.FILES_DIR + "tmp/")
+def main(setup_type: str, replace: bool=True, path:str=c.FILES_DIR):
+    os.system("mkdir -p " + path + "tmp/")
     if setup_type == "create":
-        create_files(mapper=FileMapper(files_dir=os.path.join(c.FILES_DIR, "tmp", "")))
+        create_files(mapper=FileMapper(files_dir=os.path.join(path, "tmp", "")))
     elif setup_type == "api":
-        load_files(mapper=FileMapper(files_dir=os.path.join(c.FILES_DIR, "tmp", "")))
+        load_files(mapper=FileMapper(files_dir=os.path.join(path, "tmp", "")))
     if replace:
-        os.system("cp -r " + os.path.join(c.FILES_DIR, "tmp", "") + "* " + c.FILES_DIR)
-        os.system("rm -rf " + os.path.join(c.FILES_DIR, "tmp", ""))
+        os.system("cp -r " + os.path.join(path, "tmp", "") + "* " + path)
+        os.system("rm -rf " + os.path.join(path, "tmp", ""))
 
 
 if __name__ == "__main__":
     desc = "     Run setup to create/load precalculated files."
     args = ru.save_parameters(script_desc=desc, arguments=('s', 'o'))
-    main(setup_type=args.setup_type)
+    main(setup_type=args.setup_type, path=args.out_dir)
