@@ -188,7 +188,12 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
                                           map_id_type=map_id_type, map_att_type=map_att_type, term=term)
         elif background_model == "network":
             if network_data is None:  # load default network from config
-                print("load default network from config")
+                if new_id_type == "mondo":
+                    network_data = {"network_file": config.FILES_DIR + "ddi_graph.graphml",
+                                    "id_type": new_id_type, "prop_name": "id"}
+                else:
+                    network_data = {"network_file": config.FILES_DIR + "ggi_graph.graphml",
+                                    "id_type": new_id_type, "prop_name": "id"}
             if network_data["id_type"] != tar_id:  # remap ids
                 input_ids = set(full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(orig_ids)][
                     config.ID_TYPE_KEY[network_data["id_type"]]])
@@ -216,9 +221,11 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
             elif background_model == "network":
                 random_sample = background.get_module(index=run - 1)
                 if network_data["id_type"] != tar_id:  # remap ids
-                    random_sample = \
-                    set(full_id_map[full_id_map[config.ID_TYPE_KEY[network_data["id_type"]]].isin(random_sample)][
-                        config.ID_TYPE_KEY[tar_id]])
+                    #random_sample = \
+                    #set(full_id_map[full_id_map[config.ID_TYPE_KEY[network_data["id_type"]]].isin(random_sample)][
+                    #    config.ID_TYPE_KEY[tar_id]])
+                    tar_id = network_data["id_type"]
+                    old_sample = set()
             else:
                 return list()
 
