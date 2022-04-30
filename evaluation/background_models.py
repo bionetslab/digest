@@ -93,10 +93,12 @@ class NetworkModel(BackgroundModel):
             G = gt.load_graph(network_data["network_file"])
             G.vertex_properties['id'] = G.vertex_properties[network_data['prop_name']]
             #G.list_properties()
+        # Reduce to ids that are present in the network
+        to_replace_filtered = to_replace.intersection(set(G.vertex_properties['id']))
         # Find number of CCs for the input module
-        ccs_num = self.find_num_ccs(G, to_replace)
+        ccs_num = self.find_num_ccs(G, to_replace_filtered)
         # Generate random modules of matched number of connected components
-        self.generate_rand_modules(G, N, ccs_num, len(to_replace))
+        self.generate_rand_modules(G, N, ccs_num, len(to_replace_filtered))
         self.node_ids = {node: G.vertex_properties["id"][node] for node in range(G.num_vertices())}
 
     def get_module(self, index):

@@ -91,7 +91,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         p_values = {measure_short[distance]: set_value}
         results = {'status': 'ok',
                    'input_values': {'values': {measure_short[distance]: my_value}, 'mapped_ids': mapped},
-                   'random_values': {measure_short[distance]: comp_values[0].to_dict('list')},
+                   'random_values': {'values': {measure_short[distance]: comp_values[0].to_dict('list')}},
                    'p_values': {'values': p_values}}
 
     # ===== Special case cluster =====
@@ -109,7 +109,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
                 'Exit validation: No mapping found for target cluster') if verbose else None
             return {'status': 'No mapping found for target cluster',
                     'input_values': {'values': None, 'mapped_ids': []},
-                    'random_values': None, 'p_values': {'values': None}}
+                    'random_values': {'values': None}, 'p_values': {'values': None}}
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...') if verbose else None
         progress(0.1, "Validation of input...") if progress is not None else None
@@ -133,9 +133,9 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
                                                'DBI-based': my_value_dbi},
                                     'values_inter': my_value_ss_inter,
                                     'mapped_ids': mapped},
-                   'random_values': {'DI-based': comp_values[0].to_dict('list'),
-                                     'SS-based': comp_values[1].to_dict('list'),
-                                     'DBI-based': comp_values[2].to_dict('list')},
+                   'random_values': {'values': {'DI-based': comp_values[0].to_dict('list'),
+                                                'SS-based': comp_values[1].to_dict('list'),
+                                                'DBI-based': comp_values[2].to_dict('list')}},
                    'p_values': {'values': p_values}}
     else:
         results = {None}
@@ -287,8 +287,9 @@ if __name__ == "__main__":
     args = ru.save_parameters(script_desc=desc,
                               arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v', 'b', 'pr', 'p', 'dg',
                                          'n', 'ni', 'np'))
+    mapper = FileMapper()
     res = single_validation(tar=args.target, tar_id=args.target_id_type, verbose=args.verbose,
-                            mode=args.mode, ref=args.reference, ref_id=args.reference_id_type,
+                            mode=args.mode, ref=args.reference, ref_id=args.reference_id_type, mapper=mapper,
                             enriched=args.enriched, runs=args.runs, distance=args.distance_measure,
                             background_model=args.background_model, replace=args.replace,
                             network_data={"network_file":args.network, "prop_name":args.network_property_name,
@@ -301,5 +302,5 @@ if __name__ == "__main__":
     if args.plot and res["status"] == "ok":
         pu.create_plots(results=res, mode=args.mode, tar=args.target, tar_id=args.target_id_type,
                         out_dir=args.out_dir, prefix=pref)
-        pu.create_extended_plots(results=res, mode=args.mode, tar=args.target,
+        pu.create_extended_plots(results=res, mode=args.mode, mapper=mapper, tar=args.target,
                                  out_dir=args.out_dir, prefix=pref)

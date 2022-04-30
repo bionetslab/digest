@@ -22,7 +22,6 @@ def load_files(mapper: Mapper):
     """
     ru.print_current_usage('Starting Setup ...')
 
-
     ru.print_current_usage('Get id and attribute mappings ...')
     for file_id in mapper.loaded_mappings:
         r = requests.get(c.DIGEST+"name="+mapper.file_names[file_id])
@@ -42,6 +41,12 @@ def load_files(mapper: Mapper):
             r = requests.get(c.DIGEST + "name=" + mapper.file_names[file_id] + "&measure=" + distance_measure)
             with open(os.path.join(mapper.files_dir, distance_measure, mapper.file_names[file_id]), 'wb') as f:
                 f.write(r.content)
+
+    ru.print_current_usage('Get default networks ...')
+    for network in ["ggi_graph.graphml", "ddi_graph.graphml"]:
+        r = requests.get(c.DIGEST + "name=" + network)
+        with open(os.path.join(mapper.files_dir, network), 'wb') as f:
+            f.write(r.content)
 
     ru.print_current_usage('Finished Setup ...')
 
@@ -219,5 +224,5 @@ def main(setup_type: str, replace: bool=True, path:str=c.FILES_DIR):
 
 if __name__ == "__main__":
     desc = "     Run setup to create/load precalculated files."
-    args = ru.save_parameters(script_desc=desc, arguments=('s', 'o'))
-    main(setup_type=args.setup_type, path=args.out_dir)
+    args = ru.save_parameters(script_desc=desc, arguments=('s'))
+    main(setup_type=args.setup_type)

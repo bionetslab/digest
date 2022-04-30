@@ -8,8 +8,8 @@ from .. import config as c
 import seaborn as sns
 from pathlib import Path
 from matplotlib import pyplot as plt
-from matplotlib.offsetbox import AnchoredText
 from collections import defaultdict
+from ..mappers.mapper import Mapper, FileMapper
 
 sns.set_palette("colorblind")
 
@@ -120,7 +120,7 @@ def mappability_plot(title, in_type, mapped_df, out_dir, prefix, cluster=False, 
     fig.savefig(os.path.join(out_dir, prefix + '_mappability.' + file_type), bbox_inches='tight')
 
 
-def create_extended_plots(results, mode, tar, out_dir, prefix, file_type: str = "pdf"):
+def create_extended_plots(results, mode, tar, out_dir, prefix, file_type: str = "pdf", mapper:Mapper = FileMapper()):
     """
 
     :param results: results generated from single_validation method
@@ -135,12 +135,13 @@ def create_extended_plots(results, mode, tar, out_dir, prefix, file_type: str = 
     Path(out_dir).mkdir(parents=True, exist_ok=True)  # make sure output dir exists
     value_distribution_plots(results=results, out_dir=out_dir, prefix=prefix, file_type=file_type)
     term_annotation_plots(results=results, out_dir=out_dir, prefix=prefix, file_type=file_type)
-    sankey_plot(results=results, mode=mode, out_dir=out_dir, prefix=prefix, file_type=file_type, tar_cluster=tar)
+    sankey_plot(results=results, mode=mode, mapper=mapper, out_dir=out_dir, prefix=prefix,
+                file_type=file_type, tar_cluster=tar)
 
 
 def value_distribution_plots(results, out_dir, prefix, file_type: str = "pdf"):
     for eval_term in results["input_values"]['values']:
-        df = pd.melt(pd.DataFrame(results['random_values'][eval_term]))
+        df = pd.melt(pd.DataFrame(results['random_values']['values'][eval_term]))
         df['value'] = df['value'].astype(float)
         for term_index, term in enumerate(results["input_values"]['values'][eval_term]):
             fig = plt.figure(figsize=(7, 6), dpi=80)
@@ -180,7 +181,8 @@ def term_annotation_plots(results, out_dir, prefix, file_type: str = "pdf"):
                     bbox_inches='tight')
 
 
-def sankey_plot(results, mode, out_dir, prefix, file_type: str = "pdf", tar_cluster=None, include_others=False):
+def sankey_plot(results, mode, out_dir, prefix, file_type: str = "pdf", tar_cluster=None, include_others=False,
+                mapper:Mapper = FileMapper()):
     full_df = pd.DataFrame(results["input_values"]["mapped_ids"])
     for term_index, term in enumerate(full_df.columns):
 
@@ -204,6 +206,11 @@ def sankey_plot(results, mode, out_dir, prefix, file_type: str = "pdf", tar_clus
             d.loc[~d[term].isin(ids), term] = "other"
         else:
             d = d[d[term].isin(ids)]
+        d[term] = d[term].astype({term: str}, errors='raise')
+        if term == "related_genes":
+            rename_ids, _ = mapper.get_loaded_mapping(in_set=d[term], id_type="entrezgene", key="gene_ids")
+            rename_ids = rename_ids.explode("symbol").set_index('entrezgene')['symbol'].to_dict()
+            d[term] = d[term].map(rename_ids).fillna(d[term])
         # ===== Save hierarchy =====
         hierarchy_left = d["left"].value_counts().index.tolist()
         hierarchy_right = d[term].value_counts().index.tolist()
