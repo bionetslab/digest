@@ -212,7 +212,7 @@ def create_files(mapper: Mapper):
 
 
 def main(setup_type: str, replace: bool=True, path:str=c.FILES_DIR):
-    os.system("mkdir -p " + path + "tmp/")
+    os.system("mkdir -p " + os.path.join(path, "tmp", ""))
     if setup_type == "create":
         create_files(mapper=FileMapper(files_dir=os.path.join(path, "tmp", "")))
     elif setup_type == "api":

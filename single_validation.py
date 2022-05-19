@@ -40,7 +40,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
     :param progress: method that will get a float [0,1] and message indicating the current progress
     """
     ru.start_time = time.time()
-    ru.print_current_usage('Check for proper setup ...')
+    ru.print_current_usage('Check for proper setup ...') if verbose else None
     mapper.check_for_setup_sources()
     # ===== Comparison with a set =====
     ru.print_current_usage('Starting validation ...')
@@ -59,7 +59,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         else:  # mode == "set"
             comparator = comp.SetComparator(mapper=mapper, verbose=verbose, distance_measure=distance)
             if mapper.load:
-                ru.print_current_usage('Load distances for input into cache ...')
+                ru.print_current_usage('Load distances for input into cache ...') if verbose else None
                 progress(0.05, "Load distances...") if progress is not None else None
                 mapper.load_distances(set_type=tar_id, distance_measure=distance)
         comparator.load_target(id_set=tar, id_type=tar_id)
@@ -196,7 +196,7 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
                                     "id_type": new_id_type, "prop_name": "id"}
             if network_data["id_type"] != tar_id:  # remap ids
                 input_ids = set(full_id_map[full_id_map[config.ID_TYPE_KEY[tar_id]].isin(orig_ids)][
-                    config.ID_TYPE_KEY[network_data["id_type"]]])
+                                    config.ID_TYPE_KEY[network_data["id_type"]]])
                 background = bm.NetworkModel(network_data=network_data, to_replace=input_ids, N=runs)
             else:
                 background = bm.NetworkModel(network_data=network_data, to_replace=orig_ids, N=runs)
@@ -221,8 +221,8 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
             elif background_model == "network":
                 random_sample = background.get_module(index=run - 1)
                 if network_data["id_type"] != tar_id:  # remap ids
-                    #random_sample = \
-                    #set(full_id_map[full_id_map[config.ID_TYPE_KEY[network_data["id_type"]]].isin(random_sample)][
+                    # random_sample = \
+                    # set(full_id_map[full_id_map[config.ID_TYPE_KEY[network_data["id_type"]]].isin(random_sample)][
                     #    config.ID_TYPE_KEY[tar_id]])
                     tar_id = network_data["id_type"]
                     old_sample = set()
@@ -282,6 +282,110 @@ def save_results(results: dict, prefix: str, out_dir):
         pd.DataFrame(results["p_values"]['values']).to_csv(os.path.join(out_dir, prefix + "_p-value_validation.csv"))
 
 
+def significance_contribution(results: dict, excluded: str, tar: Union[pd.DataFrame, set], tar_id: str, mode: str,
+                              distance: str = "jaccard", ref: set = None, ref_id: str = None, enriched: bool = False,
+                              mapper: Mapper = FileMapper(), runs: int = config.NUMBER_OF_RANDOM_RUNS,
+                              background_model: str = "complete",
+                              replace=100, verbose: bool = False, network_data: dict = None):
+    """
+
+
+    :param tar: cluster as type dataframe with columns=["id","cluster"] or set as type set
+    :param tar_id: id type of target input
+    :param mode: comparison mode [set, set-set, clustering, subnetwork, subnetwork-set]
+    :param distance: distance measure used for comparison. [Default=jaccard]
+    :param ref: set of reference ids [Default=None]
+    :param ref_id: id type of reference input [Default=None]
+    :param enriched: bool setting if values of reference set should be filtered for enriched values [Default=False]
+    :param mapper: mapper from type Mapper defining where the precalculated information comes from [Default=FileMapper]
+    :param runs: number of random runs to create p-values [Default=1000]
+    :param background_model: which background model to use for random picks [Default="complete"]
+    :param replace: how many % of target input should be replaced by random picks [Default=100]
+    :param verbose: bool if additional info like ids without assigned attributes should be printed [Default=False]
+    :param network_data: dict consisting of {"network_file": path to network file,
+    "prop_name": name of vertex property with ids if network file of type graphml or gt,
+    "id_type": id type of network ids}
+    """
+    if isinstance(tar, set):
+        new_tar = tar.copy().remove(excluded)
+    elif isinstance(tar, pd.Series):
+        tar.index = tar
+        new_tar = tar.drop(labels=[excluded]).reset_index(drop=True)
+    else: #isinstance(tar, pd.DataFrame):
+        new_tar = tar[tar[tar.columns[0]]!=excluded]
+
+    results_sig = single_validation(tar=new_tar, tar_id=tar_id, ref=ref, ref_id=ref_id,
+                                    mode=mode, mapper=mapper, runs=runs,
+                                    background_model=background_model, verbose=verbose,
+                                    enriched=enriched, replace=replace,
+                                    distance=distance, network_data=network_data)
+    new_df = pd.DataFrame(results_sig["p_values"]['values']) - pd.DataFrame(results["p_values"]['values'])
+    return {excluded: new_df.to_dict()}
+
+
+def significance_contributions(results: dict, tar: Union[pd.DataFrame, set], tar_id: str, mode: str,
+                               distance: str = "jaccard", ref: set = None, ref_id: str = None, enriched: bool = False,
+                               mapper: Mapper = FileMapper(), runs: int = config.NUMBER_OF_RANDOM_RUNS,
+                               background_model: str = "complete",
+                               replace=100, verbose: bool = False, network_data: dict = None,
+                               progress: Callable[[float, str], None] = None):
+    """
+
+
+    :param tar: cluster as type dataframe with columns=["id","cluster"] or set as type set
+    :param tar_id: id type of target input
+    :param mode: comparison mode [set, set-set, clustering, subnetwork, subnetwork-set]
+    :param distance: distance measure used for comparison. [Default=jaccard]
+    :param ref: set of reference ids [Default=None]
+    :param ref_id: id type of reference input [Default=None]
+    :param enriched: bool setting if values of reference set should be filtered for enriched values [Default=False]
+    :param mapper: mapper from type Mapper defining where the precalculated information comes from [Default=FileMapper]
+    :param runs: number of random runs to create p-values [Default=1000]
+    :param background_model: which background model to use for random picks [Default="complete"]
+    :param replace: how many % of target input should be replaced by random picks [Default=100]
+    :param verbose: bool if additional info like ids without assigned attributes should be printed [Default=False]
+    :param network_data: dict consisting of {"network_file": path to network file,
+    "prop_name": name of vertex property with ids if network file of type graphml or gt,
+    "id_type": id type of network ids}
+    :param progress: method that will get a float [0,1] and message indicating the current progress
+    """
+    results_sig = dict()
+    progress(0.05, "Prepare for run ...") if progress is not None else None
+    for index, excluded in enumerate(tar):
+        result_sig = significance_contribution(results=results, excluded=excluded, tar=tar, tar_id=tar_id, ref=ref,
+                                               ref_id=ref_id, mode=mode, mapper=mapper, runs=runs,
+                                               background_model=background_model, verbose=False, enriched=enriched,
+                                               replace=replace, distance=distance, network_data=network_data)
+        results_sig.update(result_sig)
+        ru.print_current_usage('{}/{} significance contributions calculated ...'.format(index + 1, len(tar))) if verbose else None
+        progress(0.05 + ((0.95 / len(tar)) * (index + 1)), str(index + 1) + "/" + str(
+            len(tar)) + " significance contributions calculated ...") if progress is not None else None
+    # converting id -> stat_type -> values to stat_type -> id -> values
+    final_results_sig = transform_dict(results_sig)
+    return final_results_sig
+
+
+def transform_dict(in_dict):
+    out_dict = dict()
+    for a in in_dict:
+        for b in in_dict[a]:
+            if b not in out_dict:
+                out_dict[b] = dict()
+            out_dict[b][a] = in_dict[a][b]
+    return out_dict
+
+
+def save_contribution_results(results: dict, prefix: str, out_dir):
+    # ===== Save complete output =====
+    with open(os.path.join(out_dir, prefix + "_contribution_result.json"), "w") as outfile:
+        json.dump(results, outfile)
+    # ===== Save output to tables =====
+    if results["status"] == "ok":
+        for stat_type in results:
+            pd.DataFrame(results[stat_type]).T.to_csv(os.path.join(out_dir, prefix +"_"+stat_type+ "_contribution.csv"))
+
+
+
 if __name__ == "__main__":
     desc = "            Evaluation of disease and gene sets, clusterings or subnetworks."
     args = ru.save_parameters(script_desc=desc,
@@ -292,8 +396,8 @@ if __name__ == "__main__":
                             mode=args.mode, ref=args.reference, ref_id=args.reference_id_type, mapper=mapper,
                             enriched=args.enriched, runs=args.runs, distance=args.distance_measure,
                             background_model=args.background_model, replace=args.replace,
-                            network_data={"network_file":args.network, "prop_name":args.network_property_name,
-                                          "id_type":args.network_id_type})
+                            network_data={"network_file": args.network, "prop_name": args.network_property_name,
+                                          "id_type": args.network_id_type})
     # ===== Saving final files and results =====
     ru.print_current_usage('Save files') if args.verbose else None
     Path(args.out_dir).mkdir(parents=True, exist_ok=True)  # make sure output dir exists

@@ -8,8 +8,14 @@ from .. import config as c
 import seaborn as sns
 from pathlib import Path
 from matplotlib import pyplot as plt
+from matplotlib.colors import Normalize
 from collections import defaultdict
 from ..mappers.mapper import Mapper, FileMapper
+# only in full biodigest
+import graph_tool as gt
+import graph_tool.util as gtu
+import graph_tool.topology as gtt
+from graph_tool import GraphView, draw, Graph
 
 sns.set_palette("colorblind")
 
@@ -362,3 +368,47 @@ def sankey(data, out_dir, prefix, file_type: str = "pdf", color_dict=None, aspec
     fig.tight_layout()
     fig.savefig(os.path.join(out_dir, prefix + '_' + term + '_sankey.' + file_type),
                 bbox_inches='tight')
+
+
+def contribution_heatmap(df, axis_limit, contribution_type: str, input_type, num,
+                         out_dir, prefix, title_ext="",  file_type: str = "pdf",):
+    fig = plt.figure(figsize=(7, 6), dpi=80)
+    sns.heatmap(data=df, cmap=sns.color_palette("vlag"), yticklabels=1, vmin=-axis_limit, vmax=axis_limit,
+                cbar_kws={'label': 'Significance contribution'})
+    plt.title("Top " + str(num) + " " + input_type + " with\nlargest " + contribution_type
+              + " contributions\nto empirical P-values" + title_ext)
+    plt.yticks(rotation=0)
+    fig.tight_layout()
+    fig.savefig(os.path.join(out_dir, prefix  + '_contribution_heatmap.' + file_type),
+                bbox_inches='tight')
+
+
+# def contribution_graph(tar, network_data):
+#     g = gt.load_graph(network_data["network_file"])
+#     nodes = set(tar)
+#     vfilt = g.new_vertex_property('bool')
+#     for vertex in g.get_vertices():
+#         if g.vertex_properties.name[vertex] in nodes:
+#             vfilt[vertex] = True
+#     sub_g = GraphView(g, vfilt=vfilt)
+#     sub_g = Graph(sub_g, prune=True)
+
+
+def create_contribution_plots(result_sig, input_type, out_dir, prefix, file_type: str = "pdf"):
+
+    for stat_type in result_sig:
+        sig_df = pd.DataFrame(result_sig[stat_type]).T
+        sig_df = sig_df.rename(columns=replacements)
+        limit = sig_df.abs().max().max()
+        sub_df = sig_df.loc[list(sig_df.abs().max(axis=1).sort_values(ascending=False)[0:min(len(sig_df.index), 15)].index)]
+        contribution_heatmap(df=sub_df, axis_limit=limit, contribution_type="absolute", input_type=input_type,  num = 15,
+                             out_dir=out_dir, prefix=prefix+"_"+stat_type+"_absolute.", file_type=file_type)
+        for col in sig_df.columns:
+            sub_df = sig_df.loc[list(sig_df[col].sort_values(ascending=False)[0:min(len(sig_df.index), 15)].index)]
+            contribution_heatmap(df=sub_df, axis_limit=limit, contribution_type="positive",
+                                 input_type=input_type,  num = 15, title_ext=" for "+col,
+                                 out_dir=out_dir, prefix=prefix+"_"+stat_type+"_"+col+"_positive.", file_type=file_type)
+            sub_df = sig_df.loc[list(sig_df[col].sort_values(ascending=True)[0:min(len(sig_df.index), 15)].index)]
+            contribution_heatmap(df=sub_df, axis_limit=limit, contribution_type="negative",
+                                 input_type=input_type, num = 15, title_ext=" for "+col,
+                                 out_dir=out_dir, prefix=prefix+"_"+stat_type+"_"+col+"_negative.", file_type=file_type)
