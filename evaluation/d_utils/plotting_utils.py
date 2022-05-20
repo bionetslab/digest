@@ -8,7 +8,8 @@ from .. import config as c
 import seaborn as sns
 from pathlib import Path
 from matplotlib import pyplot as plt
-from matplotlib.colors import Normalize
+from matplotlib import colors
+from matplotlib.gridspec import GridSpec
 from collections import defaultdict
 from ..mappers.mapper import Mapper, FileMapper
 # only in full biodigest
@@ -371,7 +372,7 @@ def sankey(data, out_dir, prefix, file_type: str = "pdf", color_dict=None, aspec
 
 
 def contribution_heatmap(df, axis_limit, contribution_type: str, input_type, num,
-                         out_dir, prefix, title_ext="",  file_type: str = "pdf",):
+                         out_dir, prefix, title_ext="",  file_type: str = "pdf"):
     fig = plt.figure(figsize=(7, 6), dpi=80)
     sns.heatmap(data=df, cmap=sns.color_palette("vlag"), yticklabels=1, vmin=-axis_limit, vmax=axis_limit,
                 cbar_kws={'label': 'Significance contribution'})
@@ -383,15 +384,59 @@ def contribution_heatmap(df, axis_limit, contribution_type: str, input_type, num
                 bbox_inches='tight')
 
 
-# def contribution_graph(tar, network_data):
+# def create_contribution_graphs(result_sig, tar, network_data, out_dir, prefix, file_type: str = "pdf"):
+#     if network_data is None:
+#         if input_type == "diseases":
+#             network_data = {"network_file": os.path.join(mapper.files_dir, "ddi_graph.graphml"),
+#                             "id_type": new_id_type, "prop_name": "id"}
+#         else:
+#             input_type = {"network_file": os.path.join(mapper.files_dir, "ggi_graph.graphml"),
+#                             "id_type": new_id_type, "prop_name": "id"}
 #     g = gt.load_graph(network_data["network_file"])
 #     nodes = set(tar)
 #     vfilt = g.new_vertex_property('bool')
 #     for vertex in g.get_vertices():
 #         if g.vertex_properties.name[vertex] in nodes:
 #             vfilt[vertex] = True
-#     sub_g = GraphView(g, vfilt=vfilt)
-#     sub_g = Graph(sub_g, prune=True)
+#     sub_g = Graph(GraphView(g, vfilt=vfilt), prune=True)
+#
+#     for stat_type in result_sig:
+#         sig_df = pd.DataFrame(result_sig[stat_type]).T
+#         cmap = sns.color_palette("vlag", as_cmap=True)
+#         lim = sig_df.abs().max().max()
+#         norm = colors.Normalize(vmin=-lim, vmax=lim)
+#
+#         for col in sig_df.columns:
+#             rgba_values = cmap(norm(sig_df[col]))
+#             # save colors for heatmap
+#             col_dic = dict()
+#             for i,g in enumerate(sig_df[col].index):
+#                 col_dic[g] = colors.to_hex(rgba_values[i])
+#             v_colors = sub_g.new_vertex_property("string")
+#             # assign colors to nodes
+#             for v in sub_g.vertices():
+#                 v_colors[v] = col_dic[sub_g.vp.name[v]]
+#
+#             plt.switch_backend("cairo")
+#             fig = plt.figure(figsize=(12, 8))
+#             gs = GridSpec(nrows=1, ncols=2)
+#             ax1 = fig.add_subplot(gs[0, :])
+#             ax1.axis('off')
+#             draw.graph_draw(sub_g, vertex_text = sub_g.vertex_properties['name'], vertex_font_size = 0.4, vertex_size=1.5,
+#                         vertex_text_position = -2, vertex_fill_color=v_colors, mplfig=ax1)
+#             if col in replacements:
+#                 title_extension = "based on " + col + " annotations"
+#             else:
+#                 title_extension = "based on " + annot_terms[col]
+#             ax1.set(title="Subnetwork with nodes colored by\nsignificance contribution w.r.t. P-values\n" + title_extension)
+#             ax2 = fig.add_subplot(gs[0, 1])
+#             sns.heatmap(data=sig_df, cmap=cmap, yticklabels=1, vmin=-lim, vmax=lim,
+#                         cbar=False, ax=ax2).set_visible(False)
+#
+#             mappable = ax2.get_children()[0]
+#             cbar = plt.colorbar(mappable, ax = [ax1,ax2], orientation = 'horizontal', pad=-0.01)
+#             cbar.ax.set_xlabel('Significance contribution')
+#             fig.savefig(os.path.join(out_dir, prefix + "_" + stat_type+ "_" + col + '_contribution_graph.' + file_type), bbox_inches='tight')
 
 
 def create_contribution_plots(result_sig, input_type, out_dir, prefix, file_type: str = "pdf"):

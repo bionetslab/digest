@@ -307,12 +307,16 @@ def significance_contribution(results: dict, excluded: str, tar: Union[pd.DataFr
     "id_type": id type of network ids}
     """
     if isinstance(tar, set):
-        new_tar = tar.copy().remove(excluded)
+        new_tar = tar.copy()
+        new_tar.remove(excluded)
     elif isinstance(tar, pd.Series):
         tar.index = tar
         new_tar = tar.drop(labels=[excluded]).reset_index(drop=True)
-    else: #isinstance(tar, pd.DataFrame):
-        new_tar = tar[tar[tar.columns[0]]!=excluded]
+    elif isinstance(tar, list):
+        new_tar = tar.copy()
+        new_tar.remove(excluded)
+    else:  # isinstance(tar, pd.DataFrame):
+        new_tar = tar[tar[tar.columns[0]] != excluded]
 
     results_sig = single_validation(tar=new_tar, tar_id=tar_id, ref=ref, ref_id=ref_id,
                                     mode=mode, mapper=mapper, runs=runs,
