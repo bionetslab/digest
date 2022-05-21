@@ -93,7 +93,7 @@ def set_plot(results, user_input, out_dir, prefix, file_type: str = "pdf"):
     # ===== Prepare for mappability plot =====
     mapped_df = pd.DataFrame()
     for att in results["input_values"]["mapped_ids"]:
-        mapped_df[att] = [1 if x in results["input_values"]["mapped_ids"][att] else 0 for x in user_input["set"]]
+        mapped_df[att] = [1 if len(results["input_values"]["mapped_ids"][att][x]) > 0 else 0 for x in user_input["set"]]
     mapped_df = mapped_df.T
     mapped_df["count"] = mapped_df.sum(axis=1)
     mapped_df["fraction"] = mapped_df['count'].apply(lambda x: x / len(user_input["set"]))
@@ -192,47 +192,52 @@ def sankey_plot(results, mode, out_dir, prefix, file_type: str = "pdf", tar_clus
                 mapper:Mapper = FileMapper()):
     full_df = pd.DataFrame(results["input_values"]["mapped_ids"])
     for term_index, term in enumerate(full_df.columns):
-
-        def col_sort(df, colname, hierarchy):
-            df[colname] = df[colname].astype("category")
-            df[colname].cat.set_categories(hierarchy, inplace=True)
-            df = df.sort_values([colname], ascending=True)
-            return df
-
-        d = full_df[[term]].dropna().rename_axis('left').reset_index().explode(term)
-        if mode == "clustering":
-            d = d.replace({"left": tar_cluster.set_index('id')["cluster"].to_dict()})
-            df = pd.DataFrame(columns=["id", term])
-            for cluster in d['left'].unique():
-                df = pd.concat([df, d[d["left"] == cluster][term].value_counts(normalize=True).rename_axis(
-                    'id').reset_index(name=term)])
-            ids = df.groupby(['id']).sum().rename_axis('id').reset_index().nlargest(10, term)["id"]
+        if len(full_df[full_df[term].str.len() != 0]) == 0: # save empty plot
+            fig = plt.figure(dpi=80)
+            plt.show()
+            fig.savefig(os.path.join(out_dir, prefix + '_' + term + '_sankey.' + file_type),
+                        bbox_inches='tight')
         else:
-            ids = d[term].value_counts().nlargest(10).index
-        if include_others:
-            d.loc[~d[term].isin(ids), term] = "other"
-        else:
-            d = d[d[term].isin(ids)]
-        d[term] = d[term].astype({term: str}, errors='raise')
-        if term == "related_genes":
-            rename_ids, _ = mapper.get_loaded_mapping(in_set=d[term], id_type="entrezgene", key="gene_ids")
-            rename_ids = rename_ids.explode("symbol").set_index('entrezgene')['symbol'].to_dict()
-            d[term] = d[term].map(rename_ids).fillna(d[term])
-        # ===== Save hierarchy =====
-        hierarchy_left = d["left"].value_counts().index.tolist()
-        hierarchy_right = d[term].value_counts().index.tolist()
-        # ===== Sort =====
-        d = d.reset_index(drop=True).value_counts().reset_index()
-        d = col_sort(df=d, colname="left", hierarchy=hierarchy_left)
-        d = col_sort(df=d, colname=term, hierarchy=hierarchy_right)
-        # ===== Assign colors =====
-        z = {**dict(zip(d["left"].unique(), ["#808080"] * len(d.index.unique()))),
-             **dict(zip(d[term].unique(), sns.color_palette() * 10))}
+            def col_sort(df, colname, hierarchy):
+                df[colname] = df[colname].astype("category")
+                df[colname].cat.set_categories(hierarchy, inplace=True)
+                df_sorted = df.sort_values([colname], ascending=True)
+                return df_sorted
 
-        d.rename(columns={term: 'right', 0: 'weight'}, inplace=True)
-        # ===== Plot =====
-        sankey(data=d, aspect=20, right_color=True, color_dict=z, term=term,
-               out_dir=out_dir, prefix=prefix, file_type=file_type)
+            d = full_df[[term]].dropna().rename_axis('left').reset_index().explode(term)
+            if mode == "clustering":
+                d = d.replace({"left": tar_cluster.set_index('id')["cluster"].to_dict()})
+                df = pd.DataFrame(columns=["id", term])
+                for cluster in d['left'].unique():
+                    df = pd.concat([df, d[d["left"] == cluster][term].value_counts(normalize=True).rename_axis(
+                        'id').reset_index(name=term)])
+                ids = df.groupby(['id']).sum().rename_axis('id').reset_index().nlargest(10, term)["id"]
+            else:
+                ids = d[term].value_counts().nlargest(10).index
+            if include_others:
+                d.loc[~d[term].isin(ids), term] = "other"
+            else:
+                d = d[d[term].isin(ids)]
+            d[term] = d[term].astype({term: str}, errors='raise')
+            if term == "related_genes":
+                rename_ids, _ = mapper.get_loaded_mapping(in_set=d[term], id_type="entrezgene", key="gene_ids")
+                rename_ids = rename_ids.explode("symbol").set_index('entrezgene')['symbol'].to_dict()
+                d[term] = d[term].map(rename_ids).fillna(d[term])
+            # ===== Save hierarchy =====
+            hierarchy_left = d["left"].value_counts().index.tolist()
+            hierarchy_right = d[term].value_counts().index.tolist()
+            # ===== Sort =====
+            d = d.reset_index(drop=True).value_counts().reset_index()
+            d = col_sort(df=d, colname="left", hierarchy=hierarchy_left)
+            d = col_sort(df=d, colname=term, hierarchy=hierarchy_right)
+            # ===== Assign colors =====
+            z = {**dict(zip(d["left"].unique(), ["#808080"] * len(d.index.unique()))),
+                 **dict(zip(d[term].unique(), sns.color_palette() * 10))}
+
+            d.rename(columns={term: 'right', 0: 'weight'}, inplace=True)
+            # ===== Plot =====
+            sankey(data=d, aspect=20, right_color=True, color_dict=z, term=term,
+                   out_dir=out_dir, prefix=prefix, file_type=file_type)
 
 
 def sankey(data, out_dir, prefix, file_type: str = "pdf", color_dict=None, aspect=4, right_color=False, term=None):

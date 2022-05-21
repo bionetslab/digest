@@ -57,7 +57,7 @@ class SetComparator(Comparator):
                                              distance_measure=self.distance_measure)
             if subset_df.empty:
                 result[c.replacements[attribute]] = 0
-
+                mapped[c.replacements[attribute]] = {in_id: [] for in_id in self.mapping[self.mapping.columns[0]]}
             else:
                 ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
                                                          id_type=self.id_type)
@@ -180,6 +180,7 @@ class ClusterComparator(Comparator):
                 result_di[c.replacements[attribute]], result_ss[c.replacements[attribute]] = None, None
                 result_ss_intermediate[c.replacements[attribute]] = None
                 result_dbi[c.replacements[attribute]], mapped[c.replacements[attribute]] = None, []
+                mapped[c.replacements[attribute]] = {in_id: [] for in_id in self.mapping[self.mapping.columns[0]]}
             else:
                 ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
                                                          id_type=self.id_type)
