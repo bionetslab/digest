@@ -306,6 +306,8 @@ def significance_contribution(results: dict, excluded: str, tar: Union[pd.DataFr
     "prop_name": name of vertex property with ids if network file of type graphml or gt,
     "id_type": id type of network ids}
     """
+    if results["status"] != "ok":
+        return dict()
     if isinstance(tar, set):
         new_tar = tar.copy()
         new_tar.remove(excluded)
@@ -353,6 +355,8 @@ def significance_contributions(results: dict, tar: Union[pd.DataFrame, set], tar
     "id_type": id type of network ids}
     :param progress: method that will get a float [0,1] and message indicating the current progress
     """
+    if results["status"] != "ok":
+        return dict()
     results_sig = dict()
     progress(0.05, "Prepare for run ...") if progress is not None else None
     for index, excluded in enumerate(tar):
@@ -370,6 +374,8 @@ def significance_contributions(results: dict, tar: Union[pd.DataFrame, set], tar
 
 
 def transform_dict(in_dict):
+    if not in_dict: # if empty
+        return in_dict
     out_dict = dict()
     for a in in_dict:
         for b in in_dict[a]:
@@ -384,7 +390,7 @@ def save_contribution_results(results: dict, prefix: str, out_dir):
     with open(os.path.join(out_dir, prefix + "_contribution_result.json"), "w") as outfile:
         json.dump(results, outfile)
     # ===== Save output to tables =====
-    if results["status"] == "ok":
+    if results: # not empty
         for stat_type in results:
             pd.DataFrame(results[stat_type]).T.to_csv(os.path.join(out_dir, prefix +"_"+stat_type+ "_contribution.csv"))
 
