@@ -93,7 +93,7 @@ def set_plot(results, user_input, out_dir, prefix, file_type: str = "pdf"):
     # ===== Prepare for mappability plot =====
     mapped_df = pd.DataFrame()
     for att in results["input_values"]["mapped_ids"]:
-        mapped_df[att] = [1 if len(results["input_values"]["mapped_ids"][att][x]) > 0 else 0 for x in user_input["set"]]
+        mapped_df[att] = [1 if x in results["input_values"]["mapped_ids"][att] else 0 for x in user_input["set"]]
     mapped_df = mapped_df.T
     mapped_df["count"] = mapped_df.sum(axis=1)
     mapped_df["fraction"] = mapped_df['count'].apply(lambda x: x / len(user_input["set"]))
@@ -192,7 +192,7 @@ def sankey_plot(results, mode, out_dir, prefix, file_type: str = "pdf", tar_clus
                 mapper:Mapper = FileMapper()):
     full_df = pd.DataFrame(results["input_values"]["mapped_ids"])
     for term_index, term in enumerate(full_df.columns):
-        if len(full_df[full_df[term].str.len() != 0]) == 0: # save empty plot
+        if len(full_df[full_df[term]]) == 0: # save empty plot
             fig = plt.figure(dpi=80)
             plt.show()
             fig.savefig(os.path.join(out_dir, prefix + '_' + term + '_sankey.' + file_type),
@@ -385,7 +385,7 @@ def contribution_heatmap(df, axis_limit, contribution_type: str, input_type, num
               + " contributions\nto empirical P-values" + title_ext)
     plt.yticks(rotation=0)
     fig.tight_layout()
-    fig.savefig(os.path.join(out_dir, prefix  + '_contribution_heatmap.' + file_type),
+    fig.savefig(os.path.join(out_dir, prefix + '_contribution_heatmap.' + file_type),
                 bbox_inches='tight')
 
 
@@ -451,14 +451,15 @@ def create_contribution_plots(result_sig, input_type, out_dir, prefix, file_type
         sig_df = sig_df.rename(columns=replacements)
         limit = sig_df.abs().max().max()
         sub_df = sig_df.loc[list(sig_df.abs().max(axis=1).sort_values(ascending=False)[0:min(len(sig_df.index), 15)].index)]
-        contribution_heatmap(df=sub_df, axis_limit=limit, contribution_type="absolute", input_type=input_type,  num = 15,
-                             out_dir=out_dir, prefix=prefix+"_"+stat_type+"_absolute.", file_type=file_type)
+        contribution_heatmap(df=sub_df, axis_limit=limit, contribution_type="absolute", input_type=input_type,
+                             num = min(len(sig_df.index), 15),
+                             out_dir=out_dir, prefix=prefix+"_"+stat_type+"_absolute", file_type=file_type)
         for col in sig_df.columns:
             sub_df = sig_df.loc[list(sig_df[col].sort_values(ascending=False)[0:min(len(sig_df.index), 15)].index)]
             contribution_heatmap(df=sub_df, axis_limit=limit, contribution_type="positive",
-                                 input_type=input_type,  num = 15, title_ext=" for "+col,
-                                 out_dir=out_dir, prefix=prefix+"_"+stat_type+"_"+col+"_positive.", file_type=file_type)
+                                 input_type=input_type,  num = min(len(sig_df.index), 15), title_ext=" for "+col,
+                                 out_dir=out_dir, prefix=prefix+"_"+stat_type+"_"+col+"_positive", file_type=file_type)
             sub_df = sig_df.loc[list(sig_df[col].sort_values(ascending=True)[0:min(len(sig_df.index), 15)].index)]
             contribution_heatmap(df=sub_df, axis_limit=limit, contribution_type="negative",
-                                 input_type=input_type, num = 15, title_ext=" for "+col,
-                                 out_dir=out_dir, prefix=prefix+"_"+stat_type+"_"+col+"_negative.", file_type=file_type)
+                                 input_type=input_type, num = min(len(sig_df.index), 15), title_ext=" for "+col,
+                                 out_dir=out_dir, prefix=prefix+"_"+stat_type+"_"+col+"_negative", file_type=file_type)

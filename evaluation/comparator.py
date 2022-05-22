@@ -57,7 +57,7 @@ class SetComparator(Comparator):
                                              distance_measure=self.distance_measure)
             if subset_df.empty:
                 result[c.replacements[attribute]] = 0
-                mapped[c.replacements[attribute]] = {in_id: [] for in_id in self.mapping[self.mapping.columns[0]]}
+                mapped[c.replacements[attribute]] = {}
             else:
                 ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
                                                          id_type=self.id_type)
@@ -131,7 +131,7 @@ class SetSetComparator(Comparator):
             evaluation[c.replacements[attribute]] = str(len(evaluated_series[evaluated_series > threshold]) /
                                                         len(evaluated_series))
             if self.input_run:
-                save_mapping = self.mapping[self.mapping[attribute] != ""].copy()
+                save_mapping = self.mapping[self.mapping[attribute].str.len() > 0].copy()
                 save_mapping[attribute] = save_mapping[attribute].apply(lambda x: list(x))
                 mapped[c.replacements[attribute]] = save_mapping.set_index(c.ID_TYPE_KEY[self.id_type])[
                     attribute].to_dict()
@@ -180,7 +180,7 @@ class ClusterComparator(Comparator):
                 result_di[c.replacements[attribute]], result_ss[c.replacements[attribute]] = None, None
                 result_ss_intermediate[c.replacements[attribute]] = None
                 result_dbi[c.replacements[attribute]], mapped[c.replacements[attribute]] = None, []
-                mapped[c.replacements[attribute]] = {in_id: [] for in_id in self.mapping[self.mapping.columns[0]]}
+                mapped[c.replacements[attribute]] = {}
             else:
                 ids = self.mapper.get_loaded_mapping_ids(in_ids=set(subset_df[subset_df.columns[0]]),
                                                          id_type=self.id_type)
