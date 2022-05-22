@@ -14,8 +14,6 @@ from collections import defaultdict
 from ..mappers.mapper import Mapper, FileMapper
 # only in full biodigest
 import graph_tool as gt
-import graph_tool.util as gtu
-import graph_tool.topology as gtt
 from graph_tool import GraphView, draw, Graph
 
 sns.set_palette("colorblind")
@@ -192,7 +190,7 @@ def sankey_plot(results, mode, out_dir, prefix, file_type: str = "pdf", tar_clus
                 mapper:Mapper = FileMapper()):
     full_df = pd.DataFrame(results["input_values"]["mapped_ids"])
     for term_index, term in enumerate(full_df.columns):
-        if len(full_df[full_df[term]]) == 0: # save empty plot
+        if len(full_df[[term]].dropna()) == 0: # save empty plot
             fig = plt.figure(dpi=80)
             plt.show()
             fig.savefig(os.path.join(out_dir, prefix + '_' + term + '_sankey.' + file_type),
@@ -389,61 +387,6 @@ def contribution_heatmap(df, axis_limit, contribution_type: str, input_type, num
                 bbox_inches='tight')
 
 
-# def create_contribution_graphs(result_sig, tar, network_data, out_dir, prefix, file_type: str = "pdf"):
-#     if network_data is None:
-#         if input_type == "diseases":
-#             network_data = {"network_file": os.path.join(mapper.files_dir, "ddi_graph.graphml"),
-#                             "id_type": new_id_type, "prop_name": "id"}
-#         else:
-#             input_type = {"network_file": os.path.join(mapper.files_dir, "ggi_graph.graphml"),
-#                             "id_type": new_id_type, "prop_name": "id"}
-#     g = gt.load_graph(network_data["network_file"])
-#     nodes = set(tar)
-#     vfilt = g.new_vertex_property('bool')
-#     for vertex in g.get_vertices():
-#         if g.vertex_properties.name[vertex] in nodes:
-#             vfilt[vertex] = True
-#     sub_g = Graph(GraphView(g, vfilt=vfilt), prune=True)
-#
-#     for stat_type in result_sig:
-#         sig_df = pd.DataFrame(result_sig[stat_type]).T
-#         cmap = sns.color_palette("vlag", as_cmap=True)
-#         lim = sig_df.abs().max().max()
-#         norm = colors.Normalize(vmin=-lim, vmax=lim)
-#
-#         for col in sig_df.columns:
-#             rgba_values = cmap(norm(sig_df[col]))
-#             # save colors for heatmap
-#             col_dic = dict()
-#             for i,g in enumerate(sig_df[col].index):
-#                 col_dic[g] = colors.to_hex(rgba_values[i])
-#             v_colors = sub_g.new_vertex_property("string")
-#             # assign colors to nodes
-#             for v in sub_g.vertices():
-#                 v_colors[v] = col_dic[sub_g.vp.name[v]]
-#
-#             plt.switch_backend("cairo")
-#             fig = plt.figure(figsize=(12, 8))
-#             gs = GridSpec(nrows=1, ncols=2)
-#             ax1 = fig.add_subplot(gs[0, :])
-#             ax1.axis('off')
-#             draw.graph_draw(sub_g, vertex_text = sub_g.vertex_properties['name'], vertex_font_size = 0.4, vertex_size=1.5,
-#                         vertex_text_position = -2, vertex_fill_color=v_colors, mplfig=ax1)
-#             if col in replacements:
-#                 title_extension = "based on " + col + " annotations"
-#             else:
-#                 title_extension = "based on " + annot_terms[col]
-#             ax1.set(title="Subnetwork with nodes colored by\nsignificance contribution w.r.t. P-values\n" + title_extension)
-#             ax2 = fig.add_subplot(gs[0, 1])
-#             sns.heatmap(data=sig_df, cmap=cmap, yticklabels=1, vmin=-lim, vmax=lim,
-#                         cbar=False, ax=ax2).set_visible(False)
-#
-#             mappable = ax2.get_children()[0]
-#             cbar = plt.colorbar(mappable, ax = [ax1,ax2], orientation = 'horizontal', pad=-0.01)
-#             cbar.ax.set_xlabel('Significance contribution')
-#             fig.savefig(os.path.join(out_dir, prefix + "_" + stat_type+ "_" + col + '_contribution_graph.' + file_type), bbox_inches='tight')
-
-
 def create_contribution_plots(result_sig, input_type, out_dir, prefix, file_type: str = "pdf"):
 
     for stat_type in result_sig:
@@ -463,3 +406,65 @@ def create_contribution_plots(result_sig, input_type, out_dir, prefix, file_type
             contribution_heatmap(df=sub_df, axis_limit=limit, contribution_type="negative",
                                  input_type=input_type, num = min(len(sig_df.index), 15), title_ext=" for "+col,
                                  out_dir=out_dir, prefix=prefix+"_"+stat_type+"_"+col+"_negative", file_type=file_type)
+
+
+def create_contribution_graphs(result_sig, input_type, tar, network_data,
+                               out_dir, prefix, file_type: str = "pdf", mapper: Mapper = FileMapper()):
+    if network_data is None:
+        if input_type == "diseases":
+            g = gt.load_graph(os.path.join(mapper.files_dir, "ddi_graph.graphml"))
+        else:
+            g = gt.load_graph(os.path.join(mapper.files_dir, "ggi_graph.graphml"))
+    else:
+        if network_data["network_file"].endswith(".sif"):
+            df = pd.read_csv(network_data["network_file"], sep="\t", header=None)
+            g = gt.Graph(directed=False)
+            v_ids = g.add_edge_list(df[[0, 2]].values, hashed=True)
+            g.vertex_properties['id'] = v_ids
+        else:
+            g = gt.load_graph(network_data["network_file"])
+            g.vertex_properties['id'] = g.vertex_properties[network_data['prop_name']]
+    nodes = set(tar) if not isinstance(tar, set) else tar
+    vfilt = g.new_vertex_property('bool')
+    for vertex in g.get_vertices():
+        if g.vertex_properties.id[vertex] in nodes:
+            vfilt[vertex] = True
+    sub_g = Graph(GraphView(g, vfilt=vfilt), prune=True)
+
+    for stat_type in result_sig:
+        sig_df = pd.DataFrame(result_sig[stat_type]).T
+        cmap = sns.color_palette("vlag", as_cmap=True)
+        lim = sig_df.abs().max().max()
+        norm = colors.Normalize(vmin=-lim, vmax=lim)
+
+        for col in sig_df.columns:
+            rgba_values = cmap(norm(sig_df[col]))
+            # save colors for heatmap
+            col_dic = dict()
+            for i,g in enumerate(sig_df[col].index):
+                col_dic[g] = colors.to_hex(rgba_values[i])
+            v_colors = sub_g.new_vertex_property("string")
+            # assign colors to nodes
+            for v in sub_g.vertices():
+                v_colors[v] = col_dic[sub_g.vp.id[v]]
+
+            plt.switch_backend("cairo")
+            fig = plt.figure(figsize=(12, 8))
+            gs = GridSpec(nrows=1, ncols=2)
+            ax1 = fig.add_subplot(gs[0, :])
+            ax1.axis('off')
+            draw.graph_draw(sub_g, vertex_text = sub_g.vertex_properties['id'], vertex_font_size = 0.4, vertex_size=1.5,
+                        vertex_text_position = -2, vertex_fill_color=v_colors, mplfig=ax1)
+            if col in replacements:
+                title_extension = "based on " + annot_terms[col]
+            else:
+                title_extension = "based on " + col + " annotations"
+            ax1.set(title="Subnetwork with nodes colored by\nsignificance contribution w.r.t. P-values\n" + title_extension)
+            # create heatmap to extract legend bar
+            ax2 = fig.add_subplot(gs[0, 1])
+            sns.heatmap(data=sig_df, cmap=cmap, yticklabels=1, vmin=-lim, vmax=lim,
+                        cbar=False, ax=ax2).set_visible(False)
+            mappable = ax2.get_children()[0]
+            cbar = plt.colorbar(mappable, ax = [ax1,ax2], orientation = 'horizontal', pad=-0.01)
+            cbar.ax.set_xlabel('Significance contribution')
+            fig.savefig(os.path.join(out_dir, prefix + "_" + stat_type+ "_" + col + '_contribution_graph.' + file_type), bbox_inches='tight')
