@@ -389,23 +389,30 @@ def contribution_heatmap(df, axis_limit, contribution_type: str, input_type, num
 
 def create_contribution_plots(result_sig, input_type, out_dir, prefix, file_type: str = "pdf"):
 
+    top_ids = dict()
     for stat_type in result_sig:
+        top_ids[stat_type] = dict()
         sig_df = pd.DataFrame(result_sig[stat_type]).T
         sig_df = sig_df.rename(columns=replacements)
         limit = sig_df.abs().max().max()
         sub_df = sig_df.loc[list(sig_df.abs().max(axis=1).sort_values(ascending=False)[0:min(len(sig_df.index), 15)].index)]
+        top_ids[stat_type]["absolute"] = sub_df.index.tolist()
         contribution_heatmap(df=sub_df, axis_limit=limit, contribution_type="absolute", input_type=input_type,
                              num = min(len(sig_df.index), 15),
                              out_dir=out_dir, prefix=prefix+"_"+stat_type+"_absolute", file_type=file_type)
         for col in sig_df.columns:
+            top_ids[stat_type][col] = dict()
             sub_df = sig_df.loc[list(sig_df[col].sort_values(ascending=False)[0:min(len(sig_df.index), 15)].index)]
+            top_ids[stat_type][col]["positive"] = sub_df.index.tolist()
             contribution_heatmap(df=sub_df, axis_limit=limit, contribution_type="positive",
                                  input_type=input_type,  num = min(len(sig_df.index), 15), title_ext=" for "+col,
                                  out_dir=out_dir, prefix=prefix+"_"+stat_type+"_"+col+"_positive", file_type=file_type)
             sub_df = sig_df.loc[list(sig_df[col].sort_values(ascending=True)[0:min(len(sig_df.index), 15)].index)]
+            top_ids[stat_type][col]["negative"] = sub_df.index.tolist()
             contribution_heatmap(df=sub_df, axis_limit=limit, contribution_type="negative",
                                  input_type=input_type, num = min(len(sig_df.index), 15), title_ext=" for "+col,
                                  out_dir=out_dir, prefix=prefix+"_"+stat_type+"_"+col+"_negative", file_type=file_type)
+    return top_ids
 
 
 def create_contribution_graphs(result_sig, input_type, tar, network_data,
@@ -453,8 +460,9 @@ def create_contribution_graphs(result_sig, input_type, tar, network_data,
             gs = GridSpec(nrows=1, ncols=2)
             ax1 = fig.add_subplot(gs[0, :])
             ax1.axis('off')
-            draw.graph_draw(sub_g, vertex_text = sub_g.vertex_properties['id'], vertex_font_size = 0.4, vertex_size=1.5,
-                        vertex_text_position = -2, vertex_fill_color=v_colors, mplfig=ax1)
+            draw.graph_draw(sub_g, vertex_text = sub_g.vertex_properties['id'],
+                            vertex_size=0.5 * (int(len(nodes)/10)), vertex_font_size = 0.1 * (int(len(nodes)/10)),
+                            vertex_text_position = -2, vertex_fill_color=v_colors, mplfig=ax1)
             if col in replacements:
                 title_extension = "based on " + annot_terms[col]
             else:
