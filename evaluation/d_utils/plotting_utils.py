@@ -431,15 +431,17 @@ def create_contribution_graphs(result_sig, input_type, tar, network_data,
         else:
             g = gt.load_graph(network_data["network_file"])
             g.vertex_properties['id'] = g.vertex_properties[network_data['prop_name']]
-    nodes = set(tar) if not isinstance(tar, set) else tar
-    vfilt = g.new_vertex_property('bool')
-    for vertex in g.get_vertices():
-        if g.vertex_properties.id[vertex] in nodes:
-            vfilt[vertex] = True
-    sub_g = Graph(GraphView(g, vfilt=vfilt), prune=True)
 
     for stat_type in result_sig:
         sig_df = pd.DataFrame(result_sig[stat_type]).T
+        # create subgraph
+        nodes = set(sig_df.index)
+        vfilt = g.new_vertex_property('bool')
+        for vertex in g.get_vertices():
+            if g.vertex_properties.id[vertex] in nodes:
+                vfilt[vertex] = True
+        sub_g = Graph(GraphView(g, vfilt=vfilt), prune=True)
+
         cmap = sns.color_palette("vlag", as_cmap=True)
         lim = sig_df.abs().max().max()
         norm = colors.Normalize(vmin=-lim, vmax=lim)
