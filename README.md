@@ -80,6 +80,9 @@ optional arguments:
                         Output directory. [Default=./]
   -dg {jaccard,overlap}, --distance_measure {jaccard,overlap}
                         Distance measure. [Default=jaccard]
+  -s SIGNIFICANCE_CONTRIBUTION, --significance_contribution SIGNIFICANCE_CONTRIBUTION
+                        Set flag, if additionally each significance contribution of each input id 
+                        should be calculated. [Be aware this will take #ids * runtime of one run]
   -e, --enriched        Set flag, if only enriched attributes of the reference should be used.
   -c RUNS, --runs RUNS  Number of runs with random target values for p-value calculation.
   -b {complete,term-pres,network}, --background_model {complete,term-pres,network}
@@ -117,7 +120,7 @@ supported background models
 ############################################################################
 ```
 ### Result
-The validation returns the complete result in a json file
+The validation returns the complete validation result in a json file
 ```python
 {'status': 'Status text',
  'input_values': {'values': dict(), 'mapped_ids': list()}, 
@@ -136,5 +139,17 @@ As well as separate table files in .csv format for **p_values** and the **releva
 
 If you set the flag `-p` you will also get plots for each type in **p_value** and a 
 visualization of the mappability information saved under **mapped_ids**.
+
+If you set the flag `-s` the significance contribution of each id separately will be calculated.
+Keep in mind, that the runtime will increase in a linear fashion depending on the number of ids.
+The significance contribution calculation returns the result in a json file
+```python
+{'input ID': {<validation_type> : {<annotation_type>: value}}}
+```
+If you set the flags `-p` and `-s` you will also get heatmaps displaying the top 15 input IDs
+with the hightest absolute contribution and the top 15 input ids with the hightest positive and
+negtaive significance contribution for each annotation type respectively.
+Finally, if you are also using the **mode** subnetwork, the subnetwork with the input ids
+will be recreated as a graph and colored by the significance contribution, as in the heatmaps.
 ### Run with [python package](https://pypi.org/project/biodigest)
 Check out the [tutorial](https://github.com/bionetslab/digest-tutorial) to see examples of usage in a script.

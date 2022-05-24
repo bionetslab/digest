@@ -365,7 +365,8 @@ def significance_contributions(results: dict, tar: Union[pd.DataFrame, set], tar
                                                background_model=background_model, verbose=False, enriched=enriched,
                                                replace=replace, distance=distance, network_data=network_data)
         results_sig.update(result_sig)
-        ru.print_current_usage('{}/{} significance contributions calculated ...'.format(index + 1, len(tar))) if verbose else None
+        ru.print_current_usage(
+            '{}/{} significance contributions calculated ...'.format(index + 1, len(tar))) if verbose else None
         progress(0.05 + ((0.95 / len(tar)) * (index + 1)), str(index + 1) + "/" + str(
             len(tar)) + " significance contributions calculated ...") if progress is not None else None
     # converting id -> stat_type -> values to stat_type -> id -> values
@@ -374,7 +375,7 @@ def significance_contributions(results: dict, tar: Union[pd.DataFrame, set], tar
 
 
 def transform_dict(in_dict):
-    if not in_dict: # if empty
+    if not in_dict:  # if empty
         return in_dict
     out_dict = dict()
     for a in in_dict:
@@ -390,17 +391,17 @@ def save_contribution_results(results: dict, prefix: str, out_dir):
     with open(os.path.join(out_dir, prefix + "_contribution_result.json"), "w") as outfile:
         json.dump(results, outfile)
     # ===== Save output to tables =====
-    if results: # not empty
+    if results:  # not empty
         for stat_type in results:
-            pd.DataFrame(results[stat_type]).T.to_csv(os.path.join(out_dir, prefix +"_"+stat_type+ "_contribution.csv"))
-
+            pd.DataFrame(results[stat_type]).T.to_csv(
+                os.path.join(out_dir, prefix + "_" + stat_type + "_contribution.csv"))
 
 
 if __name__ == "__main__":
     desc = "            Evaluation of disease and gene sets, clusterings or subnetworks."
     args = ru.save_parameters(script_desc=desc,
                               arguments=('r', 'ri', 't', 'ti', 'm', 'o', 'e', 'c', 'v', 'b', 'pr', 'p', 'dg',
-                                         'n', 'ni', 'np'))
+                                         'n', 'ni', 'np', 'sc'))
     mapper = FileMapper()
     res = single_validation(tar=args.target, tar_id=args.target_id_type, verbose=args.verbose,
                             mode=args.mode, ref=args.reference, ref_id=args.reference_id_type, mapper=mapper,
@@ -418,3 +419,27 @@ if __name__ == "__main__":
                         out_dir=args.out_dir, prefix=pref)
         pu.create_extended_plots(results=res, mode=args.mode, mapper=mapper, tar=args.target,
                                  out_dir=args.out_dir, prefix=pref)
+    if res["status"] == "ok":
+        ru.print_current_usage('Calculation of significance contribution') if args.verbose else None
+        if args.significance_contribution:
+            res_sig = significance_contributions(results=res, tar=args.target, tar_id=args.target_id_type,
+                                                 verbose=args.verbose, mode=args.mode, ref=args.reference,
+                                                 ref_id=args.reference_id_type, mapper=mapper,
+                                                 enriched=args.enriched, runs=args.runs, distance=args.distance_measure,
+                                                 background_model=args.background_model, replace=args.replace,
+                                                 network_data={"network_file": args.network,
+                                                               "prop_name": args.network_property_name,
+                                                               "id_type": args.network_id_type})
+            ru.print_current_usage('Save files') if args.verbose else None
+            save_contribution_results(results=res_sig, prefix=pref, out_dir=args.out_dir)
+            if args.plot:
+                ru.print_current_usage('Save plots') if args.verbose else None
+                i_type = "genes" if args.target_id_type in ['uniprot', 'entez', 'symbol', 'ensemble'] else "diseases"
+                pu.create_contribution_plots(result_sig=res_sig, input_type=i_type, out_dir=args.out_dir, prefix=pref)
+
+                if args.mode in ['subnetwork', 'subnetwork-set']:
+                    pu.create_contribution_graphs(result_sig=res_sig, input_type=i_type, tar = args.target,
+                                                  network_data={"network_file": args.network,
+                                                                "prop_name": args.network_property_name,
+                                                                "id_type": args.network_id_type},
+                                                  out_dir=args.out_dir, prefix=pref)

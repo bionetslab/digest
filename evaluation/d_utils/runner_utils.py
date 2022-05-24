@@ -86,6 +86,10 @@ def save_parameters(script_desc: str, arguments):
         optional_args.add_argument("-s", "--setup_type", type=str, default='api', choices=['create', 'api'],
                                    help="Choose 'api' do load data from API (runtime: ~1min) [highly recommended], "
                                         "or 'create' to create it from scratch (runtime: ~3h) [Default=api]")
+    if 'sc' in arguments:
+        optional_args.add_argument("-s", "--significance_contribution", default=False,
+                                   help="Set flag, if additionally each significance contribution of each input id "
+                                        "should be calculated. [Be aware this will take #ids * runtime of one run]")
 
     optional_args.add_argument("-h", "--help", action="help", help="show this help message and exit")
     args = parser.parse_args()
