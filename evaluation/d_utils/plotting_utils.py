@@ -30,6 +30,7 @@ eval_terms = {"DI-based": {"single": "Dunn index", "multi": "Dunn indices"},
               "OC-based": {"single": "Overlap coefficient", "multi": "Overlap coefficients"}}
 annot_terms = {'GO.BP': 'GO.BP-based', 'GO.CC': 'GO.CC-based', 'GO.MF': 'GO.MF-based',
                'KEGG': 'KEGG-based', "related_genes": "associated genes", "related_variants": "associated variants"}
+annot_index = {'GO.BP': 0, 'GO.CC': 1, 'GO.MF': 2, 'KEGG': 3, "related_genes": 0, "related_variants": 1}
 
 
 def create_plots(results, mode, tar, tar_id, out_dir, prefix, file_type: str = "pdf"):
@@ -157,8 +158,8 @@ def value_distribution_plots(results, out_dir, prefix, file_type: str = "pdf"):
         for term_index, term in enumerate(results["input_values"]['values'][eval_term]):
             fig = plt.figure(figsize=(7, 6), dpi=80)
             plt.axvline(float(results["input_values"]['values'][eval_term][term]), color='darkred', lw=10)
-            ax = sns.histplot(df[df["variable"] == term], x="value", kde=True, color=sns.color_palette()[term_index],
-                              bins=10)
+            ax = sns.histplot(df[df["variable"] == term], x="value", kde=True,
+                              color=sns.color_palette()[annot_index[term]], bins=10)
             if term in replacements:
                 plt.title("Distribution of " + eval_terms[eval_term]["multi"] + "\nbased on " + annot_terms[term])
                 plt.xlabel(eval_terms[eval_term]["single"] + " based\non " + annot_terms[term])
@@ -179,7 +180,7 @@ def term_annotation_plots(results, out_dir, prefix, file_type: str = "pdf"):
     df = pd.DataFrame(results["input_values"]["mapped_ids"]).fillna("").applymap(len)
     for term_index, term in enumerate(df.columns):
         fig = plt.figure(figsize=(7, 6), dpi=80)
-        sns.histplot(df, x=term, kde=True, color=sns.color_palette()[term_index], bins=10)
+        sns.histplot(df, x=term, kde=True, color=sns.color_palette()[annot_index[term]], bins=10)
         if term in replacements:
             plt.title("Distribution of numbers\nof " + annot_terms[term])
             plt.xlabel("Number of " + annot_terms[term])
@@ -515,7 +516,8 @@ def create_contribution_graphs(result_sig, input_type, network_data, out_dir, pr
             ax1 = fig.add_subplot(gs[0, :])
             ax1.axis('off')
             draw.graph_draw(sub_g, vertex_text=sub_g.vertex_properties['id'],
-                            vertex_size=0.5 * (int(len(nodes) / 10)), vertex_font_size=0.1 * (int(len(nodes) / 10)),
+                            vertex_size=max(0.25, 0.5 * (int(len(nodes) / 10))),
+                            vertex_font_size=max(0.04, 0.1 * (int(len(nodes) / 10))),
                             vertex_text_position=-2, vertex_fill_color=v_colors, mplfig=ax1)
             if col in replacements:
                 title_extension = "based on " + annot_terms[col]
