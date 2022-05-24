@@ -238,7 +238,6 @@ def get_random_runs_values(comparator: comp.Comparator, mode: str, mapper: Mappe
             if result:
                 results[0].append(result)
 
-
     # ===== Special case cluster =====
     else:
         # ===== Calculate values =====
@@ -288,8 +287,12 @@ def significance_contribution(results: dict, excluded: str, tar: Union[pd.DataFr
                               background_model: str = "complete",
                               replace=100, verbose: bool = False, network_data: dict = None):
     """
+    Calculate the significance contribution of the excluded id by removing it from the target set,
+    running the single_validation on the subset and then comparing the empirical p-values to determine, if
+    including the id in the original set would create a positive or negative contribution.
 
-
+    :param results: results from the single_validation run to compare to
+    :param excluded: id of which the significance contribution should be calculated for
     :param tar: cluster as type dataframe with columns=["id","cluster"] or set as type set
     :param tar_id: id type of target input
     :param mode: comparison mode [set, set-set, clustering, subnetwork, subnetwork-set]
@@ -308,6 +311,7 @@ def significance_contribution(results: dict, excluded: str, tar: Union[pd.DataFr
     """
     if results["status"] != "ok":
         return dict()
+    # ===== Create new subset =====
     if isinstance(tar, set):
         new_tar = tar.copy()
         new_tar.remove(excluded)
@@ -319,12 +323,13 @@ def significance_contribution(results: dict, excluded: str, tar: Union[pd.DataFr
         new_tar.remove(excluded)
     else:  # isinstance(tar, pd.DataFrame):
         new_tar = tar[tar[tar.columns[0]] != excluded]
-
+    # ===== Run single validation on new subset =====
     results_sig = single_validation(tar=new_tar, tar_id=tar_id, ref=ref, ref_id=ref_id,
                                     mode=mode, mapper=mapper, runs=runs,
                                     background_model=background_model, verbose=verbose,
                                     enriched=enriched, replace=replace,
                                     distance=distance, network_data=network_data)
+    # ===== Calculate significance contribution =====
     new_df = pd.DataFrame(results_sig["p_values"]['values']) - pd.DataFrame(results["p_values"]['values'])
     return {excluded: new_df.to_dict()}
 
@@ -336,8 +341,11 @@ def significance_contributions(results: dict, tar: Union[pd.DataFrame, set], tar
                                replace=100, verbose: bool = False, network_data: dict = None,
                                progress: Callable[[float, str], None] = None):
     """
+    Calculate the significance contribution of every input id separately by removing it from the target set,
+    running the single_validation on the subset and then comparing the empirical p-values to determine, if
+    including the id in the original set would create a positive or negative contribution.
 
-
+    :param results: results from the single_validation run to compare to
     :param tar: cluster as type dataframe with columns=["id","cluster"] or set as type set
     :param tar_id: id type of target input
     :param mode: comparison mode [set, set-set, clustering, subnetwork, subnetwork-set]
@@ -359,6 +367,7 @@ def significance_contributions(results: dict, tar: Union[pd.DataFrame, set], tar
         return dict()
     results_sig = dict()
     progress(0.05, "Prepare for run ...") if progress is not None else None
+    # ===== Calculate significance for each id from input set =====
     for index, excluded in enumerate(tar):
         result_sig = significance_contribution(results=results, excluded=excluded, tar=tar, tar_id=tar_id, ref=ref,
                                                ref_id=ref_id, mode=mode, mapper=mapper, runs=runs,
@@ -369,12 +378,20 @@ def significance_contributions(results: dict, tar: Union[pd.DataFrame, set], tar
             '{}/{} significance contributions calculated ...'.format(index + 1, len(tar))) if verbose else None
         progress(0.05 + ((0.95 / len(tar)) * (index + 1)), str(index + 1) + "/" + str(
             len(tar)) + " significance contributions calculated ...") if progress is not None else None
-    # converting id -> stat_type -> values to stat_type -> id -> values
+    # ===== Transform dict for later plot use =====
+    # id -> stat_type -> values to stat_type -> id -> values
     final_results_sig = transform_dict(results_sig)
     return final_results_sig
 
 
 def transform_dict(in_dict):
+    """
+    Transform dictionary from significance calculation.
+    id -> stat_type -> values to stat_type -> id -> values
+
+    :param in_dict: result dict from significance_calculations
+    :return: transformed dictionary
+    """
     if not in_dict:  # if empty
         return in_dict
     out_dict = dict()
@@ -438,7 +455,7 @@ if __name__ == "__main__":
                 pu.create_contribution_plots(result_sig=res_sig, input_type=i_type, out_dir=args.out_dir, prefix=pref)
 
                 if args.mode in ['subnetwork', 'subnetwork-set']:
-                    pu.create_contribution_graphs(result_sig=res_sig, input_type=i_type, tar = args.target,
+                    pu.create_contribution_graphs(result_sig=res_sig, input_type=i_type,
                                                   network_data={"network_file": args.network,
                                                                 "prop_name": args.network_property_name,
                                                                 "id_type": args.network_id_type},

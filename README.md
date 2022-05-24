@@ -147,7 +147,7 @@ The significance contribution calculation returns the result in a json file
 {'input ID': {<validation_type> : {<annotation_type>: value}}}
 ```
 If you set the flags `-p` and `-s` you will also get heatmaps displaying the top 15 input IDs
-with the hightest absolute contribution and the top 15 input ids with the hightest positive and
+with the hightest absolute contribution and the top 10 input ids with the hightest positive and
 negtaive significance contribution for each annotation type respectively.
 Finally, if you are also using the **mode** subnetwork, the subnetwork with the input ids
 will be recreated as a graph and colored by the significance contribution, as in the heatmaps.

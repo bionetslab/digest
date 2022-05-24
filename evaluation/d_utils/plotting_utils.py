@@ -28,8 +28,9 @@ eval_terms = {"DI-based": {"single": "Dunn index", "multi": "Dunn indices"},
               "DBI-based": {"single": "Davis-Bouldin index", "multi": "Davis-Bouldin indices"},
               "JI-based": {"single": "Jaccard index", "multi": "Jaccard indices"},
               "OC-based": {"single": "Overlap coefficient", "multi": "Overlap coefficients"}}
-annot_terms = {'GO.BP': 'GO.BP-based', 'GO.CC':'GO.CC-based', 'GO.MF':'GO.MF-based',
+annot_terms = {'GO.BP': 'GO.BP-based', 'GO.CC': 'GO.CC-based', 'GO.MF': 'GO.MF-based',
                'KEGG': 'KEGG-based', "related_genes": "associated genes", "related_variants": "associated variants"}
+
 
 def create_plots(results, mode, tar, tar_id, out_dir, prefix, file_type: str = "pdf"):
     """
@@ -60,7 +61,8 @@ def cluster_plot(results, user_input, out_dir, prefix, file_type: str = "pdf"):
     for val in results["p_values"]["values"]:
         p_value_df["log_p-values"] = p_value_df[val].apply(lambda x: -math.log10(x))
         # ===== Plot scatterplot =====
-        p_value_plot(title="Empirical P-value\nbased on " +eval_terms[val]["single"], p_value_df=p_value_df, out_dir=out_dir,
+        p_value_plot(title="Empirical P-value\nbased on " + eval_terms[val]["single"], p_value_df=p_value_df,
+                     out_dir=out_dir,
                      prefix=prefix + "_" + val, file_type=file_type)
     # ===== Prepare for mappability plot =====
     mapped_df = user_input["clustering"][['id', 'cluster']]
@@ -72,8 +74,8 @@ def cluster_plot(results, user_input, out_dir, prefix, file_type: str = "pdf"):
     mapped_df = mapped_df.replace(replacements).sort_values(['attribute']).reset_index(drop=True)
     mapped_df["fraction"] = mapped_df.apply(lambda x: x['count'] / cluster_sizes[x['cluster']], axis=1)
     # ===== Plot mappability plot =====
-    mappability_plot(title="Mappability of input\ninput to annotations", in_type=in_type, mapped_df=mapped_df, out_dir=out_dir,
-                     prefix=prefix, cluster=True, file_type=file_type)
+    mappability_plot(title="Mappability of input\ninput to annotations", in_type=in_type, mapped_df=mapped_df,
+                     out_dir=out_dir, prefix=prefix, cluster=True, file_type=file_type)
 
 
 def set_plot(results, user_input, out_dir, prefix, file_type: str = "pdf"):
@@ -86,7 +88,7 @@ def set_plot(results, user_input, out_dir, prefix, file_type: str = "pdf"):
     p_value_df = p_value_df.replace(replacements).sort_values(['attribute']).reset_index(drop=True)
     # ===== Plot scatterplot =====
     for val in results["p_values"]["values"]:
-        p_value_plot(title="Empirical P-value\nbased on " +eval_terms[val]["single"], p_value_df=p_value_df,
+        p_value_plot(title="Empirical P-value\nbased on " + eval_terms[val]["single"], p_value_df=p_value_df,
                      out_dir=out_dir, prefix=prefix + "_" + val, file_type=file_type)
     # ===== Prepare for mappability plot =====
     mapped_df = pd.DataFrame()
@@ -98,7 +100,8 @@ def set_plot(results, user_input, out_dir, prefix, file_type: str = "pdf"):
     mapped_df = mapped_df.rename_axis('attribute').reset_index()
     mapped_df = mapped_df.replace(replacements).sort_values(['attribute']).reset_index(drop=True)
     # ===== Plot mappability plot =====
-    mappability_plot(title="Mappability of\ninput to annotations", in_type=in_type, mapped_df=mapped_df, out_dir=out_dir,
+    mappability_plot(title="Mappability of\ninput to annotations", in_type=in_type, mapped_df=mapped_df,
+                     out_dir=out_dir,
                      prefix=prefix, cluster=False, file_type=file_type)
 
 
@@ -125,16 +128,19 @@ def mappability_plot(title, in_type, mapped_df, out_dir, prefix, cluster=False, 
     fig.savefig(os.path.join(out_dir, prefix + '_mappability.' + file_type), bbox_inches='tight')
 
 
-def create_extended_plots(results, mode, tar, out_dir, prefix, file_type: str = "pdf", mapper:Mapper = FileMapper()):
+def create_extended_plots(results, mode, tar, out_dir, prefix, file_type: str = "pdf", mapper: Mapper = FileMapper()):
     """
+    Create extended plots displaying the distribution of calculated values for each random run,
+    the distribution of mapped number of terms per id from the input set and sankey plots
+    showing the top 10 mapped terms between the input ids.
 
     :param results: results generated from single_validation method
     :param mode: comparison mode [set, id-set, set-set, cluster]
     :param tar: path to the file with the target input
-    :param tar_id: id type of target input
     :param out_dir: output directory for results
     :param prefix: prefix for the file name
     :param file_type: file ending the plots should have [Default=pdf]
+    :param mapper: mapper from type Mapper defining where the mapping files lie [Default=FileMapper]
     :return:
     """
     Path(out_dir).mkdir(parents=True, exist_ok=True)  # make sure output dir exists
@@ -187,10 +193,10 @@ def term_annotation_plots(results, out_dir, prefix, file_type: str = "pdf"):
 
 
 def sankey_plot(results, mode, out_dir, prefix, file_type: str = "pdf", tar_cluster=None, include_others=False,
-                mapper:Mapper = FileMapper()):
+                mapper: Mapper = FileMapper()):
     full_df = pd.DataFrame(results["input_values"]["mapped_ids"])
     for term_index, term in enumerate(full_df.columns):
-        if len(full_df[[term]].dropna()) == 0: # save empty plot
+        if len(full_df[[term]].dropna()) == 0:  # save empty plot
             fig = plt.figure(dpi=80)
             plt.show()
             fig.savefig(os.path.join(out_dir, prefix + '_' + term + '_sankey.' + file_type),
@@ -242,9 +248,14 @@ def sankey(data, out_dir, prefix, file_type: str = "pdf", color_dict=None, aspec
     """
     Make Sankey Diagram showing flow from left-->right
 
+    :param data: dataframe with information to plot
+    :param out_dir: output directory for results
+    :param prefix: prefix for the file name
+    :param file_type: file ending the plots should have [Default=pdf]
     :param color_dict: dictionary of colors to use for each label {'label':'color'}
     :param aspect: vertical extent of the diagram in units of horizontal extent
     :param right_color: if true, each strip in the diagram will be be colored according to its left label
+    :param term: annotation type for naming
 
     original: https://github.com/anazalea/pySankey
     """
@@ -375,7 +386,7 @@ def sankey(data, out_dir, prefix, file_type: str = "pdf", color_dict=None, aspec
 
 
 def contribution_heatmap(df, axis_limit, contribution_type: str, input_type, num,
-                         out_dir, prefix, title_ext="",  file_type: str = "pdf"):
+                         out_dir, prefix, title_ext="", file_type: str = "pdf"):
     fig = plt.figure(figsize=(7, 6), dpi=80)
     sns.heatmap(data=df, cmap=sns.color_palette("vlag"), yticklabels=1, vmin=-axis_limit, vmax=axis_limit,
                 cbar_kws={'label': 'Significance contribution'})
@@ -388,41 +399,82 @@ def contribution_heatmap(df, axis_limit, contribution_type: str, input_type, num
 
 
 def create_contribution_plots(result_sig, input_type, out_dir, prefix, file_type: str = "pdf"):
+    """
+    Create heatmaps displaying the calculated significance contribution per input id for each
+    annotation type respectively. This includes an overview heatmap with the top 15 genes with the
+    highest overall absolute significance contribution and 2 plots, positive and negative contribution
+    for each annotation type.
 
+    :param result_sig: result generate from significance contribution
+    :param input_type: type if input ids. Either "genes" or "diseases"
+    :param out_dir: output directory for results
+    :param prefix: prefix for the file name
+    :param file_type: file ending the plots should have [Default=pdf]
+    :return:
+    """
     top_ids = dict()
     for stat_type in result_sig:
         top_ids[stat_type] = dict()
+        # ===== Transform to dataframe for validation type =====
         sig_df = pd.DataFrame(result_sig[stat_type]).T
         sig_df = sig_df.rename(columns=replacements)
         limit = sig_df.abs().max().max()
-        sub_df = sig_df.loc[list(sig_df.abs().max(axis=1).sort_values(ascending=False)[0:min(len(sig_df.index), 15)].index)]
+        # ===== Plot top 15 ids with highest absolute significance contribution =====
+        sub_df = sig_df.loc[
+            list(sig_df.abs().max(axis=1).sort_values(ascending=False)[0:min(len(sig_df.index), 15)].index)]
         top_ids[stat_type]["absolute"] = sub_df.index.tolist()
         contribution_heatmap(df=sub_df, axis_limit=limit, contribution_type="absolute", input_type=input_type,
-                             num = min(len(sig_df.index), 15),
-                             out_dir=out_dir, prefix=prefix+"_"+stat_type+"_absolute", file_type=file_type)
+                             num=min(len(sig_df.index), 15),
+                             out_dir=out_dir, prefix=prefix + "_" + stat_type + "_absolute", file_type=file_type)
         for col in sig_df.columns:
             top_ids[stat_type][col] = dict()
-            sub_df = sig_df.loc[list(sig_df[col].sort_values(ascending=False)[0:min(len(sig_df.index), 15)].index)]
+            if col in replacements:
+                title_ext = "\nfor " + annot_terms[col]
+            else:
+                title_ext = "\nfor " + col + " annotation"
+            # ===== Plot top 10 ids with highest positive significance contribution =====
+            sub_df = sig_df.loc[list(sig_df[col].sort_values(ascending=False)[0:min(len(sig_df.index), 10)].index)]
             top_ids[stat_type][col]["positive"] = sub_df.index.tolist()
             contribution_heatmap(df=sub_df, axis_limit=limit, contribution_type="positive",
-                                 input_type=input_type,  num = min(len(sig_df.index), 15), title_ext=" for "+col,
-                                 out_dir=out_dir, prefix=prefix+"_"+stat_type+"_"+col+"_positive", file_type=file_type)
-            sub_df = sig_df.loc[list(sig_df[col].sort_values(ascending=True)[0:min(len(sig_df.index), 15)].index)]
+                                 input_type=input_type, num=min(len(sig_df.index), 10), title_ext=title_ext,
+                                 out_dir=out_dir, prefix=prefix + "_" + stat_type + "_" + col + "_positive",
+                                 file_type=file_type)
+            # ===== Plot top 10 ids with highest negative significance contribution =====
+            sub_df = sig_df.loc[list(sig_df[col].sort_values(ascending=True)[0:min(len(sig_df.index), 10)].index)]
             top_ids[stat_type][col]["negative"] = sub_df.index.tolist()
             contribution_heatmap(df=sub_df, axis_limit=limit, contribution_type="negative",
-                                 input_type=input_type, num = min(len(sig_df.index), 15), title_ext=" for "+col,
-                                 out_dir=out_dir, prefix=prefix+"_"+stat_type+"_"+col+"_negative", file_type=file_type)
+                                 input_type=input_type, num=min(len(sig_df.index), 10), title_ext=title_ext,
+                                 out_dir=out_dir, prefix=prefix + "_" + stat_type + "_" + col + "_negative",
+                                 file_type=file_type)
     return top_ids
 
 
-def create_contribution_graphs(result_sig, input_type, tar, network_data,
-                               out_dir, prefix, file_type: str = "pdf", mapper: Mapper = FileMapper()):
+def create_contribution_graphs(result_sig, input_type, network_data, out_dir, prefix,
+                               file_type: str = "pdf", mapper: Mapper = FileMapper()):
+    """
+    For mode subnetwork this will recreate the subnetwork by identifying the input ids in the given network,
+    or default network if network_data is None, visualize it and color it based on the significance
+    contribution per annotation type respectively.
+
+    :param result_sig: result generate from significance contribution
+    :param input_type: type if input ids. Either "genes" or "diseases"
+    :param network_data: dict consisting of {"network_file": path to network file,
+    "prop_name": name of vertex property with ids if network file of type graphml or gt,
+    "id_type": id type of network ids}
+    :param out_dir: output directory for results
+    :param prefix: prefix for the file name
+    :param file_type: file ending the plots should have [Default=pdf]
+    :param mapper: mapper from type Mapper defining where the mapping files lie [Default=FileMapper]
+    :return:
+    """
     if network_data is None:
+        # ===== Load default network =====
         if input_type == "diseases":
             g = gt.load_graph(os.path.join(mapper.files_dir, "ddi_graph.graphml"))
         else:
             g = gt.load_graph(os.path.join(mapper.files_dir, "ggi_graph.graphml"))
     else:
+        # ===== Load input network =====
         if network_data["network_file"].endswith(".sif"):
             df = pd.read_csv(network_data["network_file"], sep="\t", header=None)
             g = gt.Graph(directed=False)
@@ -434,7 +486,7 @@ def create_contribution_graphs(result_sig, input_type, tar, network_data,
 
     for stat_type in result_sig:
         sig_df = pd.DataFrame(result_sig[stat_type]).T
-        # create subgraph
+        # ===== Create subgraph =====
         nodes = set(sig_df.index)
         vfilt = g.new_vertex_property('bool')
         for vertex in g.get_vertices():
@@ -448,33 +500,36 @@ def create_contribution_graphs(result_sig, input_type, tar, network_data,
 
         for col in sig_df.columns:
             rgba_values = cmap(norm(sig_df[col]))
-            # save colors for heatmap
+            # ==== Save colors for heatmap ====
             col_dic = dict()
-            for i,g in enumerate(sig_df[col].index):
+            for i, g in enumerate(sig_df[col].index):
                 col_dic[g] = colors.to_hex(rgba_values[i])
             v_colors = sub_g.new_vertex_property("string")
-            # assign colors to nodes
+            # ==== Assign colors to nodes ====
             for v in sub_g.vertices():
                 v_colors[v] = col_dic[sub_g.vp.id[v]]
-
+            # ==== Draw subgraph ====
             plt.switch_backend("cairo")
             fig = plt.figure(figsize=(12, 8))
             gs = GridSpec(nrows=1, ncols=2)
             ax1 = fig.add_subplot(gs[0, :])
             ax1.axis('off')
-            draw.graph_draw(sub_g, vertex_text = sub_g.vertex_properties['id'],
-                            vertex_size=0.5 * (int(len(nodes)/10)), vertex_font_size = 0.1 * (int(len(nodes)/10)),
-                            vertex_text_position = -2, vertex_fill_color=v_colors, mplfig=ax1)
+            draw.graph_draw(sub_g, vertex_text=sub_g.vertex_properties['id'],
+                            vertex_size=0.5 * (int(len(nodes) / 10)), vertex_font_size=0.1 * (int(len(nodes) / 10)),
+                            vertex_text_position=-2, vertex_fill_color=v_colors, mplfig=ax1)
             if col in replacements:
                 title_extension = "based on " + annot_terms[col]
             else:
                 title_extension = "based on " + col + " annotations"
-            ax1.set(title="Subnetwork with nodes colored by\nsignificance contribution w.r.t. P-values\n" + title_extension)
-            # create heatmap to extract legend bar
+            ax1.set(
+                title="Subnetwork with nodes colored by\nsignificance contribution w.r.t. P-values\n" + title_extension)
+            # ==== Create heatmap to extract legend bar ====
             ax2 = fig.add_subplot(gs[0, 1])
             sns.heatmap(data=sig_df, cmap=cmap, yticklabels=1, vmin=-lim, vmax=lim,
                         cbar=False, ax=ax2).set_visible(False)
             mappable = ax2.get_children()[0]
-            cbar = plt.colorbar(mappable, ax = [ax1,ax2], orientation = 'horizontal', pad=-0.01)
+            cbar = plt.colorbar(mappable, ax=[ax1, ax2], orientation='horizontal', pad=-0.01)
             cbar.ax.set_xlabel('Significance contribution')
-            fig.savefig(os.path.join(out_dir, prefix + "_" + stat_type+ "_" + col + '_contribution_graph.' + file_type), bbox_inches='tight')
+            fig.savefig(
+                os.path.join(out_dir, prefix + "_" + stat_type + "_" + col + '_contribution_graph.' + file_type),
+                bbox_inches='tight')
