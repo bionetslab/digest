@@ -386,12 +386,12 @@ def sankey(data, out_dir, prefix, file_type: str = "pdf", color_dict=None, aspec
                 bbox_inches='tight')
 
 
-def contribution_heatmap(df, axis_limit, contribution_type: str, input_type, num,
+def contribution_heatmap(df, axis_limit, contribution_type: str, num,
                          out_dir, prefix, title_ext="", file_type: str = "pdf"):
     fig = plt.figure(figsize=(7, 6), dpi=80)
     sns.heatmap(data=df, cmap=sns.color_palette("vlag"), yticklabels=1, vmin=-axis_limit, vmax=axis_limit,
                 cbar_kws={'label': 'Significance contribution'})
-    plt.title("Top " + str(num) + " " + input_type + " with\nlargest " + contribution_type
+    plt.title("Top " + str(num) + " IDs with\nlargest " + contribution_type
               + " contributions\nto empirical P-values" + title_ext)
     plt.yticks(rotation=0)
     fig.tight_layout()
@@ -399,7 +399,7 @@ def contribution_heatmap(df, axis_limit, contribution_type: str, input_type, num
                 bbox_inches='tight')
 
 
-def create_contribution_plots(result_sig, input_type, out_dir, prefix, file_type: str = "pdf"):
+def create_contribution_plots(result_sig, out_dir, prefix, file_type: str = "pdf"):
     """
     Create heatmaps displaying the calculated significance contribution per input id for each
     annotation type respectively. This includes an overview heatmap with the top 15 genes with the
@@ -407,7 +407,6 @@ def create_contribution_plots(result_sig, input_type, out_dir, prefix, file_type
     for each annotation type.
 
     :param result_sig: result generate from significance contribution
-    :param input_type: type if input ids. Either "genes" or "diseases"
     :param out_dir: output directory for results
     :param prefix: prefix for the file name
     :param file_type: file ending the plots should have [Default=pdf]
@@ -418,16 +417,17 @@ def create_contribution_plots(result_sig, input_type, out_dir, prefix, file_type
         top_ids[stat_type] = dict()
         # ===== Transform to dataframe for validation type =====
         sig_df = pd.DataFrame(result_sig[stat_type]).T
-        sig_df = sig_df.rename(columns=replacements)
+        raw_cols = sig_df.columns
+        #sig_df = sig_df.rename(columns=replacements)
         limit = sig_df.abs().max().max()
         # ===== Plot top 15 ids with highest absolute significance contribution =====
         sub_df = sig_df.loc[
             list(sig_df.abs().max(axis=1).sort_values(ascending=False)[0:min(len(sig_df.index), 15)].index)]
         top_ids[stat_type]["absolute"] = sub_df.index.tolist()
-        contribution_heatmap(df=sub_df, axis_limit=limit, contribution_type="absolute", input_type=input_type,
+        contribution_heatmap(df=sub_df.rename(columns=replacements), axis_limit=limit, contribution_type="absolute",
                              num=min(len(sig_df.index), 15),
                              out_dir=out_dir, prefix=prefix + "_" + stat_type + "_absolute", file_type=file_type)
-        for col in sig_df.columns:
+        for col in raw_cols:
             top_ids[stat_type][col] = dict()
             if col in replacements:
                 title_ext = "\nfor " + annot_terms[col]
@@ -436,21 +436,21 @@ def create_contribution_plots(result_sig, input_type, out_dir, prefix, file_type
             # ===== Plot top 10 ids with highest positive significance contribution =====
             sub_df = sig_df.loc[list(sig_df[col].sort_values(ascending=False)[0:min(len(sig_df.index), 10)].index)]
             top_ids[stat_type][col]["positive"] = sub_df.index.tolist()
-            contribution_heatmap(df=sub_df, axis_limit=limit, contribution_type="positive",
-                                 input_type=input_type, num=min(len(sig_df.index), 10), title_ext=title_ext,
+            contribution_heatmap(df=sub_df.rename(columns=replacements), axis_limit=limit, contribution_type="positive",
+                                 num=min(len(sig_df.index), 10), title_ext=title_ext,
                                  out_dir=out_dir, prefix=prefix + "_" + stat_type + "_" + col + "_positive",
                                  file_type=file_type)
             # ===== Plot top 10 ids with highest negative significance contribution =====
             sub_df = sig_df.loc[list(sig_df[col].sort_values(ascending=True)[0:min(len(sig_df.index), 10)].index)]
             top_ids[stat_type][col]["negative"] = sub_df.index.tolist()
-            contribution_heatmap(df=sub_df, axis_limit=limit, contribution_type="negative",
-                                 input_type=input_type, num=min(len(sig_df.index), 10), title_ext=title_ext,
+            contribution_heatmap(df=sub_df.rename(columns=replacements), axis_limit=limit, contribution_type="negative",
+                                 num=min(len(sig_df.index), 10), title_ext=title_ext,
                                  out_dir=out_dir, prefix=prefix + "_" + stat_type + "_" + col + "_negative",
                                  file_type=file_type)
     return top_ids
 
 
-def create_contribution_graphs(result_sig, input_type, network_data, out_dir, prefix,
+def create_contribution_graphs(result_sig, tar_id, network_data, out_dir, prefix,
                                file_type: str = "pdf", mapper: Mapper = FileMapper()):
     """
     For mode subnetwork this will recreate the subnetwork by identifying the input ids in the given network,
@@ -470,10 +470,12 @@ def create_contribution_graphs(result_sig, input_type, network_data, out_dir, pr
     """
     if network_data is None:
         # ===== Load default network =====
-        if input_type == "diseases":
-            g = gt.load_graph(os.path.join(mapper.files_dir, "ddi_graph.graphml"))
-        else:
+        if tar_id in c.SUPPORTED_GENE_IDS:
             g = gt.load_graph(os.path.join(mapper.files_dir, "ggi_graph.graphml"))
+            network_data = {"id_type": "entrez"}
+        else:
+            g = gt.load_graph(os.path.join(mapper.files_dir, "ddi_graph.graphml"))
+            network_data = {"id_type": "mondo"}
     else:
         # ===== Load input network =====
         if network_data["network_file"].endswith(".sif"):
@@ -487,13 +489,43 @@ def create_contribution_graphs(result_sig, input_type, network_data, out_dir, pr
 
     for stat_type in result_sig:
         sig_df = pd.DataFrame(result_sig[stat_type]).T
-        # ===== Create subgraph =====
+        full_tar_id, full_net_id = c.ID_TYPE_KEY[tar_id], c.ID_TYPE_KEY[network_data["id_type"]]
+        # ===== Select subnetwork nodes =====
         nodes = set(sig_df.index)
+        if network_data["id_type"] != tar_id:
+            mapping_name = "gene_ids" if tar_id in c.SUPPORTED_GENE_IDS else "disorder_ids"
+            cur_mapping = mapper.loaded_mappings[mapping_name].explode(full_tar_id).explode(full_net_id).fillna("")
+            # ===== Remap ids =====
+            cur_mapping = cur_mapping[cur_mapping[full_tar_id].isin(nodes)][[full_net_id, full_tar_id]]
+            nodes = set(cur_mapping[full_net_id])
+        # ===== Create subgraph =====
         vfilt = g.new_vertex_property('bool')
         for vertex in g.get_vertices():
             if g.vertex_properties.id[vertex] in nodes:
                 vfilt[vertex] = True
         sub_g = Graph(GraphView(g, vfilt=vfilt), prune=True)
+
+        if network_data["id_type"] != tar_id:
+            id_dict = cur_mapping.groupby(full_net_id).agg({full_tar_id: lambda x: set(x)}).to_dict()[full_tar_id]
+            # ===== Create new edge list =====
+            new_edge_list = list()
+            for from_vertex in sub_g.get_vertices(): # iterate over all vertices
+                for to_vertex in sub_g.get_all_neighbors(from_vertex): # iterate over all partners
+                    for remap_from_vertex in id_dict[sub_g.vp.id[from_vertex]]: # remap to input ids
+                        for remap_to_vertex in id_dict[sub_g.vp.id[to_vertex]]: # remap to input ids
+                            new_edge_list.append([remap_from_vertex, remap_to_vertex])
+            # ===== Create new subgraph =====
+            sub_g = gt.Graph(directed=False)
+            v_ids = sub_g.add_edge_list(new_edge_list, hashed=True)
+            sub_g.vertex_properties['id'] = v_ids
+            gt.stats.remove_parallel_edges(sub_g)
+            # ===== Add missing nodes =====
+            missing_nodes =  set(cur_mapping[full_tar_id])
+            for vertex in sub_g.get_vertices():
+                missing_nodes.remove(sub_g.vp.id[vertex])
+            for node in missing_nodes:
+                vertex = sub_g.add_vertex()
+                sub_g.vp.id[vertex] = node
 
         cmap = sns.color_palette("vlag", as_cmap=True)
         lim = sig_df.abs().max().max()
