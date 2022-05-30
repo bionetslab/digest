@@ -31,11 +31,12 @@ def get_disease_to_attributes(disease_set, id_type, mapper: Mapper):
     # ===== Get att for missing values =====
     if len(missing_hits) > 0:
         mapping = get_attributes_from_database(missing=missing_hits)
-        mapping = mapping.fillna('').groupby(id_type, as_index=False).agg(
-            {x: mu.combine_rows_to_set for x in config.DISEASE_ATTRIBUTES_KEY})
-        # ===== Add results from missing values =====
-        mapper.update_mappings(in_df=mapping, key='disorder_atts')
-        hit_mapping = pd.concat([hit_mapping, mapping]) if not hit_mapping.empty else mapping
+        if not mapping.empty:
+            mapping = mapping.fillna('').groupby(id_type, as_index=False).agg(
+                {x: mu.combine_rows_to_set for x in config.DISEASE_ATTRIBUTES_KEY})
+            # ===== Add results from missing values =====
+            mapper.update_mappings(in_df=mapping, key='disorder_atts')
+            hit_mapping = pd.concat([hit_mapping, mapping]) if not hit_mapping.empty else mapping
     # ===== Map back to previous ids =====
     hit_mapping = mu.map_to_prev_id(main_id_type="mondo", id_type=id_type,
                                     id_mapping=disorder_mapping, att_mapping=hit_mapping)
