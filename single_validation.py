@@ -123,7 +123,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
                                              runs=runs, progress=progress)
         # ===== Statistical analysis =====
         ru.print_current_usage('Calculating p-values ...') if verbose else None
-        p_values_di = eu.calc_pvalue(test_value=my_value_di, random_values=comp_values[0], maximize=False)
+        p_values_di = eu.calc_pvalue(test_value=my_value_di, random_values=comp_values[0], maximize=True)
         p_values_ss = eu.calc_pvalue(test_value=my_value_ss, random_values=comp_values[1], maximize=True)
         p_values_dbi = eu.calc_pvalue(test_value=my_value_dbi, random_values=comp_values[2],
                                       maximize=False)
