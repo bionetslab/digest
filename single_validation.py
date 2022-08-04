@@ -42,6 +42,8 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
     ru.start_time = time.time()
     ru.print_current_usage('Check for proper setup ...') if verbose else None
     mapper.check_for_setup_sources()
+    ru.print_current_usage('Check for proper id input ...') if verbose else None
+    tar = normalize_ids(tar=tar, tar_id=tar_id)
     # ===== Comparison with a set =====
     ru.print_current_usage('Starting validation ...')
     progress(0.01, "Load mappings...") if progress is not None else None
@@ -67,11 +69,8 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         if comparator.mapping.empty:
             error_mappings.append("target set")
         if len(error_mappings) > 0:
-            ru.print_current_usage(
-                'Exit validation: No mapping found for ' + ' and '.join(error_mappings)) if verbose else None
-            return {'status': 'No mapping found for ' + ' and '.join(error_mappings),
-                    'input_values': {'values': None, 'mapped_ids': []}, 'random_values': None,
-                    'p_values': {'values': None}}
+            raise Exception('No mapping found for ' + ' and '.join(error_mappings) +
+                            '. Please check if ID type is correct.')
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...') if verbose else None
         progress(0.1, "Validation of input...") if progress is not None else None
@@ -105,11 +104,7 @@ def single_validation(tar: Union[pd.DataFrame, set], tar_id: str, mode: str, dis
         comparator.load_target(id_set=tar, id_type=tar_id)
         # ===== Check if mappings possible =====
         if comparator.mapping.empty:
-            ru.print_current_usage(
-                'Exit validation: No mapping found for target cluster') if verbose else None
-            return {'status': 'No mapping found for target cluster',
-                    'input_values': {'values': None, 'mapped_ids': []},
-                    'random_values': {'values': None}, 'p_values': {'values': None}}
+            raise Exception('No mapping found for target cluster. Please check if ID type is correct.')
         # ===== Get validation values of input =====
         ru.print_current_usage('Validation of input ...') if verbose else None
         progress(0.1, "Validation of input...") if progress is not None else None
@@ -309,8 +304,12 @@ def significance_contribution(results: dict, excluded: str, tar: Union[pd.DataFr
     "prop_name": name of vertex property with ids if network file of type graphml or gt,
     "id_type": id type of network ids}
     """
+    ru.print_current_usage('Check for usable results values ...') if verbose else None
     if results["status"] != "ok":
-        return dict()
+        raise Exception('Status of results input is not ok. Please check your results again.')
+    ru.print_current_usage('Check for proper id input ...') if verbose else None
+    tar = normalize_ids(tar=tar, tar_id=tar_id)
+    excluded = normalize_ids(tar=excluded, tar_id=tar_id)
     # ===== Create new subset =====
     if isinstance(tar, set):
         new_tar = tar.copy()
@@ -363,12 +362,16 @@ def significance_contributions(results: dict, tar: Union[pd.DataFrame, set], tar
     "id_type": id type of network ids}
     :param progress: method that will get a float [0,1] and message indicating the current progress
     """
+    ru.print_current_usage('Check for usable results values ...') if verbose else None
     if results["status"] != "ok":
-        return dict()
+        raise Exception('Status of results input is not ok. Please check your results again.')
+    ru.print_current_usage('Check for proper id input ...') if verbose else None
+    tar = normalize_ids(tar=tar, tar_id=tar_id)
     results_sig = dict()
     progress(0.05, "Prepare for run ...") if progress is not None else None
-    # ===== Calculate significance for each id from input set =====
-    for index, excluded in enumerate(tar):
+    # ===== Calculate significance for each id from input =====
+    id_set = tar if isinstance(tar, set) else tar["id"]
+    for index, excluded in enumerate(id_set):
         result_sig = significance_contribution(results=results, excluded=excluded, tar=tar, tar_id=tar_id, ref=ref,
                                                ref_id=ref_id, mode=mode, mapper=mapper, runs=runs,
                                                background_model=background_model, verbose=False, enriched=enriched,
@@ -401,6 +404,23 @@ def transform_dict(in_dict):
                 out_dict[b] = dict()
             out_dict[b][a] = in_dict[a][b]
     return out_dict
+
+
+def normalize_ids(tar, tar_id):
+    def trim(in_id: str):
+        if tar_id != "ICD10":
+            in_id = in_id.split(".") [-1]
+        in_id = in_id.split(":")[-1]
+        return in_id
+    if isinstance(tar, str):
+        return trim(in_id=tar)
+    elif isinstance(tar, set):
+        return set([trim(i) for i in tar])
+    elif isinstance(tar, pd.DataFrame):
+        tar["id"] = tar["id"].apply(trim)
+        return tar
+    else:
+        return None
 
 
 def save_contribution_results(results: dict, prefix: str, out_dir):
@@ -451,11 +471,11 @@ if __name__ == "__main__":
             save_contribution_results(results=res_sig, prefix=pref, out_dir=args.out_dir)
             if args.plot:
                 ru.print_current_usage('Save plots') if args.verbose else None
-                i_type = "genes" if args.target_id_type in ['uniprot', 'entez', 'symbol', 'ensemble'] else "diseases"
-                pu.create_contribution_plots(result_sig=res_sig, input_type=i_type, out_dir=args.out_dir, prefix=pref)
+                i_type = "genes" if args.target_id_type in ['uniprot', 'entrez', 'symbol', 'ensemble'] else "diseases"
+                pu.create_contribution_plots(result_sig=res_sig, out_dir=args.out_dir, prefix=pref)
 
                 if args.mode in ['subnetwork', 'subnetwork-set']:
-                    pu.create_contribution_graphs(result_sig=res_sig, input_type=i_type,
+                    pu.create_contribution_graphs(result_sig=res_sig, tar_id=i_type,
                                                   network_data={"network_file": args.network,
                                                                 "prop_name": args.network_property_name,
                                                                 "id_type": args.network_id_type},
