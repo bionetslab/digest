@@ -296,6 +296,7 @@ def sankey(data, out_dir, prefix, file_type: str = "pdf", color_dict=None, aspec
         if i == 0:
             myD['bottom'] = 0
             myD['top'] = myD['left']
+            top_edge = myD['top']
         else:
             myD['bottom'] = left_widths[left_labels[i - 1]]['top'] + 0.02 * data.weight.sum()
             myD['top'] = myD['bottom'] + myD['left']
@@ -310,6 +311,7 @@ def sankey(data, out_dir, prefix, file_type: str = "pdf", color_dict=None, aspec
         if i == 0:
             myD['bottom'] = 0
             myD['top'] = myD['right']
+            top_edge = myD['top']
         else:
             myD['bottom'] = right_widths[right_labels[i - 1]]['top'] + 0.02 * data.weight.sum()
             myD['top'] = myD['bottom'] + myD['right']

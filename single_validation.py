@@ -409,13 +409,17 @@ def transform_dict(in_dict):
 def normalize_ids(tar, tar_id):
     def trim(in_id: str):
         if tar_id != "ICD10":
-            in_id = in_id.split(".") [-1]
+            in_id = in_id.split(".")[-1]
         in_id = in_id.split(":")[-1]
         return in_id
     if isinstance(tar, str):
         return trim(in_id=tar)
     elif isinstance(tar, set):
         return set([trim(i) for i in tar])
+    elif isinstance(tar, pd.Series):
+        return pd.Series([trim(i) for i in tar])
+    elif isinstance(tar, list):
+        return [trim(i) for i in tar]
     elif isinstance(tar, pd.DataFrame):
         tar["id"] = tar["id"].apply(trim)
         return tar

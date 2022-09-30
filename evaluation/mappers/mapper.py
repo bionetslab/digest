@@ -18,12 +18,12 @@ class Mapper:
     loaded_distance_ids = {'jaccard': {'gene_mat_ids': dict(), 'disease_mat_ids': dict()},
                            'overlap': {'gene_mat_ids': dict(), 'disease_mat_ids': dict()}}
     loaded_distances = {
-        'jaccard': {'go_BP': sp.csr_matrix(None), 'go_CC': sp.csr_matrix(None), 'go_MF': sp.csr_matrix(None),
-                    'pathway_kegg': sp.csr_matrix(None), 'related_genes': sp.csr_matrix(None),
-                    'related_variants': sp.csr_matrix(None), 'related_pathways': sp.csr_matrix(None)},
-        'overlap': {'go_BP': sp.csr_matrix(None), 'go_CC': sp.csr_matrix(None), 'go_MF': sp.csr_matrix(None),
-                    'pathway_kegg': sp.csr_matrix(None), 'related_genes': sp.csr_matrix(None),
-                    'related_variants': sp.csr_matrix(None), 'related_pathways': sp.csr_matrix(None)}}
+        'jaccard': {'go_BP': sp.csr_matrix([0]), 'go_CC': sp.csr_matrix([0]), 'go_MF': sp.csr_matrix([0]),
+                    'pathway_kegg': sp.csr_matrix([0]), 'related_genes': sp.csr_matrix([0]),
+                    'related_variants': sp.csr_matrix([0]), 'related_pathways': sp.csr_matrix([0])},
+        'overlap': {'go_BP': sp.csr_matrix([0]), 'go_CC': sp.csr_matrix([0]), 'go_MF': sp.csr_matrix([0]),
+                    'pathway_kegg': sp.csr_matrix([0]), 'related_genes': sp.csr_matrix([0]),
+                    'related_variants': sp.csr_matrix([0]), 'related_pathways': sp.csr_matrix([0])}}
 
     changed_mappings = set()
 
@@ -105,7 +105,7 @@ class Mapper:
             else:
                 return self.loaded_distances[distance_measure][key][indices, :][:, indices]
         else:
-            return sp.csr_matrix(None)
+            return sp.csr_matrix([0])
 
     def update_distances(self, in_mat: sp.coo_matrix, id_type: str, key: str, distance_measure: str):
         self.changed_mappings.add(distance_measure + "_" + key)
