@@ -21,30 +21,33 @@ def get_gene_mapping(gene_set: set, id_type: str, mapper: Mapper):
     :return: gene to id mapping as dataframe
     """
     # ===== Get mapping from previous mappings =====
-    hit_mapping, missing_hits = mapper.get_loaded_mapping(in_set=gene_set, id_type=config.ID_TYPE_KEY[id_type], key='gene_ids')
+    hit_mapping, missing_hits = mapper.get_loaded_mapping(in_set=gene_set, id_type=config.ID_TYPE_KEY[id_type],
+                                                          key='gene_ids')
     # ===== Get mapping for missing values =====
     if len(missing_hits) > 0:
         mg = get_client("gene")
         mapping = mg.querymany(missing_hits, scopes=config.ID_TYPE_KEY[id_type], fields=','.join(config.GENE_IDS),
                                species='human', returnall=False, as_dataframe=True, df_index=False)
         if 'notfound' in mapping:
-            mapping = mapping[mapping['notfound']!=True]
+            mapping = mapping[mapping['notfound'] != True]
         # ===== Only when missing values found a mapping =====
         if not mapping.empty:
             mapping = mapping.drop(columns=[config.ID_TYPE_KEY[id_type]])
             mapping.rename(columns={'query': config.ID_TYPE_KEY[id_type]}, inplace=True)
+            mapping = mapping[mapping["entrezgene"].notna()]
             # ===== Fill if ID types are missing =====
             for id_col in config.GENE_IDS:
                 if id_col not in mapping:
                     mapping[id_col] = ""
             # ===== Split if there are multiple ensembl ids =====
             if 'ensembl' in mapping:
-                mapping = mu.preprocess_results(mapping=mapping, multicol='ensembl', singlecol='ensembl.gene', key='gene')
+                mapping = mu.preprocess_results(mapping=mapping, multicol='ensembl', singlecol='ensembl.gene',
+                                                key='gene')
                 mapping.rename(columns={'ensembl': 'ensembl.gene'}, inplace=True)
             mapping['uniprot.Swiss-Prot'] = mapping['uniprot.Swiss-Prot'].fillna("").apply(mu.list_to_string)
             drop_cols = ['_id', '_score', 'notfound'] if 'notfound' in mapping.columns else ['_id', '_score']
             mapping = mapping.drop(columns=drop_cols)
-            mapping = mapping.fillna('').groupby(['entrezgene','symbol'], as_index=False).agg(
+            mapping = mapping.fillna('').groupby(['entrezgene', 'symbol'], as_index=False).agg(
                 {x: mu.combine_rows_to_string for x in config.GENE_IDS[2:]})
             # ===== Add results from missing values =====
             mapper.update_mappings(in_df=mapping, key='gene_ids')
@@ -66,6 +69,7 @@ def get_gene_to_attributes(gene_set: set, id_type: str, mapper: Mapper):
     """
     # ===== Get gene ID mappings =====
     gene_mapping = get_gene_mapping(gene_set=gene_set, id_type=id_type, mapper=mapper)
+
     # ===== Return empty Dataframe if IDs were not mappable =====
     if gene_mapping.empty:
         return gene_mapping
@@ -79,7 +83,7 @@ def get_gene_to_attributes(gene_set: set, id_type: str, mapper: Mapper):
                                species='human', returnall=False, as_dataframe=True, df_index=False)
         mapping.rename(columns={'query': 'entrezgene'}, inplace=True)
         if 'notfound' in mapping:
-            mapping = mapping[mapping['notfound']!=True]
+            mapping = mapping[mapping['notfound'] != True]
         if not mapping.empty:
             for attribute in config.GENE_ATTRIBUTES_KEY:
                 mapping = mu.preprocess_results(mapping=mapping, multicol=attribute,
