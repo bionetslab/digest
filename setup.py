@@ -194,7 +194,7 @@ def create_files(mapper: Mapper):
         G = gt.Graph(directed=False)
         v_ids = G.add_edge_list(edges[["from", "to"]].values, hashed=True)
         G.vertex_properties['id'] = v_ids
-        gt.stats.remove_parallel_edges(G)
+        gt.generation.remove_parallel_edges(G)
         v_ids_set = set(v_ids)
         for v in vertices:
             cur_v = graph.vp['primaryDomainId'][v][len(id_type)+1:]

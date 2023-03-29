@@ -78,7 +78,7 @@ NEDREX_GGI_POST = {"nodes":["gene","protein"],
                    "ppi_self_loops":False}
 NEDREX_DDI_POST = {"nodes":["gene","disorder"],
                    "edges":["gene_associated_with_disorder"]}
-NEDREX_GRAPH_BUILDER = "http://api.nedrex.net/graph_builder"
+NEDREX_GRAPH_BUILDER = "https://api.nedrex.net/graph_builder"
 NEDREX_GRAPH_DOWNLOADER = "https://api.nedrex.net/graph_download/"
 
 # =============================================================================
