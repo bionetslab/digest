@@ -80,7 +80,7 @@ def combine_rowsets_series_to_set(x: pd.Series):
     if isinstance(x.iloc[0], set):
         return set().union(*x)
     elif isinstance(x, pd.Series):
-        return set(filter(None, x.str.join(";")))
+        return set(filter(None,';'.join(list(x)).split(';')))
     else:
         return set(filter(None, ';'.join(x).split(';')))
 

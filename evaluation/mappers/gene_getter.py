@@ -116,7 +116,7 @@ def get_enriched_attributes(gene_set: set, id_type: str, mapper: Mapper):
         return gene_mapping
     enrich_df = gseapy.enrichr(
         gene_list=list(mu.combine_rows_to_set(gene_mapping['symbol'])),
-        description='atts',
+        #description='atts',
         gene_sets=list(config.ENRICH_KEY.keys()),
         cutoff=0.05).results
     enrich_df = enrich_df[enrich_df['Adjusted P-value'] < 0.05]
