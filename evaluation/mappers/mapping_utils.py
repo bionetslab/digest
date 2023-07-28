@@ -80,7 +80,7 @@ def combine_rowsets_series_to_set(x: pd.Series):
     if isinstance(x.iloc[0], set):
         return set().union(*x)
     elif isinstance(x, pd.Series):
-        return set(filter(None,';'.join(list(x)).split(';')))
+        return set(filter(None, ';'.join(list(x)).split(';')))
     else:
         return set(filter(None, ';'.join(x).split(';')))
 
@@ -134,6 +134,8 @@ def map_to_prev_id(main_id_type: str, id_type: str, id_mapping: pd.DataFrame, at
     hit_mapping = hit_mapping.drop(columns=[main_id_type]) if id_type != main_id_type else hit_mapping
     hit_mapping = hit_mapping.fillna('')
     hit_mapping = hit_mapping[hit_mapping[id_type] != ""]
+    for col in attributes: # if attribute in cell is "" , it will be replaced with an empty set
+        hit_mapping[col] = hit_mapping[col].apply(lambda x: set() if x == "" else x)
     hit_mapping = hit_mapping.groupby(id_type, as_index=False).agg(
         {x: combine_rows_to_set for x in attributes})
     return hit_mapping
